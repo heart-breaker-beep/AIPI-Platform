@@ -30,8 +30,10 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "deepseek-chat"
 
     # Embedding
-    EMBEDDING_PROVIDER: str = ""
-    EMBEDDING_MODEL: str = ""
+    OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
+
+    EMBEDDING_PROVIDER: str = "ollama"
+    EMBEDDING_MODEL: str = "bge-m3"
 
     # GitHub
     GITHUB_TOKEN: str = ""
@@ -42,6 +44,18 @@ class Settings(BaseSettings):
         case_sensitive=True,
         extra="ignore",
     )
+
+    @property
+    def DATABASE_URL(self) -> str:
+        """生成 SQLAlchemy 异步 MySQL 连接地址。"""
+        return (
+            f"mysql+asyncmy://"
+            f"{self.MYSQL_USER}:"
+            f"{self.MYSQL_PASSWORD}@"
+            f"{self.MYSQL_HOST}:"
+            f"{self.MYSQL_PORT}/"
+            f"{self.MYSQL_DATABASE}"
+        )
 
 
 @lru_cache

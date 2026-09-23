@@ -32,7 +32,7 @@ def test_validation_error():
 def test_agent_error():
     """测试 Agent 异常。"""
 
-    error = AgentError("agent failed")
+    error = AgentError("agents failed")
 
     assert error.status_code == 500
     assert error.error_code == "AGENT_ERROR"

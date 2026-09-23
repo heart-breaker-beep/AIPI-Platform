@@ -1,7 +1,9 @@
-"""Analysis API 路由，负责接收请求并调用 Analysis Service。"""
+"""Analysis API 路由。"""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import get_db
 from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisResponse,
@@ -21,12 +23,14 @@ router = APIRouter(
 )
 async def create_analysis(
     request: AnalysisCreateRequest,
+    session: AsyncSession = Depends(get_db),
 ) -> AnalysisResponse:
-    """创建一个新的 GitHub 项目分析任务。"""
+    """创建 GitHub 项目分析任务。"""
 
-    # Router 只负责 HTTP 层，
-    # 具体业务逻辑交给 Service，避免 API 层越来越复杂。
-    return analysis_service.create_analysis(request)
+    return await analysis_service.create_analysis(
+        session,
+        request,
+    )
 
 
 @router.get(
@@ -35,7 +39,11 @@ async def create_analysis(
 )
 async def get_analysis(
     run_id: str,
+    session: AsyncSession = Depends(get_db),
 ) -> AnalysisResponse:
     """根据 run_id 查询分析任务。"""
 
-    return analysis_service.get_analysis(run_id)
+    return await analysis_service.get_analysis(
+        session,
+        run_id,
+    )

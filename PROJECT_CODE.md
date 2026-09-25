@@ -14,22 +14,33 @@ AIPI Platform/
 │
 ├── alembic/                                                         # 数据库迁移（Alembic）
 │   ├── versions/                                                    # 迁移脚本
-│   │   └── 479571222143_create_initial_analysis_tables.py
+│   │   ├── 479571222143_create_initial_analysis_tables.py
+│   │   ├── a9e1f4c2d8b7_add_evidence_claim_citation.py
+│   │   └── b0f6883a5f43_add_checkpoints.py
 │   ├── env.py
 │   ├── README
 │   └── script.py.mako
 ├── app/                                                             # 应用主包
 │   ├── agents/                                                      # ── Agent 层 ──
+│   │   ├── agent_registry.py
+│   │   ├── agent_runtime.py
+│   │   ├── architecture_analysis_agent.py
 │   │   ├── base.py
-│   │   ├── critic.py
-│   │   ├── planner.py
+│   │   ├── critic_agent.py
+│   │   ├── evidence_analysis_agent.py
+│   │   ├── planner_agent.py
+│   │   ├── repository_analysis_agent.py
 │   │   ├── researcher.py
-│   │   └── runtime.py
+│   │   └── technology_analysis_agent.py
 │   ├── api/                                                         # ── API 层 ──
 │   │   ├── v1/                                                      # v1 路由
 │   │   │   ├── __init__.py                                          # (空)
 │   │   │   └── analysis.py
 │   │   └── __init__.py                                              # (空)
+│   ├── context/
+│   │   ├── __init__.py
+│   │   ├── manager.py
+│   │   └── retriever.py
 │   ├── core/                                                        # ── 核心基础设施层 ──
 │   │   ├── __init__.py                                              # (空)
 │   │   ├── config.py
@@ -44,14 +55,28 @@ AIPI Platform/
 │   │   ├── __init__.py                                              # (空)
 │   │   ├── base.py
 │   │   └── ollama.py
+│   ├── evidence/                                                    # ── 证据与溯源层 ──
+│   │   ├── __init__.py
+│   │   ├── store.py
+│   │   ├── traceability.py
+│   │   └── verifier.py
 │   ├── llm/                                                         # ── LLM 能力层 ──
 │   │   ├── __init__.py                                              # (空)
 │   │   ├── base.py
 │   │   └── deepseek.py
+│   ├── memory/
+│   │   ├── __init__.py
+│   │   ├── manager.py
+│   │   ├── project_memory.py
+│   │   └── run_memory.py
 │   ├── models/                                                      # ── 数据模型层 ──
 │   │   ├── __init__.py
 │   │   ├── analysis_run.py
 │   │   ├── analysis_task.py
+│   │   ├── checkpoint.py
+│   │   ├── citation.py
+│   │   ├── claim.py
+│   │   ├── evidence.py
 │   │   └── repository.py
 │   ├── project_analysis/                                            # ── 项目分析层 ──
 │   │   ├── __init__.py                                              # (空)
@@ -61,16 +86,31 @@ AIPI Platform/
 │   ├── repositories/                                                # ── 数据访问层 ──
 │   │   ├── __init__.py
 │   │   ├── analysis_run.py
+│   │   ├── checkpoint.py
+│   │   ├── citation.py
+│   │   ├── claim.py
+│   │   ├── evidence.py
 │   │   ├── repository.py
 │   │   └── repository_basic.py
 │   ├── schemas/                                                     # ── 数据契约层 ──
 │   │   ├── __init__.py                                              # (空)
 │   │   ├── analysis.py
-│   │   └── error.py
+│   │   ├── error.py
+│   │   └── evidence.py
 │   ├── services/                                                    # ── 业务服务层 ──
 │   │   ├── __init__.py                                              # (空)
 │   │   ├── analysis_service.py
+│   │   ├── evidence_service.py
 │   │   └── repository_service.py
+│   ├── skills/                                                      # ── Skill 能力层 ──
+│   │   ├── __init__.py
+│   │   ├── architecture_analysis_skill.py
+│   │   ├── base.py
+│   │   ├── evidence_analysis_skill.py
+│   │   ├── registry.py
+│   │   ├── report_generation_skill.py
+│   │   ├── repository_analysis_skill.py
+│   │   └── technology_analysis_skill.py
 │   ├── tools/                                                       # ── 工具层 ──
 │   │   ├── github/                                                  # GitHub API 工具
 │   │   │   ├── __init__.py                                          # (空)
@@ -114,27 +154,46 @@ AIPI Platform/
 ├── test_reports/                                                    # 测试产生的报告输出目录
 │   └── test.md
 ├── tests/                                                           # ── 测试层 ──
+│   ├── test_agent_registry.py
+│   ├── test_agent_runtime.py
 │   ├── test_analysis_api.py
 │   ├── test_chunker.py
 │   ├── test_config.py
+│   ├── test_context_manager.py
+│   ├── test_context_retriever.py
 │   ├── test_database.py
 │   ├── test_dependency_analyzer_tool.py
 │   ├── test_embedding.py
 │   ├── test_embedding_qdrant.py
+│   ├── test_evidence_agent.py
+│   ├── test_evidence_models.py
+│   ├── test_evidence_service.py
+│   ├── test_evidence_skill.py
+│   ├── test_evidence_store.py
+│   ├── test_evidence_verifier.py
 │   ├── test_exceptions.py
 │   ├── test_github_client.py
 │   ├── test_github_code_search_tool.py
 │   ├── test_github_parser.py
 │   ├── test_indexer.py
+│   ├── test_memory.py
 │   ├── test_mysql_query_tool.py
+│   ├── test_phase10.py
 │   ├── test_qdrant.py
 │   ├── test_qdrant_search_tool.py
 │   ├── test_report_export_tool.py
+│   ├── test_repository_analysis_workflow.py
 │   ├── test_repository_crud.py
 │   ├── test_repository_pipeline.py
 │   ├── test_repository_service.py
+│   ├── test_repository_skill.py
 │   ├── test_retrieval.py
+│   ├── test_skill_base.py
+│   ├── test_skill_node.py
+│   ├── test_skill_registry.py
+│   ├── test_skill_workflow.py
 │   ├── test_tools.py
+│   ├── test_traceability.py
 │   └── test_workflow.py
 ├── .env                                                             # 本地环境变量（已 gitignore）
 ├── .env.example                                                     # 环境变量模板
@@ -191,10 +250,38 @@ AIPI Platform/
     └───────────────┬─────────────────────────────┬───────────────────┘
                     │                             │
                     ▼                             ▼
+    ┌────────────────────────────────────────────────────────┐
+    │  Agent 层  app/agents/                                  │
+    │  BaseAgent / *Agent / AgentRegistry / AgentRuntime      │
+    └───────────────────────────┬────────────────────────────┘
+                                │  通过 SkillRegistry 取能力
+                                ▼
+    ┌────────────────────────────────────────────────────────┐
+    │  Skill 层  app/skills/                                  │
+    │  BaseSkill / *Skill / SkillRegistry                     │
+    │  一个 Skill 组合多个 Tool 完成一次业务能力               │
+    └───────────────────────────┬────────────────────────────┘
+                                │
+                                ▼
     ┌───────────────────────────┐   ┌─────────────────────────┐
-    │  Agent 层  app/agents/    │   │  LLM 能力层  app/llm/    │
-    │  BaseAgent / AgentRuntime │──▶│  BaseLLM / DeepSeekLLM  │
+    │  工具层  app/tools/        │   │  LLM 能力层  app/llm/    │
+    │  BaseTool / *Tool          │   │  BaseLLM / DeepSeekLLM  │
     └───────────────────────────┘   └─────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  证据与溯源层  app/evidence/                                     │
+    │  EvidenceStore / EvidenceVerifier / TraceabilityService         │
+    │  证据链：Claim ─▶ Citation ─▶ Evidence ─▶ Source(file:line)      │
+    └────────────────────────────────┬────────────────────────────────┘
+                                     │  经 app/repositories/ 落 MySQL
+                                     ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  Workflow 状态持久化  app/workflow/checkpoint.py                 │
+    │  WorkflowState ⇄ app/models/checkpoint.py（checkpoints 表）      │
+    │  支撑暂停 / 恢复 / 重试                                           │
+    └─────────────────────────────────────────────────────────────────┘
+
+    调用链：Workflow ─▶ Node ─▶ Agent ─▶ Skill ─▶ Tool
 
     贯穿各层：app/core/（配置、日志、异常、异常处理器）
     数据契约：app/schemas/（被 API 层与 Service 层共同引用）
@@ -204,15 +291,21 @@ AIPI Platform/
 
 ## 二、入口层
 
-FastAPI 应用装配：日志、异常处理、路由挂载
+FastAPI 应用装配：日志、异常处理、路由挂载；同时收录 `app` 包标记文件
+
+### 📄 `app/__init__.py`
+
+**层级**：入口层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
 
 ### 📄 `app/main.py`
 
-**层级**：入口层 · **职责**：FastAPI 应用初始化、日志初始化、全局异常注册、路由挂载
+**层级**：入口层 · **职责**：FastAPI 应用初始化、日志初始化、全局异常注册、路由挂载；文件末尾额外装配了 `WorkflowContext`（agents / tools / skills）的草稿代码
 
 ```python
 """FastAPI 应用入口：负责应用初始化、日志、异常处理和 API 路由注册。"""
-
+from app import tools
 from fastapi import FastAPI
 
 from app.api.v1.analysis import router as analysis_router
@@ -223,7 +316,7 @@ from app.core.error_handlers import (
 )
 from app.core.exceptions import ApplicationError
 from app.core.logging import get_logger, setup_logging
-
+from app.workflow.context import WorkflowContext
 
 settings = get_settings()
 
@@ -277,6 +370,24 @@ async def root():
         "version": "0.1.0",
         "status": "running",
     }
+
+from app.skills.registry import create_skill_registry
+
+skill_registry = create_skill_registry()
+
+
+context = WorkflowContext(
+
+    agents={},
+
+    tools=tools,
+
+    skills=
+        skill_registry.skills,
+
+    config={}
+
+)
 ```
 
 ## 三、API 层
@@ -298,7 +409,9 @@ from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisResponse,
 )
-from app.services.analysis_service import analysis_service
+from app.services.analysis_service import (
+    analysis_service,
+)
 
 
 router = APIRouter(
@@ -337,7 +450,83 @@ async def get_analysis(
         session,
         run_id,
     )
+
+
+@router.post(
+    "/{run_id}/approve",
+    response_model=AnalysisResponse,
+)
+async def approve_analysis(
+    run_id: str,
+    session: AsyncSession = Depends(get_db),
+) -> AnalysisResponse:
+    """通过 Design Gate。"""
+
+    return await analysis_service.approve_analysis(
+        session,
+        run_id,
+    )
+
+
+@router.post(
+    "/{run_id}/pause",
+    response_model=AnalysisResponse,
+)
+async def pause_analysis(
+    run_id: str,
+    session: AsyncSession = Depends(get_db),
+) -> AnalysisResponse:
+    """暂停分析任务。"""
+
+    return await analysis_service.pause_analysis(
+        session,
+        run_id,
+    )
+
+
+@router.post(
+    "/{run_id}/resume",
+    response_model=AnalysisResponse,
+)
+async def resume_analysis(
+    run_id: str,
+    session: AsyncSession = Depends(get_db),
+) -> AnalysisResponse:
+    """恢复分析任务。"""
+
+    return await analysis_service.resume_analysis(
+        session,
+        run_id,
+    )
+
+
+@router.post(
+    "/{run_id}/retry",
+    response_model=AnalysisResponse,
+)
+async def retry_analysis(
+    run_id: str,
+    session: AsyncSession = Depends(get_db),
+) -> AnalysisResponse:
+    """重试失败的分析任务。"""
+
+    return await analysis_service.retry_analysis(
+        session,
+        run_id,
+    )
 ```
+
+### 📄 `app/api/__init__.py`
+
+**层级**：API 层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
+
+### 📄 `app/api/v1/__init__.py`
+
+**层级**：API 层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
 
 ## 四、数据契约层（Schemas）
 
@@ -364,9 +553,16 @@ class AnalysisCreateRequest(BaseModel):
         description="GitHub repository URL",
     )
 
+    question: str | None = Field(
+        default=None,
+        max_length=5000,
+        description="本次项目分析问题，用于 Run Memory 和 Context Manager",
+    )
+
 
 class AnalysisResponse(BaseModel):
     """分析任务的基础响应信息。"""
+
     run_id: str
     status: str
     repo_url: str
@@ -397,6 +593,110 @@ class ErrorResponse(BaseModel):
     error: ErrorDetail
 ```
 
+### 📄 `app/schemas/evidence.py`
+
+**层级**：数据契约层（Schemas） · **职责**：Evidence / Claim / Citation 的请求体与响应体定义（`EvidenceCreateRequest` / `ClaimCreateRequest` / `CitationCreateRequest` 等）
+
+```python
+"""
+Evidence / Claim / Citation 数据契约。
+"""
+
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class EvidenceCreateRequest(BaseModel):
+    repository_id: int
+
+    source_type: str = Field(
+        min_length=1,
+        max_length=50,
+    )
+
+    source_url: str | None = None
+
+    file_path: str | None = None
+
+    line_start: int | None = Field(
+        default=None,
+        ge=1,
+    )
+
+    line_end: int | None = Field(
+        default=None,
+        ge=1,
+    )
+
+    content: str = Field(
+        min_length=1,
+    )
+
+    verification_status: str = "UNVERIFIED"
+
+
+class EvidenceResponse(BaseModel):
+    id: str
+    repository_id: int
+    source_type: str
+    source_url: str | None
+    file_path: str | None
+    line_start: int | None
+    line_end: int | None
+    content: str
+    verification_status: str
+    created_at: datetime
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class ClaimCreateRequest(BaseModel):
+    run_id: str
+
+    claim_text: str = Field(
+        min_length=1,
+    )
+
+    verification_status: str = "UNVERIFIED"
+
+
+class ClaimResponse(BaseModel):
+    id: str
+    run_id: str
+    claim_text: str
+    verification_status: str
+    created_at: datetime
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
+class CitationCreateRequest(BaseModel):
+    claim_id: str
+    evidence_id: str
+
+
+class CitationResponse(BaseModel):
+    id: str
+    claim_id: str
+    evidence_id: str
+    created_at: datetime
+
+    model_config = {
+        "from_attributes": True
+    }
+```
+
+### 📄 `app/schemas/__init__.py`
+
+**层级**：数据契约层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
+
 ## 五、业务服务层（Services）
 
 业务编排：校验入参、组合 DAO 与工具层、掌控事务边界
@@ -424,6 +724,7 @@ from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisResponse,
 )
+from app.models.repository import Repository
 
 
 logger = get_logger(__name__)
@@ -481,9 +782,12 @@ class AnalysisService:
 
         run_id = str(uuid4())
 
+        # Phase 11：
+        # 将用户问题真正保存到 AnalysisRun。
         run = await analysis_run_repo.create(
             run_id=run_id,
             repository_id=repository.id,
+            question=request.question,
         )
 
         await session.commit()
@@ -526,12 +830,8 @@ class AnalysisService:
             session
         )
 
-        # 当前先根据 repository_id 查询项目。
         repository = await session.get(
-            __import__(
-                "app.models.repository",
-                fromlist=["Repository"],
-            ).Repository,
+            Repository,
             run.repository_id,
         )
 
@@ -546,7 +846,6 @@ class AnalysisService:
             repo_url=repository.url,
             created_at=run.created_at,
         )
-
 
     @staticmethod
     def _parse_github_url(
@@ -570,6 +869,214 @@ class AnalysisService:
             )
 
         return owner, name
+
+    async def approve_analysis(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisResponse:
+        """通过 Design Gate。"""
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        if run.status not in {
+            "pending",
+            "WAITING_DESIGN",
+            "WAITING_DESIGN_APPROVAL",
+        }:
+            raise ValidationError(
+                f"Analysis run cannot be approved "
+                f"from status: {run.status}"
+            )
+
+        await run_repo.update_runtime_state(
+            run,
+            status="ANALYZING",
+        )
+
+        await session.commit()
+
+        repository = await session.get(
+            Repository,
+            run.repository_id,
+        )
+
+        if repository is None:
+            raise ValidationError(
+                f"Repository not found: {run.repository_id}"
+            )
+
+        return AnalysisResponse(
+            run_id=run.id,
+            status=run.status,
+            repo_url=repository.url,
+            created_at=run.created_at,
+        )
+
+    async def pause_analysis(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisResponse:
+        """人工暂停 Analysis Run。"""
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        if run.status != "ANALYZING":
+            raise ValidationError(
+                f"Analysis run cannot be paused "
+                f"from status: {run.status}"
+            )
+
+        await run_repo.update_runtime_state(
+            run,
+            status="PAUSED",
+        )
+
+        await session.commit()
+
+        repository = await session.get(
+            Repository,
+            run.repository_id,
+        )
+
+        if repository is None:
+            raise ValidationError(
+                f"Repository not found: {run.repository_id}"
+            )
+
+        return AnalysisResponse(
+            run_id=run.id,
+            status=run.status,
+            repo_url=repository.url,
+            created_at=run.created_at,
+        )
+
+    async def resume_analysis(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisResponse:
+        """从 Checkpoint 恢复 Analysis Run。"""
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        if run.status not in {
+            "PAUSED",
+            "WAITING_HUMAN",
+        }:
+            raise ValidationError(
+                f"Analysis run cannot be resumed "
+                f"from status: {run.status}"
+            )
+
+        await run_repo.update_runtime_state(
+            run,
+            status="ANALYZING",
+        )
+
+        await session.commit()
+
+        repository = await session.get(
+            Repository,
+            run.repository_id,
+        )
+
+        if repository is None:
+            raise ValidationError(
+                f"Repository not found: {run.repository_id}"
+            )
+
+        return AnalysisResponse(
+            run_id=run.id,
+            status=run.status,
+            repo_url=repository.url,
+            created_at=run.created_at,
+        )
+
+    async def retry_analysis(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisResponse:
+        """重新执行失败的 Analysis Run。"""
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        if run.status != "FAILED":
+            raise ValidationError(
+                f"Analysis run cannot be retried "
+                f"from status: {run.status}"
+            )
+
+        await run_repo.update_runtime_state(
+            run,
+            status="RETRYING",
+            retry_count=run.retry_count + 1,
+        )
+
+        await session.commit()
+
+        repository = await session.get(
+            Repository,
+            run.repository_id,
+        )
+
+        if repository is None:
+            raise ValidationError(
+                f"Repository not found: {run.repository_id}"
+            )
+
+        return AnalysisResponse(
+            run_id=run.id,
+            status=run.status,
+            repo_url=repository.url,
+            created_at=run.created_at,
+        )
 
 
 analysis_service = AnalysisService()
@@ -699,6 +1206,198 @@ class RepositoryService:
         return repository
 ```
 
+### 📄 `app/services/evidence_service.py`
+
+**层级**：业务服务层（Services） · **职责**：证据链业务编排：`create_evidence()` / `create_claim()` / `cite()` 落库，`verify_evidence()` / `verify_claim()` 走校验器，`get_claim_traceability()` 返回溯源链；调用链为 Service → Store → Verifier → Traceability → Repository
+
+```python
+"""
+Evidence 业务服务。
+
+Phase 9：
+
+Service
+ ↓
+Evidence Store
+ ↓
+Verifier
+ ↓
+Traceability
+ ↓
+Repository
+ ↓
+MySQL
+"""
+
+from uuid import uuid4
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import ValidationError
+from app.evidence.store import EvidenceStore
+from app.evidence.traceability import (
+    TraceabilityService,
+)
+from app.evidence.verifier import EvidenceVerifier
+
+
+class EvidenceService:
+    """
+    Evidence 业务服务。
+
+    对上层提供统一接口：
+
+    - create_evidence
+    - create_claim
+    - cite
+    - verify_evidence
+    - verify_claim
+    - get_claim_traceability
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
+
+        self.session = session
+
+        self.store = EvidenceStore(
+            session
+        )
+
+        self.verifier = EvidenceVerifier(
+            session
+        )
+
+        self.traceability = (
+            TraceabilityService(
+                session
+            )
+        )
+
+    async def create_evidence(
+        self,
+        *,
+        repository_id: int,
+        source_type: str,
+        content: str,
+        source_url: str | None = None,
+        file_path: str | None = None,
+        line_start: int | None = None,
+        line_end: int | None = None,
+        verification_status: str = "UNVERIFIED",
+    ):
+
+        return await self.store.create_evidence(
+            evidence_id=str(uuid4()),
+            repository_id=repository_id,
+            source_type=source_type,
+            content=content,
+            source_url=source_url,
+            file_path=file_path,
+            line_start=line_start,
+            line_end=line_end,
+            verification_status=verification_status,
+        )
+
+    async def create_claim(
+        self,
+        *,
+        run_id: str,
+        claim_text: str,
+        verification_status: str = "UNVERIFIED",
+    ):
+
+        return await self.store.create_claim(
+            claim_id=str(uuid4()),
+            run_id=run_id,
+            claim_text=claim_text,
+            verification_status=verification_status,
+        )
+
+    async def cite(
+        self,
+        *,
+        claim_id: str,
+        evidence_id: str,
+    ):
+
+        return await self.store.create_citation(
+            citation_id=str(uuid4()),
+            claim_id=claim_id,
+            evidence_id=evidence_id,
+        )
+
+    async def verify_evidence(
+        self,
+        *,
+        evidence_id: str,
+        status: str,
+    ):
+
+        evidence = await (
+            self.store.evidence_repository
+            .get_by_id(evidence_id)
+        )
+
+        if evidence is None:
+            raise ValidationError(
+                f"Evidence not found: {evidence_id}"
+            )
+
+        return await self.verifier.verify_evidence(
+            evidence,
+            status,
+        )
+
+    async def verify_claim(
+        self,
+        *,
+        claim_id: str,
+        status: str,
+    ):
+
+        claim = await (
+            self.store.claim_repository
+            .get_by_id(claim_id)
+        )
+
+        if claim is None:
+            raise ValidationError(
+                f"Claim not found: {claim_id}"
+            )
+
+        return await self.verifier.verify_claim(
+            claim,
+            status,
+        )
+
+    async def get_claim_traceability(
+        self,
+        *,
+        claim_id: str,
+    ):
+
+        return await (
+            self.traceability
+            .get_claim_trace(claim_id)
+        )
+
+    async def commit(self) -> None:
+        """
+        提交 Phase 9 数据。
+        """
+
+        await self.session.commit()
+```
+
+### 📄 `app/services/__init__.py`
+
+**层级**：业务服务层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
+
 ## 六、数据访问层（Repositories）
 
 表级别的数据访问对象（DAO），只负责 SQL 与对象映射
@@ -720,6 +1419,39 @@ from app.repositories.repository_basic import (
 __all__ = [
     "RepositoryRepository",
     "AnalysisRunRepository",
+]
+
+"""
+数据访问层统一导出。
+"""
+
+from app.repositories.analysis_run import (
+    AnalysisRunRepository,
+)
+
+from app.repositories.claim import (
+    ClaimRepository,
+)
+
+from app.repositories.citation import (
+    CitationRepository,
+)
+
+from app.repositories.evidence import (
+    EvidenceRepository,
+)
+
+from app.repositories.repository_basic import (
+    RepositoryRepository,
+)
+
+
+__all__ = [
+    "RepositoryRepository",
+    "AnalysisRunRepository",
+    "EvidenceRepository",
+    "ClaimRepository",
+    "CitationRepository",
 ]
 ```
 
@@ -863,7 +1595,9 @@ class RepositoryRepository:
 **层级**：数据访问层（Repositories） · **职责**：`analysis_runs` 表的数据访问
 
 ```python
-"""Analysis Run 数据访问层。"""
+"""
+Analysis Run 数据访问层。
+"""
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -874,7 +1608,11 @@ from app.models.analysis_run import AnalysisRun
 class AnalysisRunRepository:
     """负责 analysis_runs 表的数据访问。"""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
+
         self.session = session
 
     async def create(
@@ -925,6 +1663,405 @@ class AnalysisRunRepository:
         await self.session.flush()
 
         return run
+
+    async def update_runtime_state(
+        self,
+        run: AnalysisRun,
+        *,
+        status: str | None = None,
+        current_node: str | None = None,
+        retry_count: int | None = None,
+    ) -> AnalysisRun:
+        """
+        更新 Workflow 运行状态。
+
+        用于：
+        - Pause
+        - Resume
+        - Retry
+        - Checkpoint
+        """
+
+        if status is not None:
+            run.status = status
+
+        if current_node is not None:
+            run.current_node = current_node
+
+        if retry_count is not None:
+            run.retry_count = retry_count
+
+        await self.session.flush()
+
+        return run
+```
+
+### 📄 `app/repositories/evidence.py`
+
+**层级**：数据访问层（Repositories） · **职责**：`evidences` 表的数据访问：`create()` / `get_by_id()` / `list_by_repository()`
+
+```python
+"""
+Evidence 数据访问层。
+"""
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.evidence import Evidence
+
+
+class EvidenceRepository:
+    """
+    Evidence 表的数据访问对象。
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
+        self.session = session
+
+    async def create(
+        self,
+        *,
+        evidence_id: str,
+        repository_id: int,
+        source_type: str,
+        content: str,
+        source_url: str | None = None,
+        file_path: str | None = None,
+        line_start: int | None = None,
+        line_end: int | None = None,
+        verification_status: str = "UNVERIFIED",
+    ) -> Evidence:
+
+        evidence = Evidence(
+            id=evidence_id,
+            repository_id=repository_id,
+            source_type=source_type,
+            source_url=source_url,
+            file_path=file_path,
+            line_start=line_start,
+            line_end=line_end,
+            content=content,
+            verification_status=verification_status,
+        )
+
+        self.session.add(evidence)
+
+        await self.session.flush()
+
+        return evidence
+
+    async def get_by_id(
+        self,
+        evidence_id: str,
+    ) -> Evidence | None:
+
+        result = await self.session.execute(
+            select(Evidence).where(
+                Evidence.id == evidence_id
+            )
+        )
+
+        return result.scalar_one_or_none()
+
+    async def list_by_repository(
+        self,
+        repository_id: int,
+    ) -> list[Evidence]:
+
+        result = await self.session.execute(
+            select(Evidence)
+            .where(
+                Evidence.repository_id == repository_id
+            )
+            .order_by(Evidence.created_at)
+        )
+
+        return list(result.scalars().all())
+```
+
+### 📄 `app/repositories/claim.py`
+
+**层级**：数据访问层（Repositories） · **职责**：`claims` 表的数据访问：`create()` / `get_by_id()` / `list_by_run()`
+
+```python
+"""
+Claim 数据访问层。
+"""
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.claim import Claim
+
+
+class ClaimRepository:
+    """
+    Claim 表的数据访问对象。
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
+        self.session = session
+
+    async def create(
+        self,
+        *,
+        claim_id: str,
+        run_id: str,
+        claim_text: str,
+        verification_status: str = "UNVERIFIED",
+    ) -> Claim:
+
+        claim = Claim(
+            id=claim_id,
+            run_id=run_id,
+            claim_text=claim_text,
+            verification_status=verification_status,
+        )
+
+        self.session.add(claim)
+
+        await self.session.flush()
+
+        return claim
+
+    async def get_by_id(
+        self,
+        claim_id: str,
+    ) -> Claim | None:
+
+        result = await self.session.execute(
+            select(Claim).where(
+                Claim.id == claim_id
+            )
+        )
+
+        return result.scalar_one_or_none()
+
+    async def list_by_run(
+        self,
+        run_id: str,
+    ) -> list[Claim]:
+
+        result = await self.session.execute(
+            select(Claim)
+            .where(
+                Claim.run_id == run_id
+            )
+            .order_by(Claim.created_at)
+        )
+
+        return list(result.scalars().all())
+```
+
+### 📄 `app/repositories/citation.py`
+
+**层级**：数据访问层（Repositories） · **职责**：`citations` 表的数据访问：`create()` / `get_by_id()` / `get_by_claim()` / `exists()`
+
+```python
+"""
+Citation 数据访问层。
+"""
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.citation import Citation
+
+
+class CitationRepository:
+    """
+    Citation 表的数据访问对象。
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
+        self.session = session
+
+    async def create(
+        self,
+        *,
+        citation_id: str,
+        claim_id: str,
+        evidence_id: str,
+    ) -> Citation:
+
+        citation = Citation(
+            id=citation_id,
+            claim_id=claim_id,
+            evidence_id=evidence_id,
+        )
+
+        self.session.add(citation)
+
+        await self.session.flush()
+
+        return citation
+
+    async def get_by_id(
+        self,
+        citation_id: str,
+    ) -> Citation | None:
+
+        result = await self.session.execute(
+            select(Citation).where(
+                Citation.id == citation_id
+            )
+        )
+
+        return result.scalar_one_or_none()
+
+    async def get_by_claim(
+        self,
+        claim_id: str,
+    ) -> list[Citation]:
+
+        result = await self.session.execute(
+            select(Citation)
+            .where(
+                Citation.claim_id == claim_id
+            )
+            .order_by(Citation.created_at)
+        )
+
+        return list(result.scalars().all())
+
+    async def exists(
+        self,
+        *,
+        claim_id: str,
+        evidence_id: str,
+    ) -> bool:
+
+        result = await self.session.execute(
+            select(Citation.id).where(
+                Citation.claim_id == claim_id,
+                Citation.evidence_id == evidence_id,
+            )
+        )
+
+        return result.scalar_one_or_none() is not None
+```
+
+### 📄 `app/repositories/checkpoint.py`
+
+**层级**：数据访问层（Repositories） · **职责**：`checkpoints` 表的数据访问：`save()`（同 run 内自增版本号）/ `get_latest()` / `delete()`，支撑 Workflow 的暂停与恢复
+
+```python
+"""
+Workflow Checkpoint 数据访问层。
+"""
+
+from sqlalchemy import (
+    delete,
+    desc,
+    select,
+)
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.checkpoint import Checkpoint
+from app.workflow.state import WorkflowState
+
+
+class CheckpointRepository:
+    """负责 checkpoints 表的数据访问。"""
+
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
+
+        self.session = session
+
+    async def save(
+        self,
+        state: WorkflowState,
+    ) -> Checkpoint:
+        """保存 WorkflowState 快照。"""
+
+        checkpoint = Checkpoint(
+            run_id=state.run_id,
+            checkpoint_version=(
+                state.checkpoint_version
+            ),
+            status=state.status,
+            current_node=state.current_node,
+            state_data=state.data,
+            outputs=state.outputs,
+            errors=state.errors,
+            retry_count=state.retry_count,
+            pause_reason=state.pause_reason,
+            human_approved=state.human_approved,
+        )
+
+        self.session.add(
+            checkpoint
+        )
+
+        await self.session.flush()
+
+        return checkpoint
+
+    async def get_latest(
+        self,
+        run_id: str,
+    ) -> WorkflowState | None:
+        """获取指定 run 的最新 Checkpoint。"""
+
+        result = await self.session.execute(
+            select(Checkpoint)
+            .where(
+                Checkpoint.run_id == run_id
+            )
+            .order_by(
+                desc(
+                    Checkpoint.checkpoint_version
+                )
+            )
+            .limit(1)
+        )
+
+        checkpoint = (
+            result.scalar_one_or_none()
+        )
+
+        if checkpoint is None:
+            return None
+
+        return WorkflowState(
+            run_id=checkpoint.run_id,
+            status=checkpoint.status,
+            current_node=checkpoint.current_node,
+            data=checkpoint.state_data or {},
+            outputs=checkpoint.outputs or [],
+            errors=checkpoint.errors or [],
+            retry_count=checkpoint.retry_count,
+            pause_reason=checkpoint.pause_reason,
+            human_approved=checkpoint.human_approved,
+            checkpoint_version=checkpoint.checkpoint_version,
+        )
+
+    async def delete(
+        self,
+        run_id: str,
+    ) -> None:
+        """删除指定 run 的全部 Checkpoint。"""
+
+        await self.session.execute(
+            delete(Checkpoint).where(
+                Checkpoint.run_id == run_id
+            )
+        )
+
+        await self.session.flush()
 ```
 
 ## 七、数据模型层（Models）
@@ -936,16 +2073,26 @@ SQLAlchemy ORM 表结构定义
 **层级**：数据模型层（Models） · **职责**：模型统一导出（同时供 Alembic 迁移发现全部表）
 
 ```python
-"""数据库模型统一导出。"""
+"""
+数据库模型统一导出。
+"""
 
 from app.models.analysis_run import AnalysisRun
 from app.models.analysis_task import AnalysisTask
+from app.models.claim import Claim
+from app.models.citation import Citation
+from app.models.evidence import Evidence
 from app.models.repository import Repository
+from app.models.checkpoint import Checkpoint
 
 __all__ = [
     "Repository",
     "AnalysisRun",
     "AnalysisTask",
+    "Evidence",
+    "Claim",
+    "Citation",
+    "Checkpoint",
 ]
 ```
 
@@ -1175,6 +2322,343 @@ class AnalysisTask(Base):
     )
 ```
 
+### 📄 `app/models/evidence.py`
+
+**层级**：数据模型层（Models） · **职责**：`evidences` 表结构定义（Phase 9）：一条可验证的证据，带 source_type / source_url / file_path / line 等来源定位字段与 verification_status
+
+```python
+"""
+Evidence 数据模型。
+
+Phase 9:
+Evidence / Claim / Citation
+"""
+
+from datetime import datetime
+
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+
+
+class Evidence(Base):
+    """
+    证据模型。
+
+    一条 Evidence 表示：
+
+        Repository
+            ↓
+        Source
+            ↓
+        File
+            ↓
+        Line
+            ↓
+        Content
+
+    Evidence 本身属于 Repository。
+    """
+
+    __tablename__ = "evidences"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+    )
+
+    repository_id: Mapped[int] = mapped_column(
+        ForeignKey("repositories.id"),
+        nullable=False,
+        index=True,
+    )
+
+    source_type: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    source_url: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+    )
+
+    file_path: Mapped[str | None] = mapped_column(
+        String(1000),
+        nullable=True,
+    )
+
+    line_start: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    line_end: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    content: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    verification_status: Mapped[str] = mapped_column(
+        String(20),
+        default="UNVERIFIED",
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+```
+
+### 📄 `app/models/claim.py`
+
+**层级**：数据模型层（Models） · **职责**：`claims` 表结构定义（Phase 9）：一次分析 Run 产出的结论，通过 `citations` 关联到证据
+
+```python
+"""
+Claim 数据模型。
+
+Phase 9:
+表示一次分析 Run 中产生的结论。
+"""
+
+from datetime import datetime
+
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+
+
+class Claim(Base):
+    """
+    分析结论。
+
+    例如：
+
+        该项目存在多个 Agent。
+    """
+
+    __tablename__ = "claims"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+    )
+
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("analysis_runs.id"),
+        nullable=False,
+        index=True,
+    )
+
+    claim_text: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    verification_status: Mapped[str] = mapped_column(
+        String(20),
+        default="UNVERIFIED",
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+```
+
+### 📄 `app/models/citation.py`
+
+**层级**：数据模型层（Models） · **职责**：`citations` 表结构定义：Claim → Evidence 的引用关系，对 (claim_id, evidence_id) 加唯一约束避免重复引用
+
+```python
+"""
+Citation 数据模型。
+
+表示：
+
+Claim
+  ↓
+Evidence
+"""
+
+from datetime import datetime
+
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    String,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+
+
+class Citation(Base):
+    """
+    Claim 与 Evidence 的关联关系。
+    """
+
+    __tablename__ = "citations"
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+    )
+
+    claim_id: Mapped[str] = mapped_column(
+        ForeignKey("claims.id"),
+        nullable=False,
+        index=True,
+    )
+
+    evidence_id: Mapped[str] = mapped_column(
+        ForeignKey("evidences.id"),
+        nullable=False,
+        index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "claim_id",
+            "evidence_id",
+            name="uq_citations_claim_evidence",
+        ),
+    )
+```
+
+### 📄 `app/models/checkpoint.py`
+
+**层级**：数据模型层（Models） · **职责**：`checkpoints` 表结构定义：Workflow 状态快照，保存 run_id / checkpoint_version / current_node / state_data / outputs / errors / retry_count / pause_reason / human_approved
+
+```python
+"""
+Workflow Checkpoint 数据模型。
+"""
+
+from datetime import datetime
+
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    JSON,
+    String,
+)
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+)
+
+from app.db.base import Base
+
+
+class Checkpoint(Base):
+    """
+    保存 Workflow 某一时刻的完整执行快照。
+    """
+
+    __tablename__ = "checkpoints"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey(
+            "analysis_runs.id"
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    checkpoint_version: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
+
+    current_node: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    state_data: Mapped[dict] = mapped_column(
+        JSON,
+        nullable=False,
+        default=dict,
+    )
+
+    outputs: Mapped[list] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
+
+    errors: Mapped[list] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
+    )
+
+    retry_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+
+    pause_reason: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    human_approved: Mapped[bool] = mapped_column(
+        nullable=False,
+        default=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )
+```
+
 ## 八、数据库层（DB）
 
 ORM 基类与异步 Engine / Session 管理
@@ -1234,6 +2718,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
 ```
+
+### 📄 `app/db/__init__.py`
+
+**层级**：数据库层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
 
 ## 九、核心基础设施层（Core）
 
@@ -1496,6 +2986,12 @@ def log_with_run_id(
     logger.log(level, message)
 ```
 
+### 📄 `app/core/__init__.py`
+
+**层级**：核心基础设施层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
+
 ## 十、Workflow 层（Workflow）
 
 自研工作流引擎：状态、上下文、节点、流转、重试、检查点与执行引擎
@@ -1506,26 +3002,56 @@ def log_with_run_id(
 
 ```python
 """
-Workflow运行状态。
+Workflow 运行状态。
+
+Phase 10：
+- 支持 Design Gate
+- 支持 Human Review
+- 支持 Pause / Resume
+- 支持 Retry
+- 支持 Checkpoint
 """
 
 from dataclasses import dataclass, field
 from typing import Any
 
+class WorkflowStatus:
+    """Workflow 状态常量。"""
+
+    CREATED = "CREATED"
+
+    PLANNING = "PLANNING"
+
+    WAITING_DESIGN = "WAITING_DESIGN"
+
+    ANALYZING = "ANALYZING"
+
+    WAITING_HUMAN = "WAITING_HUMAN"
+
+    PAUSED = "PAUSED"
+
+    RETRYING = "RETRYING"
+
+    FAILED = "FAILED"
+
+    COMPLETED = "COMPLETED"
+
 
 @dataclass
 class WorkflowState:
     """
-    保存一次Workflow执行过程中的状态。
+    保存一次 Workflow 执行过程中的完整状态。
+
+    该对象可以被 CheckpointManager 序列化并恢复。
     """
 
-    # Workflow执行ID
+    # Workflow 执行 ID
     run_id: str
 
-    # 当前状态
-    status: str = "CREATED"
+    # 当前 Workflow 状态
+    status: str = WorkflowStatus.CREATED
 
-    # 当前执行节点
+    # 当前正在执行的 Node
     current_node: str | None = None
 
     # 业务数据
@@ -1543,8 +3069,66 @@ class WorkflowState:
         default_factory=list
     )
 
-    # 重试次数
+    # 当前 Node 的重试次数
     retry_count: int = 0
+
+    # 当前 Node 最大重试次数
+    max_retry: int = 3
+
+    # 暂停原因
+    pause_reason: str | None = None
+
+    # 是否已经获得人工批准
+    human_approved: bool = False
+
+    # Checkpoint 版本
+    checkpoint_version: int = 0
+
+    def mark_waiting_design(self) -> None:
+        """进入 Design Gate，等待人工审批。"""
+
+        self.status = WorkflowStatus.WAITING_DESIGN
+
+    def approve(self) -> None:
+        """人工批准 Research Plan。"""
+
+        self.human_approved = True
+        self.status = WorkflowStatus.ANALYZING
+
+    def pause(
+        self,
+        reason: str = "manual_pause",
+    ) -> None:
+        """暂停 Workflow。"""
+
+        self.status = WorkflowStatus.PAUSED
+        self.pause_reason = reason
+
+    def resume(self) -> None:
+        """恢复 Workflow。"""
+
+        self.status = WorkflowStatus.ANALYZING
+        self.pause_reason = None
+
+    def start_retry(self) -> None:
+        """进入 Retry 状态。"""
+
+        self.status = WorkflowStatus.RETRYING
+
+    def reset_retry(self) -> None:
+        """重置当前 Node 的 retry count。"""
+
+        self.retry_count = 0
+
+    def can_retry(self) -> bool:
+        """判断当前 Node 是否还能继续重试。"""
+
+        return self.retry_count < self.max_retry
+
+    def increase_retry(self) -> None:
+        """增加当前 Node 的 retry 次数。"""
+
+        self.retry_count += 1
 ```
 
 ### 📄 `app/workflow/context.py`
@@ -1685,26 +3269,87 @@ class NodeResult:
 
 ```python
 """
-Workflow重试策略。
+Workflow Retry Policy。
+
+Phase 10：
+- Retryable Error
+- NonRetryable Error
+- 最大重试次数
 """
+
+from app.core.exceptions import (
+    NonRetryableError,
+    RetryableError,
+)
 
 
 class RetryPolicy:
+    """
+    Workflow 重试策略。
+
+    RetryPolicy 本身只负责：
+    1. 判断异常是否允许 Retry
+    2. 判断是否超过最大 Retry 次数
+    """
+
     def __init__(
         self,
-        max_retry=3
-    ):
+        max_retry: int = 3,
+    ) -> None:
 
-        # 最大重试次数
+        if max_retry < 0:
+            raise ValueError(
+                "max_retry cannot be negative"
+            )
+
         self.max_retry = max_retry
 
     def can_retry(
         self,
-        count
-    ):
+        retry_count: int,
+    ) -> bool:
+        """判断当前 retry_count 是否还能继续 Retry。"""
+
+        return retry_count < self.max_retry
+
+    def is_retryable(
+        self,
+        error: Exception,
+    ) -> bool:
+        """
+        判断异常是否允许 Retry。
+
+        RetryableError：
+            可以重试
+
+        NonRetryableError：
+            不允许重试
+        """
+
+        if isinstance(
+            error,
+            NonRetryableError,
+        ):
+            return False
+
+        if isinstance(
+            error,
+            RetryableError,
+        ):
+            return True
+
+        return False
+
+    def should_retry(
+        self,
+        error: Exception,
+        retry_count: int,
+    ) -> bool:
+        """综合判断是否应该 Retry。"""
 
         return (
-            count < self.max_retry
+            self.is_retryable(error)
+            and self.can_retry(retry_count)
         )
 ```
 
@@ -1714,51 +3359,120 @@ class RetryPolicy:
 
 ```python
 """
-Workflow状态保存。
+Workflow Checkpoint Manager。
+
+Phase 10：
+WorkflowState
+    ↓
+CheckpointManager
+    ↓
+Checkpoint Repository / MySQL
+
+当前 Manager 负责状态序列化与恢复。
+具体 MySQL 持久化由 Repository 完成。
 """
 
 from copy import deepcopy
+from typing import Any
 
 
 class CheckpointManager:
     """
-    保存和恢复Workflow状态。
+    Workflow Checkpoint 管理器。
 
-    当前为内存实现，按 run_id 保存 WorkflowState 快照。
-    持久化到 MySQL 属于后续阶段。
+    repository 可以是：
+    - MySQL CheckpointRepository
+    - 测试环境下的 MemoryCheckpointRepository
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        repository=None,
+    ) -> None:
 
-        # run_id -> WorkflowState 快照
-        self._store = {}
+        self.repository = repository
+
+        # 测试 / 本地 fallback
+        self._store: dict[str, Any] = {}
 
     async def save(
         self,
-        state
-    ):
+        state,
+    ) -> str:
+        """
+        保存 WorkflowState。
 
-        # 深拷贝，避免后续修改影响已保存的快照
-        self._store[
-            state.run_id
-        ] = deepcopy(state)
+        如果配置 Repository：
+            保存到 MySQL
 
-        return state.run_id
+        否则：
+            保存到内存
+        """
+
+        snapshot = deepcopy(state)
+
+        snapshot.checkpoint_version += 1
+
+        if self.repository is not None:
+
+            await self.repository.save(
+                snapshot
+            )
+
+        else:
+
+            self._store[
+                snapshot.run_id
+            ] = snapshot
+
+        return snapshot.run_id
 
     async def load(
         self,
-        run_id
+        run_id: str,
     ):
+        """
+        根据 run_id 恢复最近一次 Checkpoint。
+        """
+
+        if self.repository is not None:
+
+            state = await self.repository.get_latest(
+                run_id
+            )
+
+            if state is None:
+                return None
+
+            return deepcopy(state)
 
         state = self._store.get(
             run_id
         )
 
         if state is None:
-
             return None
 
         return deepcopy(state)
+
+    async def delete(
+        self,
+        run_id: str,
+    ) -> None:
+        """删除 Checkpoint。"""
+
+        if self.repository is not None:
+
+            await self.repository.delete(
+                run_id
+            )
+
+        else:
+
+            self._store.pop(
+                run_id,
+                None,
+            )
 ```
 
 ### 📄 `app/workflow/exceptions.py`
@@ -1797,40 +3511,58 @@ class NodeExecutionError(WorkflowError):
 
 ```python
 """
-Workflow流程定义。
+Workflow 执行上下文。
 """
 
-
-class Workflow:
-
-
-    def __init__(self):
-
-        # Node集合
-        self.nodes = {}
+from dataclasses import dataclass
 
 
-        # Transition集合
-        self.transitions = []
+@dataclass
+class WorkflowContext:
+    """
+    保存 Workflow 运行环境以及 Phase 11 的
+    Memory / Context 能力。
 
-    def add_node(
-        self,
-        node
-    ):
+    Phase 10 以前：
+        agents
+        tools
+        skills
+        config
 
-        self.nodes[
-            node.name
-        ] = node
+    Phase 11：
+        memory_manager
+        context_manager
 
+    Memory / Context 字段保持可选，
+    保证 Phase 10 以前的 Workflow 测试和调用方式兼容。
+    """
 
-    def add_transition(
-        self,
-        transition
-    ):
+    # Agent 集合
+    agents: dict
 
-        self.transitions.append(
-            transition
-        )
+    # Tool 集合
+    tools: dict
+
+    # Skill 集合
+    skills: dict
+
+    # 配置参数
+    config: dict
+
+    # Run Memory / Project Memory 管理器
+    #
+    # 使用 object 而不是强绑定 MemoryManager，
+    # 避免 Workflow 层产生不必要的循环依赖。
+    memory_manager: object | None = None
+
+    # Context Manager
+    #
+    # Agent / Node 可以通过：
+    #
+    # context.context_manager
+    #
+    # 获取当前任务需要的上下文。
+    context_manager: object | None = None
 ```
 
 ### 📄 `app/workflow/engine.py`
@@ -1839,7 +3571,17 @@ class Workflow:
 
 ```python
 """
-Workflow执行引擎。
+Workflow 执行引擎。
+
+Phase 10 支持：
+
+- Design Gate
+- Human Approval
+- Pause
+- Resume
+- Checkpoint
+- Retry
+- Retry Policy
 """
 
 from app.core.exceptions import (
@@ -1847,23 +3589,26 @@ from app.core.exceptions import (
     RetryableError,
 )
 from app.workflow.retry import RetryPolicy
+from app.workflow.state import WorkflowStatus
 
 
 class WorkflowEngine:
+    """自研 Workflow 执行引擎。"""
 
-    # 暂停状态标识
-    PAUSED_STATUS = "PAUSED"
+    PAUSE_STATUSES = {
+        WorkflowStatus.PAUSED,
+        WorkflowStatus.WAITING_HUMAN,
+        WorkflowStatus.WAITING_DESIGN,
+    }
 
     def __init__(
         self,
         checkpoint=None,
         retry_policy=None,
-    ):
+    ) -> None:
 
-        # 检查点管理器，可选
         self.checkpoint = checkpoint
 
-        # 节点重试策略
         self.retry_policy = (
             retry_policy
             or RetryPolicy()
@@ -1877,7 +3622,10 @@ class WorkflowEngine:
         resume_from=None,
     ):
         """
-        执行Workflow。
+        执行 Workflow。
+
+        resume_from:
+            如果提供 run_id，则从 Checkpoint 恢复。
         """
 
         if resume_from is not None:
@@ -1886,12 +3634,19 @@ class WorkflowEngine:
                 resume_from
             )
 
-            # 当前节点已执行过，从它的下一节点继续
+            if state is None:
+                raise ValueError(
+                    f"Checkpoint not found: {resume_from}"
+                )
+
+            # 从当前 Node 的下一节点继续。
             current_node = self._get_next_node(
                 workflow,
                 state,
-                state.current_node
+                state.current_node,
             )
+
+            state.resume()
 
         else:
 
@@ -1899,79 +3654,94 @@ class WorkflowEngine:
 
         while current_node:
 
-
-            # 获取节点
-            node = workflow.nodes[
+            node = workflow.nodes.get(
                 current_node
-            ]
+            )
 
+            if node is None:
 
-            # 更新状态
+                state.errors.append(
+                    f"Node not found: {current_node}"
+                )
+
+                state.status = (
+                    WorkflowStatus.FAILED
+                )
+
+                await self._save(state)
+
+                return state
+
             state.current_node = (
                 current_node
             )
 
             try:
 
-                # 执行节点
                 state = await self._execute_node(
                     node,
                     state,
-                    context
+                    context,
                 )
-            except Exception as e:
+
+            except Exception as error:
 
                 state.errors.append(
-                    str(e)
+                    str(error)
                 )
 
                 state.status = (
-                    "FAILED"
+                    WorkflowStatus.FAILED
                 )
-
-                return state
-
-            # 暂停：保存检查点后退出，等待 Resume
-            if state.status == self.PAUSED_STATUS:
 
                 await self._save(state)
 
                 return state
 
-            # 每执行完一个节点保存一次检查点
+            # HITL / Pause / Design Gate
+            if state.status in self.PAUSE_STATUSES:
+
+                await self._save(state)
+
+                return state
+
+            # Node 完成以后保存 Checkpoint
             await self._save(state)
 
-            # 查找下一节点
+            # 当前 Node 执行成功
+            # 进入下一个 Node 前重置 retry
+            state.reset_retry()
+
             current_node = (
                 self._get_next_node(
                     workflow,
                     state,
-                    current_node
+                    current_node,
                 )
             )
 
-
-
         state.status = (
-            "COMPLETED"
+            WorkflowStatus.COMPLETED
         )
 
+        await self._save(state)
 
         return state
-
-
 
     async def _execute_node(
         self,
         node,
         state,
-        context
+        context,
     ):
         """
-        执行节点。
+        执行 Node。
 
-        可重试异常按 RetryPolicy 重试，
-        不可重试异常直接抛出。
+        RetryableError：
+            根据 RetryPolicy 重试
+
+        NonRetryableError：
+            立即失败
         """
 
         while True:
@@ -1980,58 +3750,87 @@ class WorkflowEngine:
 
                 return await node.execute(
                     state,
-                    context
+                    context,
                 )
 
             except NonRetryableError:
 
                 raise
 
-            except RetryableError as e:
+            except RetryableError as error:
 
-                if not self.retry_policy.can_retry(
-                    state.retry_count
+                if not self.retry_policy.should_retry(
+                    error,
+                    state.retry_count,
                 ):
+                    raise
 
-                    raise e
+                state.increase_retry()
 
-                state.retry_count += 1
+                state.start_retry()
 
+                await self._save(state)
 
+                # Retry 后继续执行当前 Node
+                state.status = (
+                    WorkflowStatus.ANALYZING
+                )
 
-    async def _save(
+    async def pause(
         self,
-        state
+        state,
+        reason: str = "manual_pause",
     ):
-        """
-        保存检查点，未配置时跳过。
-        """
+        """人工暂停 Workflow。"""
 
-        if self.checkpoint is None:
-
-            return
-
-        await self.checkpoint.save(
-            state
+        state.pause(
+            reason=reason
         )
 
+        await self._save(state)
 
+        return state
 
-    async def _restore(
+    async def approve(
         self,
-        run_id
+        state,
+    ):
+        """通过 Design Gate。"""
+
+        state.approve()
+
+        await self._save(state)
+
+        return state
+
+    async def resume(
+        self,
+        workflow,
+        context,
+        run_id: str,
     ):
         """
-        从检查点恢复状态。
+        从 Checkpoint 恢复 Workflow。
         """
 
-        if self.checkpoint is None:
+        return await self.run(
+            workflow,
+            None,
+            context,
+            resume_from=run_id,
+        )
 
-            raise ValueError(
-                "resume_from requires a checkpoint manager"
-            )
+    async def retry(
+        self,
+        workflow,
+        context,
+        run_id: str,
+    ):
+        """
+        从 Checkpoint 重新执行当前 Node。
+        """
 
-        state = await self.checkpoint.load(
+        state = await self._restore(
             run_id
         )
 
@@ -2041,22 +3840,57 @@ class WorkflowEngine:
                 f"Checkpoint not found: {run_id}"
             )
 
-        # 恢复后重新进入运行态
-        state.status = "RUNNING"
+        state.status = (
+            WorkflowStatus.RETRYING
+        )
 
-        return state
+        state.errors = []
 
+        await self._save(state)
 
+        return await self.run(
+            workflow,
+            state,
+            context,
+        )
+
+    async def _save(
+        self,
+        state,
+    ):
+        """保存 Checkpoint。"""
+
+        if self.checkpoint is None:
+            return
+
+        await self.checkpoint.save(
+            state
+        )
+
+    async def _restore(
+        self,
+        run_id: str,
+    ):
+        """从 Checkpoint 恢复。"""
+
+        if self.checkpoint is None:
+
+            raise ValueError(
+                "Checkpoint manager is required"
+            )
+
+        return await self.checkpoint.load(
+            run_id
+        )
 
     def _get_next_node(
         self,
         workflow,
         state,
-        current
+        current,
     ):
-        """
-        获取下一执行节点。
-        """
+        """根据 Transition 获取下一个 Node。"""
+
         for transition in workflow.transitions:
 
             if transition.source != current:
@@ -2071,10 +3905,14 @@ class WorkflowEngine:
 
             return transition.target
 
-
-
         return None
 ```
+
+### 📄 `app/workflow/__init__.py`
+
+**层级**：Workflow 层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
 
 ## 十一、Workflow 节点层（Workflow Nodes）
 
@@ -2327,28 +4165,50 @@ class ToolNode(BaseNode):
 
 ### 📄 `app/workflow/nodes/skill_node.py`
 
-**层级**：Workflow 节点层 · **职责**：Skill 节点 `SkillNode`，封装 Skill 调用并把结果追加到 `state.outputs`
+**层级**：Workflow 节点层 · **职责**：Skill 节点 `SkillNode`，以 `skill.execute(context=context, input_data=state.data)` 调用 Skill，把结果同时写入 `state.data[node.name]` 与 `state.outputs`
 
 ```python
 """
-Skill类型Workflow节点。
+Skill Node
+
+
+Workflow中的Skill执行节点。
+
+
+职责:
+
+Workflow
+
+    ↓
+
+SkillNode
+
+    ↓
+
+Skill
+
+    ↓
+
+Tool
+
+
 """
-
-
 from .base import BaseNode
 
 class SkillNode(BaseNode):
-    """
-    执行Skill能力。
-    """
+
 
     def __init__(
         self,
         name,
         skill
     ):
+        # 节点名称
 
         self.name = name
+
+
+        # 对应Skill实例
 
         self.skill = skill
 
@@ -2357,16 +4217,30 @@ class SkillNode(BaseNode):
         state,
         context
     ):
+        """
+        执行Skill。
 
+
+        """
         result = await self.skill.execute(
-            state
+
+            context=context,
+
+            input_data=state.data
+
         )
+
+        # 保存当前Skill输出
+
+        state.data[
+            self.name
+        ] = result
+
+        # 保存执行历史
 
         state.outputs.append(
             result
         )
-
-
         return state
 ```
 
@@ -2376,116 +4250,973 @@ class SkillNode(BaseNode):
 
 ```python
 """
-Human-In-The-Loop节点。
+Human-In-The-Loop Workflow Node。
+
+负责：
+
+Workflow
+    ↓
+HumanNode
+    ↓
+WAITING_HUMAN
+    ↓
+Checkpoint
+    ↓
+等待人工操作
 """
 
 from .base import BaseNode
 
+
 class HumanNode(BaseNode):
-    """
-    人工审核节点。
-    """
+    """人工审核节点。"""
 
     name = "human_review"
 
     async def execute(
         self,
         state,
-        context
+        context,
     ):
+        """
+        进入人工审核状态。
 
-        # 暂停Workflow
+        WorkflowEngine 会检测 WAITING_HUMAN，
+        保存 Checkpoint 后停止。
+        """
+
         state.status = (
             "WAITING_HUMAN"
         )
 
+        state.pause_reason = (
+            "human_review_required"
+        )
 
         return state
 ```
 
+### 📄 `app/workflow/nodes/__init__.py`
+
+**层级**：Workflow 节点层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
+
 ## 十二、Agent 层（Agents）
 
-Agent 抽象接口、运行环境，以及 Planner 等具体 Agent
+Agent 抽象接口、领域 Agent 实现、Agent 注册中心与运行环境；Agent 只编排 Skill，不直接持有 Tool
 
 ### 📄 `app/agents/base.py`
 
-**层级**：Agent 层（Agents） · **职责**：Agent 抽象基类 `BaseAgent`，定义 `run(state, context)` 与 `name` 标识
+**层级**：Agent 层（Agents） · **职责**：Agent 抽象基类 `BaseAgent`：持有 `skill_registry`，提供 `get_skill(name)`，子类实现 `execute(context, input_data)`。Agent 不直接持有 Tool，只编排 Skill
 
 ```python
 """
-Agent抽象定义。
+Agent 基础抽象类。
+
+
+Agent 在系统中的职责：
+
+    Agent
+      |
+      v
+    Skill
+      |
+      v
+    Tool
+
+
+Agent:
+    负责任务理解和能力调用。
+
+Skill:
+    封装具体业务能力。
+
+Tool:
+    执行具体操作。
+
+
+例如：
+
+RepositoryAnalysisAgent
+
+        |
+        v
+
+RepositoryAnalysisSkill
+
+        |
+        +---- GitHub Tool
+        |
+        +---- File Reader Tool
+        |
+        +---- Dependency Tool
+
+
 """
-
-
 from abc import ABC, abstractmethod
-
-
-
 class BaseAgent(ABC):
     """
-    Agent基础接口。
+    所有 Agent 的基础接口。
+
+
+    每个 Agent 必须：
+
+    1. 有唯一名称
+    2. 可以执行任务
+    3. 可以访问 Skill Registry
+
     """
+    # Agent唯一标识
+
     name: str
 
-    @abstractmethod
-    async def run(
+    # Agent功能描述
+
+    description: str
+
+
+
+    def __init__(
         self,
-        state,
-        context
+        skill_registry
+    ):
+        # Agent 不直接保存 Tool
+
+        # 而是通过 Skill Registry 获取能力
+
+        self.skill_registry = (
+            skill_registry
+        )
+
+    def get_skill(
+        self,
+        skill_name
+    ):
+
+        """
+        根据名称获取 Skill。
+
+
+        例如：
+
+        repository_analysis_agent
+
+            获取
+
+        repository_analysis_skill
+
+        """
+
+        return (
+            self.skill_registry.get(
+                skill_name
+            )
+        )
+
+    @abstractmethod
+    async def execute(
+        self,
+        context,
+        input_data
     ):
         """
-        执行Agent任务。
+        Agent执行入口。
+
+
+        context:
+            当前运行上下文。
+
+
+        input_data:
+            当前任务数据。
+
+
         """
 
         pass
 ```
 
-### 📄 `app/agents/planner.py`
+### 📄 `app/agents/planner_agent.py`
 
-**层级**：Agent 层（Agents） · **职责**：任务规划 Agent `PlannerAgent`（name=`planner`），读取 `state.data["query"]` 构造提示词，调用 `context.llm.chat()` 生成计划并写回 `state.data["plan"]`
+**层级**：Agent 层（Agents） · **职责**：任务规划 Agent `PlannerAgent`（name=`planner_agent`）。当前返回**固定**的分析任务清单（repository → architecture → technology → evidence → critic），后续 Phase 升级为 LLM 动态规划
 
 ```python
 """
-任务规划Agent。
+Planner Agent。
+
+
+负责：
+
+根据用户需求生成任务计划。
+
+
+当前 Phase 8：
+
+先实现固定规划。
+
+
+Phase 9：
+
+升级为：
+
+LLM Dynamic Planning
+
+
 """
 
 
-from .base import BaseAgent
+from app.agents.base import BaseAgent
 
 
 
-class PlannerAgent(BaseAgent):
 
-    name="planner"
+class PlannerAgent(
+    BaseAgent
+):
 
-    async def run(
+
+    name = (
+        "planner_agent"
+    )
+
+
+
+    async def execute(
         self,
-        state,
-        context
+        context,
+        input_data
     ):
 
-        prompt = f"""
-        用户需求:
-        {state.data.get("query")}
 
-        请生成分析计划。
 
-        """
-        result = await context.llm.chat(
-            [
-                {
-                    "role":"user",
-                    "content":prompt
-                }
-            ]
+        # 当前先定义固定分析流程
+
+        # 后续由LLM动态决定
+
+        tasks = [
+
+
+
+            "repository_analysis_agent",
+
+
+
+            "architecture_analysis_agent",
+
+
+
+            "technology_analysis_agent",
+
+
+
+            "evidence_analysis_agent",
+
+
+
+            "critic_agent"
+
+        ]
+
+
+
+        return {
+
+
+            "tasks":
+
+                tasks
+
+        }
+```
+
+### 📄 `app/agents/repository_analysis_agent.py`
+
+**层级**：Agent 层（Agents） · **职责**：仓库基础信息分析 Agent `RepositoryAnalysisAgent`（name=`repository_analysis_agent`），转调 `repository_analysis` Skill
+
+```python
+"""
+Repository Analysis Agent。
+
+
+负责：
+
+分析 GitHub 项目的基础信息。
+
+
+调用链：
+
+RepositoryAnalysisAgent
+
+        |
+
+        v
+
+RepositoryAnalysisSkill
+
+        |
+
+        v
+
+GitHub Tool
+File Reader Tool
+Dependency Tool
+
+
+"""
+
+
+from app.agents.base import BaseAgent
+
+
+
+
+class RepositoryAnalysisAgent(
+    BaseAgent
+):
+
+
+    # Agent名称
+
+    name = (
+        "repository_analysis_agent"
+    )
+
+
+
+    description = (
+        "Analyze repository information"
+    )
+
+
+
+    async def execute(
+        self,
+        context,
+        input_data
+    ):
+
+
+        # 获取对应Skill
+
+        skill = self.get_skill(
+
+            "repository_analysis"
+
         )
 
-        state.data[
-            "plan"
-        ] = result
 
 
-        return state
+        # 执行Skill
+
+        result = await skill.execute(
+
+            context,
+
+            input_data
+
+        )
+
+
+
+        return result
+```
+
+### 📄 `app/agents/architecture_analysis_agent.py`
+
+**层级**：Agent 层（Agents） · **职责**：架构分析 Agent `ArchitectureAnalysisAgent`（name=`architecture_analysis_agent`），转调 `architecture_analysis` Skill
+
+```python
+"""
+Architecture Analysis Agent。
+
+
+负责：
+
+分析项目代码架构。
+
+
+例如：
+
+- 目录结构
+- 模块关系
+- 核心流程
+
+
+"""
+
+
+from app.agents.base import BaseAgent
+
+
+
+
+class ArchitectureAnalysisAgent(
+    BaseAgent
+):
+
+
+    name = (
+        "architecture_analysis_agent"
+    )
+
+
+
+    async def execute(
+        self,
+        context,
+        input_data
+    ):
+
+
+        # 获取架构分析Skill
+
+        skill = self.get_skill(
+
+            "architecture_analysis"
+
+        )
+
+
+
+        return await skill.execute(
+
+            context,
+
+            input_data
+
+        )
+```
+
+### 📄 `app/agents/technology_analysis_agent.py`
+
+**层级**：Agent 层（Agents） · **职责**：技术栈分析 Agent `TechnologyAnalysisAgent`（name=`technology_analysis_agent`），转调 `technology_analysis` Skill
+
+```python
+"""
+Technology Analysis Agent。
+
+
+负责：
+
+分析项目技术栈。
+
+例如：
+
+- Python
+- FastAPI
+- Database
+- LLM
+- Docker
+
+
+"""
+
+
+from app.agents.base import BaseAgent
+
+
+
+
+class TechnologyAnalysisAgent(
+    BaseAgent
+):
+
+
+    name = (
+        "technology_analysis_agent"
+    )
+
+
+
+    async def execute(
+        self,
+        context,
+        input_data
+    ):
+
+
+        skill = self.get_skill(
+
+            "technology_analysis"
+
+        )
+
+
+        return await skill.execute(
+
+            context,
+
+            input_data
+
+        )
+```
+
+### 📄 `app/agents/evidence_analysis_agent.py`
+
+**层级**：Agent 层（Agents） · **职责**：证据追踪 Agent `EvidenceAnalysisAgent`（name=`evidence_analysis_agent`），转调 `evidence_analysis` Skill
+
+```python
+"""
+Evidence Analysis Agent。
+
+
+负责：
+
+分析结果证据追踪。
+
+
+保证：
+
+报告中的结论可以追溯：
+
+源码
+
+文档
+
+向量库
+
+
+"""
+
+
+from app.agents.base import BaseAgent
+
+
+
+
+class EvidenceAnalysisAgent(
+    BaseAgent
+):
+
+
+    name = (
+        "evidence_analysis_agent"
+    )
+
+
+
+    async def execute(
+        self,
+        context,
+        input_data
+    ):
+
+
+        skill = self.get_skill(
+
+            "evidence_analysis"
+
+        )
+
+
+        return await skill.execute(
+
+            context,
+
+            input_data
+
+        )
+```
+
+### 📄 `app/agents/critic_agent.py`
+
+**层级**：Agent 层（Agents） · **职责**：结果检查 Agent `CriticAgent`（name=`critic_agent`），检查 `input_data` 是否含 `repository` / `architecture` / `technology` 三项，返回 `{passed, errors}`
+
+```python
+"""
+Critic Agent。
+
+
+负责：
+
+检查其他 Agent 输出质量。
+
+
+例如：
+
+- 是否缺少关键结果
+- 是否分析失败
+- 是否需要重新执行
+
+
+后续 Phase 会扩展：
+
+Retry
+
+Human Review
+
+Validation
+
+
+"""
+
+
+from app.agents.base import BaseAgent
+
+
+
+
+class CriticAgent(
+    BaseAgent
+):
+
+
+    name = (
+        "critic_agent"
+    )
+    async def execute(
+        self,
+        context,
+        input_data
+    ):
+        errors = []
+        # 必须存在的分析结果
+
+        required_fields = [
+
+            "repository",
+
+            "architecture",
+
+            "technology"
+
+        ]
+        for field in required_fields:
+
+
+            if field not in input_data:
+
+
+                errors.append(
+
+                    f"{field} missing"
+
+                )
+
+        return {
+
+            # 是否通过检查
+
+            "passed":
+
+                len(errors) == 0,
+            # 错误列表
+
+            "errors":
+
+                errors
+
+        }
+```
+
+### 📄 `app/agents/agent_registry.py`
+
+**层级**：Agent 层（Agents） · **职责**：Agent 注册中心 `AgentRegistry`：按 `agent.name` 注册与获取；`create_agent_registry(skill_registry)` 在启动时构造全部 6 个领域 Agent
+
+```python
+"""
+Agent Registry。
+
+
+作用：
+
+统一管理系统中的 Agent。
+
+
+类似 SkillRegistry：
+
+SkillRegistry:
+    管理 Skill
+
+
+AgentRegistry:
+    管理 Agent
+
+
+
+避免业务代码：
+
+RepositoryAnalysisAgent()
+
+TechnologyAgent()
+
+大量硬编码创建。
+
+
+"""
+
+
+from app.agents.planner_agent import (
+    PlannerAgent
+)
+
+
+from app.agents.repository_analysis_agent import (
+    RepositoryAnalysisAgent
+)
+
+
+from app.agents.architecture_analysis_agent import (
+    ArchitectureAnalysisAgent
+)
+
+
+from app.agents.technology_analysis_agent import (
+    TechnologyAnalysisAgent
+)
+
+
+from app.agents.evidence_analysis_agent import (
+    EvidenceAnalysisAgent
+)
+
+
+from app.agents.critic_agent import (
+    CriticAgent
+)
+
+
+
+
+
+class AgentRegistry:
+    """
+    Agent 管理器。
+
+
+    保存：
+
+    {
+        agent_name:
+            agent_instance
+    }
+
+    """
+
+
+
+    def __init__(self):
+
+
+        # 保存所有Agent实例
+
+        self.agents = {}
+
+
+
+    def register(
+        self,
+        agent
+    ):
+
+        """
+        注册 Agent。
+
+        """
+
+        self.agents[
+            agent.name
+        ] = agent
+
+
+
+
+    def get(
+        self,
+        name
+    ):
+
+        """
+        根据名称获取 Agent。
+        """
+
+        return self.agents.get(
+            name
+        )
+
+
+
+
+
+def create_agent_registry(
+    skill_registry
+):
+    """
+    创建默认 Agent 集合。
+
+
+    项目启动时调用。
+
+    """
+
+    registry = AgentRegistry()
+
+
+
+    # 初始化所有领域Agent
+
+    agents = [
+        # 任务规划Agent
+
+        PlannerAgent(
+            skill_registry
+        ),
+
+        # 仓库分析Agent
+
+        RepositoryAnalysisAgent(
+            skill_registry
+        ),
+
+
+
+        # 架构分析Agent
+
+        ArchitectureAnalysisAgent(
+            skill_registry
+        ),
+
+
+
+        # 技术栈分析Agent
+
+        TechnologyAnalysisAgent(
+            skill_registry
+        ),
+
+
+
+        # 证据分析Agent
+
+        EvidenceAnalysisAgent(
+            skill_registry
+        ),
+
+
+
+        # 结果检查Agent
+
+        CriticAgent(
+            skill_registry
+        )
+
+    ]
+
+
+
+    # 注册到Registry
+
+    for agent in agents:
+
+
+        registry.register(
+            agent
+        )
+
+
+
+    return registry
+```
+
+### 📄 `app/agents/agent_runtime.py`
+
+**层级**：Agent 层（Agents） · **职责**：Agent 运行环境 `AgentRuntime`：持有 `agent_registry`，`execute(agent_name, context, input_data)` 按名取 Agent 后转调其 `execute()`
+
+```python
+"""
+Agent Runtime。
+
+
+负责：
+
+执行指定 Agent。
+
+
+调用流程：
+
+Runtime
+
+    |
+
+    v
+
+Agent
+
+    |
+
+    v
+
+Skill
+
+    |
+
+    v
+
+Tool
+
+
+"""
+
+
+class AgentRuntime:
+
+
+
+    def __init__(
+        self,
+        agent_registry
+    ):
+
+
+        # 保存Agent管理器
+
+        self.agent_registry = (
+            agent_registry
+        )
+
+
+
+    async def execute(
+        self,
+        agent_name,
+        context,
+        input_data
+    ):
+
+
+        # 根据名称获取Agent
+
+        agent = (
+            self.agent_registry.get(
+                agent_name
+            )
+        )
+
+
+
+        if agent is None:
+
+
+            raise Exception(
+
+                f"Agent {agent_name} not found"
+
+            )
+
+        # 执行Agent
+
+        result = await agent.execute(
+
+            context,
+
+            input_data
+
+        )
+
+
+
+        return result
 ```
 
 ### 📄 `app/agents/researcher.py`
@@ -2494,56 +5225,1218 @@ class PlannerAgent(BaseAgent):
 
 > 该文件为 **0 字节** 空文件，无源码内容。
 
-### 📄 `app/agents/critic.py`
+## 十三、Skill 层（Skills）
 
-**层级**：Agent 层（Agents） · **职责**：**空文件**（0 字节），预留的评审 Agent 占位
+业务能力层：组合多个 Tool 完成一次业务分析，向 Agent 暴露统一的 execute(context, input_data)
 
-> 该文件为 **0 字节** 空文件，无源码内容。
+### 📄 `app/skills/__init__.py`
 
-### 📄 `app/agents/runtime.py`
-
-**层级**：Agent 层（Agents） · **职责**：Agent 运行环境 `AgentRuntime`，持有 llm / tools / skills，`execute()` 把自身作为 context 传给 Agent 的 `run()`
+**层级**：Skill 层（Skills） · **职责**：Skill 包入口，导出 `BaseSkill`
 
 ```python
 """
-Agent运行环境。
+Skill package
+"""
+
+from app.skills.base import BaseSkill
+
+
+__all__ = [
+
+    "BaseSkill"
+
+]
+```
+
+### 📄 `app/skills/base.py`
+
+**层级**：Skill 层（Skills） · **职责**：Skill 抽象基类 `BaseSkill`：`name` / `description` 标识与 `execute(context, input_data)`。Skill 组合多个 Tool 完成一次业务能力，例如 `RepositoryAnalysisSkill` = GitHub Tool + FileReader Tool + DependencyAnalyzer Tool
+
+```python
+"""
+Skill 基础抽象类。
+
+Skill 和 Tool 的区别:
+
+Tool:
+    一个具体动作。
+    例如:
+        - 查询GitHub
+        - 读取文件
+        - 查询数据库
+
+
+Skill:
+    一个业务能力。
+    可以组合多个 Tool 完成复杂任务。
+
+
+例如:
+
+RepositoryAnalysisSkill
+
+    |
+    +-- GitHubTool
+    |
+    +-- FileReaderTool
+    |
+    +-- DependencyAnalyzerTool
+
 """
 
 
-class AgentRuntime:
+from abc import ABC, abstractmethod
 
 
-    def __init__(
+
+class BaseSkill(ABC):
+    """
+    所有 Skill 的基础接口。
+    """
+
+
+    # Skill唯一名称
+    name: str
+
+
+    # Skill功能描述
+    description: str
+
+
+
+    @abstractmethod
+    async def execute(
         self,
-        llm,
-        tools=None,
-        skills=None
+        context,
+        input_data: dict
     ):
+        """
+        执行 Skill。
 
-        self.llm = llm
+        参数:
 
-        self.tools = tools or {}
+        context:
+            Workflow运行上下文。
 
-        self.skills = skills or {}
+            保存:
+                - tools
+                - agents
+                - skills
+
+
+        input_data:
+            当前Skill需要处理的数据。
+
+
+        返回:
+            Skill执行结果。
+
+        """
+
+        pass
+```
+
+### 📄 `app/skills/repository_analysis_skill.py`
+
+**层级**：Skill 层（Skills） · **职责**：仓库分析能力 `RepositoryAnalysisSkill`（name=`repository_analysis`），依次调用 `github_repository` / `file_reader` / `dependency_analyzer` 三个 Tool，产出 `{repository, readme, dependencies}`
+
+```python
+"""
+Repository Analysis Skill
+
+
+负责分析 GitHub 项目基础信息。
+
+
+执行流程:
+
+RepositoryAnalysisSkill
+
+        |
+        |
+        +---- GitHub Repository Tool
+        |
+        +---- File Reader Tool
+        |
+        +---- Dependency Analyzer Tool
+
+
+
+输出:
+
+{
+    repository:{},
+
+    readme:{},
+
+    dependencies:{}
+
+}
+
+"""
+
+
+from app.skills.base import BaseSkill
+
+
+
+
+class RepositoryAnalysisSkill(
+    BaseSkill
+):
+
+
+    # Skill名称
+
+    name = "repository_analysis"
+
+
+
+    description = (
+        "Analyze github repository information"
+    )
 
 
 
     async def execute(
         self,
-        agent,
-        state
+        context,
+        input_data
     ):
+        """
+        执行仓库分析。
 
-        result = await agent.run(
-            state,
-            self
+
+        input_data:
+
+        {
+            "owner":"xxx",
+            "repo":"xxx"
+        }
+
+        """
+
+
+        result = {}
+
+
+
+        # 从Context中获取工具
+
+        github_tool = (
+            context.tools[
+                "github_repository"
+            ]
         )
+
+
+        file_reader = (
+            context.tools[
+                "file_reader"
+            ]
+        )
+
+
+        dependency_tool = (
+            context.tools[
+                "dependency_analyzer"
+            ]
+        )
+
+
+
+        # 获取仓库基本信息
+
+        result["repository"] = (
+            await github_tool.execute(
+                **input_data
+            )
+        )
+
+
+
+        # 获取README内容
+
+        result["readme"] = (
+            await file_reader.execute(
+
+                **input_data,
+
+                path="README.md"
+
+            )
+        )
+
+
+
+        # 分析项目依赖
+
+        result["dependencies"] = (
+            await dependency_tool.execute(
+                **input_data
+            )
+        )
+
 
 
         return result
 ```
 
-## 十三、LLM 能力层（LLM）
+### 📄 `app/skills/architecture_analysis_skill.py`
+
+**层级**：Skill 层（Skills） · **职责**：架构分析能力 `ArchitectureAnalysisSkill`（name=`architecture_analysis`），用 `github_code_search` 搜出文件列表，再逐个用 `file_reader` 读取内容，产出 `{files, modules}`
+
+```python
+"""
+Architecture Analysis Skill
+
+
+负责分析项目代码结构。
+
+
+主要分析:
+
+- 文件结构
+- 模块关系
+- 核心代码
+
+
+依赖:
+
+Code Search Tool
+
+File Reader Tool
+
+"""
+
+
+from app.skills.base import BaseSkill
+
+
+
+
+class ArchitectureAnalysisSkill(
+    BaseSkill
+):
+
+
+    name = "architecture_analysis"
+
+
+
+    description = (
+        "Analyze repository architecture"
+    )
+
+
+
+    async def execute(
+        self,
+        context,
+        input_data
+    ):
+
+
+        # 获取代码搜索工具
+
+        code_search = (
+            context.tools[
+                "github_code_search"
+            ]
+        )
+
+
+        file_reader = (
+            context.tools[
+                "file_reader"
+            ]
+        )
+
+
+
+        # 搜索项目文件
+
+        files = await code_search.execute(
+            **input_data
+        )
+
+
+
+        architecture = {
+
+            "files": files,
+
+            "modules":[]
+
+        }
+
+
+
+        # 读取代码内容
+
+        for file in files:
+
+
+            content = await file_reader.execute(
+
+                **input_data,
+
+                path=file
+
+            )
+
+
+            architecture[
+                "modules"
+            ].append(
+                content
+            )
+
+
+
+        return architecture
+```
+
+### 📄 `app/skills/technology_analysis_skill.py`
+
+**层级**：Skill 层（Skills） · **职责**：技术栈分析能力 `TechnologyAnalysisSkill`（name=`technology_analysis`），调用 `dependency_analyzer` Tool，产出 `{technology_stack}`
+
+```python
+"""
+Technology Analysis Skill
+
+
+分析项目技术栈。
+
+
+例如:
+
+- Python
+- FastAPI
+- LangChain
+- Vector DB
+- Docker
+
+
+"""
+
+
+from app.skills.base import BaseSkill
+
+
+
+
+class TechnologyAnalysisSkill(
+    BaseSkill
+):
+
+
+    name = "technology_analysis"
+
+
+
+    description = (
+        "Analyze technology stack"
+    )
+
+
+
+    async def execute(
+        self,
+        context,
+        input_data
+    ):
+
+
+        # 获取依赖分析工具
+
+        dependency_tool = (
+            context.tools[
+                "dependency_analyzer"
+            ]
+        )
+
+
+
+        dependencies = await dependency_tool.execute(
+            **input_data
+        )
+
+
+
+        return {
+
+
+            "technology_stack":
+
+                dependencies
+
+        }
+```
+
+### 📄 `app/skills/evidence_analysis_skill.py`
+
+**层级**：Skill 层（Skills） · **职责**：证据追踪能力 `EvidenceAnalysisSkill`（name=`evidence_analysis`），调用 `qdrant_search` Tool 做语义检索，产出 `{evidence}`
+
+```python
+"""
+Evidence Analysis Skill。
+
+Phase 9：
+
+Qdrant Retrieval
+        ↓
+Evidence Normalization
+        ↓
+Evidence Store
+
+负责：
+
+- 检索候选证据
+- 标准化 Evidence
+- 保存 Evidence
+- 保留 Source / File / Line 信息
+"""
+
+from app.skills.base import BaseSkill
+
+
+class EvidenceAnalysisSkill(
+    BaseSkill
+):
+
+    name = "evidence_analysis"
+
+    description = (
+        "Extract traceable evidence "
+        "from repository search results"
+    )
+
+    async def execute(
+        self,
+        context,
+        input_data,
+    ):
+
+        # 获取 Qdrant 检索工具
+        qdrant_tool = context.tools[
+            "qdrant_search"
+        ]
+
+        # 执行语义检索
+        results = await qdrant_tool.execute(
+            **input_data
+        )
+
+        evidence = []
+
+        for item in results:
+
+            # 当前 Qdrant payload 中：
+            #
+            # text
+            # source
+            # document_id
+            # chunk_index
+            #
+            # 可能存在，但不能假设一定存在。
+
+            normalized = {
+                "source_type": item.get(
+                    "source_type",
+                    "repository",
+                ),
+                "source_url": item.get(
+                    "source_url"
+                ),
+                "file_path": item.get(
+                    "file_path"
+                ),
+                "line_start": item.get(
+                    "line_start"
+                ),
+                "line_end": item.get(
+                    "line_end"
+                ),
+                "content": item.get(
+                    "text",
+                    ""
+                ),
+                "metadata": item,
+            }
+
+            # 不伪造源码行号。
+            #
+            # 当前索引器没有可靠保存
+            # line_start / line_end，
+            # 所以没有数据时保持 None。
+
+            evidence.append(
+                normalized
+            )
+
+        return {
+            "evidence": evidence,
+            "count": len(evidence),
+        }
+```
+
+### 📄 `app/skills/report_generation_skill.py`
+
+**层级**：Skill 层（Skills） · **职责**：报告生成能力 `ReportGenerationSkill`（name=`report_generation`），聚合各 Skill 结果并交给 `report_export` Tool 导出；Tool 缺失时直接返回结构化结果
+
+```python
+"""
+Report Generation Skill
+
+
+负责生成最终分析报告。
+
+
+输入:
+
+多个Skill / Agent分析结果
+
+
+输出:
+
+报告内容
+
+
+"""
+
+
+from app.skills.base import BaseSkill
+
+
+
+
+class ReportGenerationSkill(
+    BaseSkill
+):
+    """
+    报告生成能力。
+    """
+
+
+
+    name = "report_generation"
+
+
+
+    description = (
+        "Generate final repository analysis report"
+    )
+
+
+
+    async def execute(
+        self,
+        context,
+        input_data: dict
+    ):
+        """
+        执行报告生成。
+
+
+        input_data:
+
+        {
+            "repository": {},
+            "architecture": {},
+            "technology": {}
+        }
+
+        """
+
+
+        # 获取报告导出工具
+
+        exporter = (
+            context.tools.get(
+                "report_export"
+            )
+        )
+
+
+        # 如果还没有接入真实导出工具
+
+        # 返回结构化结果
+
+        if exporter is None:
+
+            return {
+
+
+                "report":
+
+                    input_data
+
+
+            }
+
+        report = await exporter.execute(
+
+            data=input_data
+
+        )
+        return {
+
+
+            "report":
+
+                report
+
+        }
+```
+
+### 📄 `app/skills/registry.py`
+
+**层级**：Skill 层（Skills） · **职责**：Skill 注册中心 `SkillRegistry`（`register()` / `get(name)`）；`create_skill_registry()` 注册全部 5 个默认 Skill
+
+```python
+"""
+Skill 注册中心。
+
+作用:
+
+统一管理系统中的 Skill。
+
+Workflow / Agent 不需要关心 Skill 如何创建。
+
+只需要:
+
+registry.get("repository_analysis")
+
+即可获取。
+
+
+"""
+
+
+from app.skills.repository_analysis_skill import (
+    RepositoryAnalysisSkill
+)
+
+
+from app.skills.architecture_analysis_skill import (
+    ArchitectureAnalysisSkill
+)
+
+
+from app.skills.technology_analysis_skill import (
+    TechnologyAnalysisSkill
+)
+
+
+from app.skills.evidence_analysis_skill import (
+    EvidenceAnalysisSkill
+)
+
+
+from app.skills.report_generation_skill import (
+    ReportGenerationSkill
+)
+
+
+
+
+class SkillRegistry:
+    """
+    Skill管理器。
+    """
+
+
+    def __init__(self):
+
+        # 保存所有Skill实例
+        #
+        # {
+        #    "repository_analysis":
+        #          RepositoryAnalysisSkill()
+        # }
+
+        self.skills = {}
+
+
+
+    def register(
+        self,
+        skill
+    ):
+        """
+        注册Skill。
+        """
+
+
+        self.skills[
+            skill.name
+        ] = skill
+
+
+
+    def get(
+        self,
+        name:str
+    ):
+        """
+        根据名称获取Skill。
+        """
+
+        return self.skills.get(
+            name
+        )
+
+
+
+
+def create_skill_registry():
+    """
+    创建默认Skill集合。
+
+    项目启动时调用。
+
+    """
+
+
+    registry = SkillRegistry()
+
+
+
+    # 注册仓库分析Skill
+
+    registry.register(
+        RepositoryAnalysisSkill()
+    )
+
+
+    # 注册架构分析Skill
+
+    registry.register(
+        ArchitectureAnalysisSkill()
+    )
+
+
+    # 注册技术栈分析Skill
+
+    registry.register(
+        TechnologyAnalysisSkill()
+    )
+
+
+    # 注册证据分析Skill
+
+    registry.register(
+        EvidenceAnalysisSkill()
+    )
+
+
+    # 注册报告生成Skill
+
+    registry.register(
+        ReportGenerationSkill()
+    )
+
+
+
+    return registry
+```
+
+## 十四、证据与溯源层（Evidence）
+
+证据链领域层：Evidence / Claim / Citation 的存储与状态校验，以及 Claim → Citation → Evidence → 源码位置的溯源构建
+
+### 📄 `app/evidence/__init__.py`
+
+**层级**：证据与溯源层（Evidence） · **职责**：证据链领域层的包标记文件；本层聚合 Evidence / Claim / Citation / Verification / Traceability 五块能力
+
+```python
+"""
+Evidence 领域能力。
+
+Phase 9:
+Evidence
+Claim
+Citation
+Verification
+Traceability
+"""
+```
+
+### 📄 `app/evidence/store.py`
+
+**层级**：证据与溯源层（Evidence） · **职责**：领域存储 `EvidenceStore`：包装三个 Repository 完成证据对象的落库与关联校验（`create_evidence()` / `create_claim()` / `create_citation()`），并定义合法状态集合 `VERIFICATION_STATUSES`（VERIFIED / UNVERIFIED / CONFLICT）
+
+```python
+"""
+Evidence Store。
+
+负责：
+
+Evidence
+Claim
+Citation
+
+三类对象的领域级管理。
+"""
+
+from app.core.exceptions import ValidationError
+from app.repositories.claim import ClaimRepository
+from app.repositories.citation import CitationRepository
+from app.repositories.evidence import EvidenceRepository
+
+
+VERIFICATION_STATUSES = {
+    "VERIFIED",
+    "UNVERIFIED",
+    "CONFLICT",
+}
+
+
+class EvidenceStore:
+    """
+    Evidence 领域存储。
+
+    注意：
+
+    Store 不直接执行 SQL。
+
+    调用链：
+
+        Evidence Store
+              ↓
+        Repository
+              ↓
+           SQLAlchemy
+              ↓
+             MySQL
+    """
+
+    def __init__(
+        self,
+        session,
+    ) -> None:
+
+        self.evidence_repository = (
+            EvidenceRepository(session)
+        )
+
+        self.claim_repository = (
+            ClaimRepository(session)
+        )
+
+        self.citation_repository = (
+            CitationRepository(session)
+        )
+
+    @staticmethod
+    def validate_status(
+        status: str,
+    ) -> str:
+
+        normalized = status.upper()
+
+        if normalized not in VERIFICATION_STATUSES:
+            raise ValidationError(
+                f"Unsupported verification status: "
+                f"{normalized}"
+            )
+
+        return normalized
+
+    async def create_evidence(
+        self,
+        *,
+        evidence_id: str,
+        repository_id: int,
+        source_type: str,
+        content: str,
+        source_url: str | None = None,
+        file_path: str | None = None,
+        line_start: int | None = None,
+        line_end: int | None = None,
+        verification_status: str = "UNVERIFIED",
+    ):
+
+        if not content.strip():
+            raise ValidationError(
+                "Evidence content cannot be empty."
+            )
+
+        if (
+            line_start is not None
+            and line_end is not None
+            and line_end < line_start
+        ):
+            raise ValidationError(
+                "line_end cannot be smaller "
+                "than line_start."
+            )
+
+        status = self.validate_status(
+            verification_status
+        )
+
+        return await self.evidence_repository.create(
+            evidence_id=evidence_id,
+            repository_id=repository_id,
+            source_type=source_type,
+            source_url=source_url,
+            file_path=file_path,
+            line_start=line_start,
+            line_end=line_end,
+            content=content,
+            verification_status=status,
+        )
+
+    async def create_claim(
+        self,
+        *,
+        claim_id: str,
+        run_id: str,
+        claim_text: str,
+        verification_status: str = "UNVERIFIED",
+    ):
+
+        if not claim_text.strip():
+            raise ValidationError(
+                "Claim text cannot be empty."
+            )
+
+        status = self.validate_status(
+            verification_status
+        )
+
+        return await self.claim_repository.create(
+            claim_id=claim_id,
+            run_id=run_id,
+            claim_text=claim_text,
+            verification_status=status,
+        )
+
+    async def create_citation(
+        self,
+        *,
+        citation_id: str,
+        claim_id: str,
+        evidence_id: str,
+    ):
+
+        claim = await self.claim_repository.get_by_id(
+            claim_id
+        )
+
+        if claim is None:
+            raise ValidationError(
+                f"Claim not found: {claim_id}"
+            )
+
+        evidence = (
+            await self.evidence_repository.get_by_id(
+                evidence_id
+            )
+        )
+
+        if evidence is None:
+            raise ValidationError(
+                f"Evidence not found: {evidence_id}"
+            )
+
+        exists = await (
+            self.citation_repository.exists(
+                claim_id=claim_id,
+                evidence_id=evidence_id,
+            )
+        )
+
+        if exists:
+            raise ValidationError(
+                "The Claim is already cited "
+                "by this Evidence."
+            )
+
+        return await self.citation_repository.create(
+            citation_id=citation_id,
+            claim_id=claim_id,
+            evidence_id=evidence_id,
+        )
+```
+
+### 📄 `app/evidence/verifier.py`
+
+**层级**：证据与溯源层（Evidence） · **职责**：校验器 `EvidenceVerifier`：校验状态取值合法性，对 Evidence / Claim 执行 `verify_evidence()` / `verify_claim()` 状态流转
+
+```python
+"""
+Evidence Verification。
+
+负责验证 Evidence / Claim 的状态。
+"""
+
+from app.core.exceptions import ValidationError
+from app.evidence.store import (
+    VERIFICATION_STATUSES,
+)
+
+
+class EvidenceVerifier:
+    """
+    Evidence / Claim 验证器。
+
+    状态：
+
+    VERIFIED
+    UNVERIFIED
+    CONFLICT
+    """
+
+    def __init__(
+        self,
+        session,
+    ) -> None:
+
+        self.session = session
+
+    @staticmethod
+    def validate_status(
+        status: str,
+    ) -> str:
+
+        normalized = status.upper()
+
+        if normalized not in VERIFICATION_STATUSES:
+            raise ValidationError(
+                f"Unsupported verification status: "
+                f"{normalized}"
+            )
+
+        return normalized
+
+    async def verify_evidence(
+        self,
+        evidence,
+        status: str,
+    ):
+
+        evidence.verification_status = (
+            self.validate_status(status)
+        )
+
+        await self.session.flush()
+
+        return evidence
+
+    async def verify_claim(
+        self,
+        claim,
+        status: str,
+    ):
+
+        claim.verification_status = (
+            self.validate_status(status)
+        )
+
+        await self.session.flush()
+
+        return claim
+```
+
+### 📄 `app/evidence/traceability.py`
+
+**层级**：证据与溯源层（Evidence） · **职责**：溯源服务 `TraceabilityService`：`get_claim_trace()` 沿 Claim → Citation → Evidence → Source → File → Line 组装完整证据链
+
+```python
+"""
+Source Traceability。
+
+负责构建：
+
+Claim
+ ↓
+Citation
+ ↓
+Evidence
+ ↓
+Source
+ ↓
+File
+ ↓
+Line
+"""
+
+from app.core.exceptions import ValidationError
+from app.repositories.claim import ClaimRepository
+from app.repositories.citation import CitationRepository
+from app.repositories.evidence import EvidenceRepository
+
+
+class TraceabilityService:
+    """
+    Claim → Evidence 可追溯服务。
+    """
+
+    def __init__(
+        self,
+        session,
+    ) -> None:
+
+        self.claims = ClaimRepository(
+            session
+        )
+
+        self.citations = CitationRepository(
+            session
+        )
+
+        self.evidences = EvidenceRepository(
+            session
+        )
+
+    async def get_claim_trace(
+        self,
+        claim_id: str,
+    ) -> dict:
+
+        claim = await self.claims.get_by_id(
+            claim_id
+        )
+
+        if claim is None:
+            raise ValidationError(
+                f"Claim not found: {claim_id}"
+            )
+
+        citations = await (
+            self.citations.get_by_claim(
+                claim_id
+            )
+        )
+
+        evidence_list = []
+
+        for citation in citations:
+
+            evidence = (
+                await self.evidences.get_by_id(
+                    citation.evidence_id
+                )
+            )
+
+            if evidence is None:
+                continue
+
+            evidence_list.append(
+                evidence
+            )
+
+        return {
+            "claim": claim,
+            "citations": citations,
+            "evidences": evidence_list,
+        }
+```
+
+## 十五、LLM 能力层（LLM）
 
 大模型调用的抽象接口与 DeepSeek 实现
 
@@ -2600,7 +6493,13 @@ class DeepSeekLLM(BaseLLM):
         return response.choices[0].message.content
 ```
 
-## 十四、工具层（Tools）
+### 📄 `app/llm/__init__.py`
+
+**层级**：LLM 能力层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
+
+## 十六、工具层（Tools）
 
 Tool 抽象基类与具体工具：文件读取、代码搜索、依赖分析、语义检索、数据库查询与报告导出
 
@@ -3300,7 +7199,13 @@ def parse_github_url(url: str) -> tuple[str, str]:
     return owner, name
 ```
 
-## 十五、项目分析层（Project Analysis）
+### 📄 `app/tools/github/__init__.py`
+
+**层级**：工具层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
+
+## 十七、项目分析层（Project Analysis）
 
 文档切分、向量索引构建
 
@@ -3546,7 +7451,13 @@ class RepositoryIndexer:
         return 1
 ```
 
-## 十六、AI 能力层（Embeddings）
+### 📄 `app/project_analysis/__init__.py`
+
+**层级**：项目分析层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
+
+## 十八、AI 能力层（Embeddings）
 
 文本向量化的抽象接口与 Ollama 本地实现
 
@@ -3627,7 +7538,13 @@ class OllamaEmbedding(EmbeddingProvider):
         return response["embeddings"]
 ```
 
-## 十七、向量存储层（Vector Store）
+### 📄 `app/embeddings/__init__.py`
+
+**层级**：AI 能力层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
+
+## 十九、向量存储层（Vector Store）
 
 Qdrant Collection 管理、向量写入与相似度检索
 
@@ -3744,7 +7661,13 @@ class QdrantVectorStore:
         )
 ```
 
-## 十八、数据库迁移层（Alembic）
+### 📄 `app/vector_store/__init__.py`
+
+**层级**：向量存储层 · **职责**：（未标注）
+
+> 该文件为 **0 字节** 空文件，无源码内容。
+
+## 二十、数据库迁移层（Alembic）
 
 Alembic 异步运行环境与版本化迁移脚本
 
@@ -3925,9 +7848,561 @@ def downgrade() -> None:
     # ### end Alembic commands ###
 ```
 
-## 十九、测试层（Tests）
+### 📄 `alembic/versions/a9e1f4c2d8b7_add_evidence_claim_citation.py`
+
+**层级**：数据库迁移层（Alembic） · **职责**：Phase 9 迁移脚本，创建证据链三张表 `evidences` / `claims` / `citations`
+
+```python
+"""
+add evidence claim citation
+
+Revision ID: a9e1f4c2d8b7
+Revises: 479571222143
+"""
+
+from alembic import op
+import sqlalchemy as sa
+
+
+revision = "a9e1f4c2d8b7"
+
+down_revision = "479571222143"
+
+branch_labels = None
+
+depends_on = None
+
+
+def upgrade() -> None:
+
+    op.create_table(
+        "evidences",
+
+        sa.Column(
+            "id",
+            sa.String(length=36),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "repository_id",
+            sa.Integer(),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "source_type",
+            sa.String(length=50),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "source_url",
+            sa.String(length=1000),
+            nullable=True,
+        ),
+
+        sa.Column(
+            "file_path",
+            sa.String(length=1000),
+            nullable=True,
+        ),
+
+        sa.Column(
+            "line_start",
+            sa.Integer(),
+            nullable=True,
+        ),
+
+        sa.Column(
+            "line_end",
+            sa.Integer(),
+            nullable=True,
+        ),
+
+        sa.Column(
+            "content",
+            sa.Text(),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "verification_status",
+            sa.String(length=20),
+            nullable=False,
+            server_default="UNVERIFIED",
+        ),
+
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            nullable=False,
+        ),
+
+        sa.ForeignKeyConstraint(
+            ["repository_id"],
+            ["repositories.id"],
+        ),
+
+        sa.PrimaryKeyConstraint("id"),
+    )
+
+    op.create_index(
+        "ix_evidences_repository_id",
+        "evidences",
+        ["repository_id"],
+    )
+
+    op.create_table(
+        "claims",
+
+        sa.Column(
+            "id",
+            sa.String(length=36),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "run_id",
+            sa.String(length=36),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "claim_text",
+            sa.Text(),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "verification_status",
+            sa.String(length=20),
+            nullable=False,
+            server_default="UNVERIFIED",
+        ),
+
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            nullable=False,
+        ),
+
+        sa.ForeignKeyConstraint(
+            ["run_id"],
+            ["analysis_runs.id"],
+        ),
+
+        sa.PrimaryKeyConstraint("id"),
+    )
+
+    op.create_index(
+        "ix_claims_run_id",
+        "claims",
+        ["run_id"],
+    )
+
+    op.create_table(
+        "citations",
+
+        sa.Column(
+            "id",
+            sa.String(length=36),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "claim_id",
+            sa.String(length=36),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "evidence_id",
+            sa.String(length=36),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            nullable=False,
+        ),
+
+        sa.ForeignKeyConstraint(
+            ["claim_id"],
+            ["claims.id"],
+        ),
+
+        sa.ForeignKeyConstraint(
+            ["evidence_id"],
+            ["evidences.id"],
+        ),
+
+        sa.PrimaryKeyConstraint("id"),
+
+        sa.UniqueConstraint(
+            "claim_id",
+            "evidence_id",
+            name="uq_citations_claim_evidence",
+        ),
+    )
+
+    op.create_index(
+        "ix_citations_claim_id",
+        "citations",
+        ["claim_id"],
+    )
+
+    op.create_index(
+        "ix_citations_evidence_id",
+        "citations",
+        ["evidence_id"],
+    )
+
+
+def downgrade() -> None:
+
+    op.drop_index(
+        "ix_citations_evidence_id",
+        table_name="citations",
+    )
+
+    op.drop_index(
+        "ix_citations_claim_id",
+        table_name="citations",
+    )
+
+    op.drop_table("citations")
+
+    op.drop_index(
+        "ix_claims_run_id",
+        table_name="claims",
+    )
+
+    op.drop_table("claims")
+
+    op.drop_index(
+        "ix_evidences_repository_id",
+        table_name="evidences",
+    )
+
+    op.drop_table("evidences")
+```
+
+### 📄 `alembic/versions/b0f6883a5f43_add_checkpoints.py`
+
+**层级**：数据库迁移层（Alembic） · **职责**：Phase 10 迁移脚本，创建 Workflow 检查点表 `checkpoints`
+
+```python
+"""
+add workflow checkpoints
+
+Revision ID: add_checkpoints_001
+Revises: a9e1f4c2d8b7
+"""
+
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+revision: str = "add_checkpoints_001"
+
+down_revision: Union[
+    str,
+    Sequence[str],
+    None
+] = "a9e1f4c2d8b7"
+
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    """创建 checkpoints 表。"""
+
+    op.create_table(
+        "checkpoints",
+
+        sa.Column(
+            "id",
+            sa.Integer(),
+            autoincrement=True,
+            nullable=False,
+        ),
+
+        sa.Column(
+            "run_id",
+            sa.String(length=36),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "checkpoint_version",
+            sa.Integer(),
+            nullable=False,
+            default=1,
+        ),
+
+        sa.Column(
+            "status",
+            sa.String(length=50),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "current_node",
+            sa.String(length=100),
+            nullable=True,
+        ),
+
+        sa.Column(
+            "state_data",
+            sa.JSON(),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "outputs",
+            sa.JSON(),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "errors",
+            sa.JSON(),
+            nullable=False,
+        ),
+
+        sa.Column(
+            "retry_count",
+            sa.Integer(),
+            nullable=False,
+            default=0,
+        ),
+
+        sa.Column(
+            "pause_reason",
+            sa.String(length=255),
+            nullable=True,
+        ),
+
+        sa.Column(
+            "human_approved",
+            sa.Boolean(),
+            nullable=False,
+            default=False,
+        ),
+
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            nullable=False,
+        ),
+
+        sa.ForeignKeyConstraint(
+            ["run_id"],
+            ["analysis_runs.id"],
+        ),
+
+        sa.PrimaryKeyConstraint(
+            "id"
+        ),
+    )
+
+    op.create_index(
+        "ix_checkpoints_run_id",
+        "checkpoints",
+        ["run_id"],
+    )
+
+
+def downgrade() -> None:
+    """删除 checkpoints 表。"""
+
+    op.drop_index(
+        "ix_checkpoints_run_id",
+        table_name="checkpoints",
+    )
+
+    op.drop_table(
+        "checkpoints"
+    )
+```
+
+## 二十一、测试层（Tests）
 
 单元测试与集成测试
+
+### 📄 `tests/test_agent_registry.py`
+
+**层级**：测试层 · **职责**：Agent 注册中心测试（创建 Skill 注册中心 → 构造 Agent 注册中心 → 断言 Agent 可注册与获取）
+
+```python
+"""
+测试 Agent Registry。
+
+验证：
+
+Agent 是否可以正常注册和获取。
+
+
+"""
+
+
+from app.skills.registry import (
+    create_skill_registry
+)
+
+
+from app.agents.agent_registry import (
+    create_agent_registry
+)
+
+
+
+def test_agent_registry():
+
+
+    # 创建Skill管理器
+
+    skill_registry = (
+        create_skill_registry()
+    )
+
+
+
+    # 创建Agent管理器
+
+    registry = (
+        create_agent_registry(
+            skill_registry
+        )
+    )
+
+
+
+    # 判断Agent是否存在
+
+    assert (
+        registry.get(
+            "repository_analysis_agent"
+        )
+        is not None
+    )
+```
+
+### 📄 `tests/test_agent_runtime.py`
+
+**层级**：测试层 · **职责**：Agent 运行环境测试（FakeRegistry + FakeAgent，断言 `execute()` 返回 Agent 结果；Agent 不存在时抛异常）
+
+```python
+"""
+测试 Agent Runtime。
+
+
+验证：
+
+Runtime
+
+    |
+
+    v
+
+Agent
+
+    |
+
+    v
+
+返回结果
+
+
+"""
+
+
+import pytest
+
+
+from app.agents.agent_runtime import (
+    AgentRuntime
+)
+
+
+
+
+class FakeAgent:
+
+
+    async def execute(
+        self,
+        context,
+        input_data
+    ):
+
+
+        return {
+
+
+            "success":
+
+                True
+
+        }
+
+
+
+
+
+class FakeRegistry:
+
+
+    def get(
+        self,
+        name
+    ):
+
+
+        return FakeAgent()
+
+
+
+
+
+@pytest.mark.asyncio
+async def test_agent_runtime():
+
+
+
+    runtime = AgentRuntime(
+
+        FakeRegistry()
+
+    )
+
+
+
+    result = await runtime.execute(
+
+        "test_agent",
+
+        None,
+
+        {}
+
+    )
+
+
+
+    assert (
+
+        result["success"]
+
+        is True
+
+    )
+```
 
 ### 📄 `tests/test_analysis_api.py`
 
@@ -4094,6 +8569,243 @@ def test_settings_load():
     assert settings.LLM_PROVIDER
 ```
 
+### 📄 `tests/test_context_manager.py`
+
+**层级**：测试层 · **职责**：Phase 11 Context Manager 测试。
+
+```python
+"""Phase 11 Context Manager 测试。"""
+
+import pytest
+
+from app.context.manager import (
+    ContextItem,
+    ContextManager,
+)
+
+
+class FakeMemoryManager:
+    """模拟 Memory Manager。"""
+
+    async def retrieve(
+        self,
+        **kwargs,
+    ):
+        return {
+            "run_memory": {
+                "question": (
+                    "Workflow怎么实现？"
+                ),
+                "research_plan": {
+                    "tasks": [
+                        "workflow"
+                    ]
+                },
+                "agent_outputs": [
+                    {
+                        "agent": "architecture",
+                        "result": (
+                            "使用自研 Workflow"
+                        ),
+                    }
+                ],
+                "evidences": [
+                    {
+                        "id": "ev-1",
+                        "file_path": (
+                            "app/workflow/engine.py"
+                        ),
+                        "line_start": 1,
+                        "line_end": 20,
+                        "content": (
+                            "class WorkflowEngine"
+                        ),
+                    }
+                ],
+            },
+            "project_memory": [
+                {
+                    "run_id": "old-run",
+                    "question": (
+                        "Agent怎么实现？"
+                    ),
+                    "status": "COMPLETED",
+                }
+            ],
+        }
+
+
+@pytest.mark.asyncio
+async def test_context_manager_retrieval_filter_and_assembly():
+    """Context Manager 应完成 Retrieve / Filter / Assembly。"""
+
+    async def retriever(query):
+        return [
+            {
+                "content": (
+                    "WorkflowEngine "
+                    "executes workflow nodes"
+                ),
+                "score": 0.9,
+                "file_path": (
+                    "app/workflow/engine.py"
+                ),
+            },
+            {
+                "content": (
+                    "irrelevant database text"
+                ),
+                "score": 0.1,
+            },
+        ]
+
+    manager = ContextManager(
+        FakeMemoryManager(),
+        retriever=retriever,
+        max_items=5,
+        max_chars=5000,
+    )
+
+    result = await manager.build(
+        run_id="run-1",
+        repository_id=10,
+        query="Workflow怎么实现？",
+        workflow_state={
+            "status": "ANALYZING",
+            "current_node": "workflow",
+        },
+    )
+
+    assert (
+        "Current Question"
+        in result["text"]
+    )
+
+    assert (
+        "WorkflowEngine"
+        in result["text"]
+    )
+
+    assert result["items"]
+
+    assert all(
+        item["content"].strip()
+        for item in result["items"]
+    )
+
+
+def test_context_manager_deduplicates_and_limits():
+    """Context Manager 应去重并限制 Context 数量。"""
+
+    manager = ContextManager(
+        FakeMemoryManager(),
+        max_items=2,
+    )
+
+    items = manager.filter_and_rank(
+        [
+            ContextItem(
+                source="test",
+                content="workflow engine",
+                score=1.0,
+            ),
+            ContextItem(
+                source="test",
+                content="workflow engine",
+                score=0.5,
+            ),
+            ContextItem(
+                source="test",
+                content="database",
+                score=0.2,
+            ),
+        ],
+        "workflow",
+    )
+
+    assert len(items) == 2
+
+    assert (
+        items[0].content
+        == "workflow engine"
+    )
+```
+
+### 📄 `tests/test_context_retriever.py`
+
+**层级**：测试层 · **职责**：Phase 11 Context Retriever 测试。
+
+```python
+"""Phase 11 Context Retriever 测试。"""
+
+import pytest
+
+from app.context.retriever import (
+    QdrantContextRetriever,
+)
+
+
+class FakeEmbedding:
+    """模拟 Embedding Provider。"""
+
+    def embed(
+        self,
+        text,
+    ):
+        assert text == "Workflow"
+
+        return [
+            0.1,
+            0.2,
+        ]
+
+
+class FakeSearchTool:
+    """模拟 Qdrant Search Tool。"""
+
+    async def execute(
+        self,
+        *,
+        query_vector,
+        limit,
+    ):
+        assert query_vector == [
+            0.1,
+            0.2,
+        ]
+
+        assert limit == 3
+
+        return [
+            {
+                "text": "workflow.py",
+                "source": "code",
+            }
+        ]
+
+
+@pytest.mark.asyncio
+async def test_qdrant_context_retriever():
+    """测试自然语言 → Embedding → Qdrant Tool。"""
+
+    retriever = QdrantContextRetriever(
+        FakeEmbedding(),
+        FakeSearchTool(),
+        limit=3,
+    )
+
+    result = await retriever(
+        "Workflow"
+    )
+
+    assert result == [
+        {
+            "text": "workflow.py",
+            "source": "code",
+        }
+    ]
+```
+
 ### 📄 `tests/test_database.py`
 
 **层级**：测试层 · **职责**：MySQL 连接连通性测试（需数据库可用）
@@ -4252,6 +8964,414 @@ def test_embedding_to_qdrant():
         print(
             result.score,
             result.payload,
+        )
+```
+
+### 📄 `tests/test_evidence_agent.py`
+
+**层级**：测试层 · **职责**：EvidenceAnalysisAgent 测试（Fake Skill 注入，断言 Agent 编排结果）
+
+```python
+"""
+EvidenceAnalysisAgent 测试。
+"""
+
+import pytest
+
+from app.agents.evidence_analysis_agent import (
+    EvidenceAnalysisAgent,
+)
+
+
+class FakeSkill:
+
+    async def execute(
+        self,
+        context,
+        input_data,
+    ):
+
+        return {
+            "evidence": [
+                {
+                    "content":
+                        "class BaseAgent:"
+                }
+            ],
+            "count": 1,
+        }
+
+
+class FakeSkillRegistry:
+
+    def get(
+        self,
+        name,
+    ):
+
+        assert (
+            name
+            == "evidence_analysis"
+        )
+
+        return FakeSkill()
+
+
+class FakeContext:
+
+    tools = {}
+
+
+@pytest.mark.asyncio
+async def test_evidence_analysis_agent():
+
+    agent = EvidenceAnalysisAgent(
+        FakeSkillRegistry()
+    )
+
+    result = await agent.execute(
+        FakeContext(),
+        {},
+    )
+
+    assert (
+        result["count"]
+        == 1
+    )
+
+    assert (
+        result["evidence"][0]["content"]
+        == "class BaseAgent:"
+    )
+```
+
+### 📄 `tests/test_evidence_models.py`
+
+**层级**：测试层 · **职责**：证据链三张表模型测试（Evidence / Claim / Citation 字段与默认值）
+
+```python
+"""
+Evidence / Claim / Citation 模型测试。
+"""
+
+from app.models.claim import Claim
+from app.models.citation import Citation
+from app.models.evidence import Evidence
+
+
+def test_evidence_model():
+
+    assert Evidence.__tablename__ == "evidences"
+
+    columns = {
+        column.name
+        for column in Evidence.__table__.columns
+    }
+
+    assert {
+        "id",
+        "repository_id",
+        "source_type",
+        "source_url",
+        "file_path",
+        "line_start",
+        "line_end",
+        "content",
+        "verification_status",
+        "created_at",
+    }.issubset(columns)
+
+
+def test_claim_model():
+
+    assert Claim.__tablename__ == "claims"
+
+    columns = {
+        column.name
+        for column in Claim.__table__.columns
+    }
+
+    assert {
+        "id",
+        "run_id",
+        "claim_text",
+        "verification_status",
+        "created_at",
+    }.issubset(columns)
+
+
+def test_citation_model():
+
+    assert Citation.__tablename__ == "citations"
+
+    columns = {
+        column.name
+        for column in Citation.__table__.columns
+    }
+
+    assert {
+        "id",
+        "claim_id",
+        "evidence_id",
+        "created_at",
+    }.issubset(columns)
+```
+
+### 📄 `tests/test_evidence_service.py`
+
+**层级**：测试层 · **职责**：EvidenceService 测试（空内容证据被拒、正常创建与校验路径）
+
+```python
+"""
+EvidenceService 测试。
+"""
+
+import pytest
+
+from app.core.exceptions import ValidationError
+from app.services.evidence_service import (
+    EvidenceService,
+)
+
+
+class FakeSession:
+
+    async def commit(self):
+        pass
+
+
+@pytest.mark.asyncio
+async def test_create_evidence_rejects_empty_content():
+
+    service = EvidenceService(
+        FakeSession()
+    )
+
+    with pytest.raises(
+        ValidationError
+    ):
+
+        await service.create_evidence(
+            repository_id=1,
+            source_type="source",
+            content="   ",
+        )
+```
+
+### 📄 `tests/test_evidence_skill.py`
+
+**层级**：测试层 · **职责**：EvidenceAnalysisSkill 测试（Fake Tool，断言证据分析结果结构）
+
+```python
+"""
+EvidenceAnalysisSkill 测试。
+"""
+
+import pytest
+
+from app.skills.evidence_analysis_skill import (
+    EvidenceAnalysisSkill,
+)
+
+
+class FakeQdrantTool:
+
+    async def execute(
+        self,
+        **kwargs,
+    ):
+
+        return [
+            {
+                "text": (
+                    "class BaseAgent:"
+                ),
+                "document_id": (
+                    "agent-base"
+                ),
+                "chunk_index": 0,
+                "file_path": (
+                    "app/agents/base.py"
+                ),
+            }
+        ]
+
+
+class FakeContext:
+
+    tools = {
+        "qdrant_search":
+            FakeQdrantTool()
+    }
+
+
+@pytest.mark.asyncio
+async def test_evidence_analysis_skill():
+
+    skill = EvidenceAnalysisSkill()
+
+    result = await skill.execute(
+        FakeContext(),
+        {
+            "query_vector": [
+                0.1,
+                0.2,
+            ],
+            "limit": 5,
+        },
+    )
+
+    assert (
+        result["count"]
+        == 1
+    )
+
+    evidence = (
+        result["evidence"][0]
+    )
+
+    assert (
+        evidence["content"]
+        == "class BaseAgent:"
+    )
+
+    assert (
+        evidence["file_path"]
+        == "app/agents/base.py"
+    )
+
+    # 当前索引器没有可靠行号，
+    # 所以不能伪造。
+    assert (
+        evidence["line_start"]
+        is None
+    )
+
+    assert (
+        evidence["line_end"]
+        is None
+    )
+```
+
+### 📄 `tests/test_evidence_store.py`
+
+**层级**：测试层 · **职责**：EvidenceStore 单元测试（非法状态抛 ValidationError、状态值大写归一化）
+
+```python
+"""
+Evidence Store 单元测试。
+"""
+
+import pytest
+
+from app.core.exceptions import ValidationError
+from app.evidence.store import EvidenceStore
+
+
+class FakeSession:
+
+    def add(self, obj):
+        pass
+
+    async def flush(self):
+        pass
+
+
+@pytest.mark.asyncio
+async def test_invalid_evidence_status():
+
+    store = EvidenceStore(
+        FakeSession()
+    )
+
+    with pytest.raises(
+        ValidationError
+    ):
+
+        store.validate_status(
+            "INVALID"
+        )
+
+
+@pytest.mark.asyncio
+async def test_evidence_status_normalization():
+
+    store = EvidenceStore(
+        FakeSession()
+    )
+
+    assert (
+        store.validate_status(
+            "verified"
+        )
+        == "VERIFIED"
+    )
+```
+
+### 📄 `tests/test_evidence_verifier.py`
+
+**层级**：测试层 · **职责**：EvidenceVerifier 测试（合法状态流转成功、非法状态抛异常）
+
+```python
+"""
+Evidence Verification 测试。
+"""
+
+import pytest
+
+from app.core.exceptions import ValidationError
+from app.evidence.verifier import (
+    EvidenceVerifier,
+)
+
+
+class FakeSession:
+
+    async def flush(self):
+        pass
+
+
+class FakeEvidence:
+
+    verification_status = "UNVERIFIED"
+
+
+@pytest.mark.asyncio
+async def test_verify_evidence():
+
+    verifier = EvidenceVerifier(
+        FakeSession()
+    )
+
+    evidence = FakeEvidence()
+
+    result = await verifier.verify_evidence(
+        evidence,
+        "verified",
+    )
+
+    assert (
+        result.verification_status
+        == "VERIFIED"
+    )
+
+
+@pytest.mark.asyncio
+async def test_invalid_status():
+
+    verifier = EvidenceVerifier(
+        FakeSession()
+    )
+
+    evidence = FakeEvidence()
+
+    with pytest.raises(
+        ValidationError
+    ):
+
+        await verifier.verify_evidence(
+            evidence,
+            "invalid",
         )
 ```
 
@@ -4550,6 +9670,246 @@ The system supports workflow execution and task recovery.
     assert chunk_count == 3
 ```
 
+### 📄 `tests/test_memory.py`
+
+**层级**：测试层 · **职责**：Phase 11 Memory 测试。
+
+```python
+"""Phase 11 Memory 测试。"""
+
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
+
+from app.memory.run_memory import (
+    RunMemory,
+)
+
+from app.memory.project_memory import (
+    ProjectMemory,
+)
+
+
+class FakeScalarResult:
+    """模拟 SQLAlchemy scalar 查询结果。"""
+
+    def __init__(self, value):
+        self.value = value
+
+    def scalar_one_or_none(self):
+        return self.value
+
+
+class FakeScalarsResult:
+    """模拟 SQLAlchemy scalars 查询结果。"""
+
+    def __init__(self, values):
+        self.values = values
+
+    def scalars(self):
+        return self
+
+    def all(self):
+        return self.values
+
+
+@pytest.mark.asyncio
+async def test_run_memory_loads_run_and_checkpoint():
+    """Run Memory 应能够组合 Run / Task / Checkpoint / Evidence。"""
+
+    session = AsyncMock()
+
+    run = SimpleNamespace(
+        id="run-1",
+        repository_id=10,
+        question="Workflow怎么实现？",
+        status="ANALYZING",
+        current_node="workflow",
+    )
+
+    repository = SimpleNamespace(
+        id=10,
+        url="https://github.com/demo/repo",
+        owner="demo",
+        name="repo",
+        description="demo",
+        language="Python",
+    )
+
+    task = SimpleNamespace(
+        id=1,
+        task_type="architecture",
+        status="completed",
+        input={},
+        output={
+            "result": "workflow"
+        },
+        error=None,
+        retry_count=0,
+        created_at=None,
+    )
+
+    evidence = SimpleNamespace(
+        id="ev-1",
+        source_type="code",
+        file_path="app/workflow.py",
+        line_start=10,
+        line_end=20,
+        content="class WorkflowEngine",
+        verification_status="VERIFIED",
+    )
+
+    checkpoint = SimpleNamespace(
+        data={
+            "research_plan": {
+                "tasks": [
+                    "architecture"
+                ]
+            }
+        },
+        outputs=[
+            {
+                "agent": "architecture"
+            }
+        ],
+        status="ANALYZING",
+        current_node="workflow",
+        errors=[],
+        retry_count=0,
+        pause_reason=None,
+        human_approved=True,
+        checkpoint_version=2,
+    )
+
+    session.execute.side_effect = [
+        FakeScalarResult(run),
+        FakeScalarsResult([task]),
+    ]
+
+    session.get.return_value = repository
+
+    memory = RunMemory(
+        session
+    )
+
+    memory.checkpoint_repository.get_latest = (
+        AsyncMock(
+            return_value=checkpoint
+        )
+    )
+
+    memory.evidence_repository.list_by_repository = (
+        AsyncMock(
+            return_value=[evidence]
+        )
+    )
+
+    result = await memory.load(
+        "run-1"
+    )
+
+    assert (
+        result["question"]
+        == "Workflow怎么实现？"
+    )
+
+    assert (
+        result["research_plan"]["tasks"]
+        == ["architecture"]
+    )
+
+    assert (
+        result["agent_outputs"]
+        == [
+            {
+                "agent": "architecture"
+            }
+        ]
+    )
+
+    assert (
+        result["evidences"][0]["file_path"]
+        == "app/workflow.py"
+    )
+
+
+@pytest.mark.asyncio
+async def test_project_memory_filters_current_run():
+    """Project Memory 不应该把当前 Run 再作为历史 Memory 返回。"""
+
+    session = AsyncMock()
+
+    run1 = SimpleNamespace(
+        id="run-1",
+        question="Workflow",
+        status="COMPLETED",
+        current_node="end",
+        created_at=SimpleNamespace(
+            isoformat=lambda:
+            "2026-09-25T00:00:00"
+        ),
+    )
+
+    run2 = SimpleNamespace(
+        id="run-2",
+        question="Agent",
+        status="COMPLETED",
+        current_node="end",
+        created_at=SimpleNamespace(
+            isoformat=lambda:
+            "2026-09-24T00:00:00"
+        ),
+    )
+
+    task = SimpleNamespace(
+        run_id="run-2",
+        task_type="agent",
+        status="completed",
+        output={
+            "agent": "planner"
+        },
+        error=None,
+    )
+
+    session.execute.side_effect = [
+        FakeScalarsResult(
+            [
+                run1,
+                run2,
+            ]
+        ),
+        FakeScalarsResult(
+            [
+                task
+            ]
+        ),
+    ]
+
+    memory = ProjectMemory(
+        session
+    )
+
+    result = await memory.load(
+        10,
+        exclude_run_id="run-1",
+    )
+
+    assert len(result) == 1
+
+    assert (
+        result[0]["run_id"]
+        == "run-2"
+    )
+
+    assert (
+        result[0]["tasks"][0][
+            "task_type"
+        ]
+        == "agent"
+    )
+```
+
 ### 📄 `tests/test_mysql_query_tool.py`
 
 **层级**：测试层 · **职责**：MySQL 查询工具测试（FakeSession 模拟查询结果）
@@ -4611,6 +9971,438 @@ async def test_mysql_query_tool():
     assert result[0]["name"] == (
         "test_repo"
     )
+```
+
+### 📄 `tests/test_phase10.py`
+
+**层级**：测试层 · **职责**：Phase 10 测试（HITL 设计闸门、HumanNode 触发暂停、手动暂停与恢复、Checkpoint 存取、可重试错误重试与重试上限、不可重试错误直接失败）
+
+```python
+"""Phase 10：HITL / Checkpoint / Pause / Resume / Retry 测试。"""
+
+import pytest
+
+from app.core.exceptions import (
+    NonRetryableError,
+    RetryableError,
+)
+from app.workflow.checkpoint import (
+    CheckpointManager,
+)
+from app.workflow.context import WorkflowContext
+from app.workflow.engine import (
+    WorkflowEngine,
+)
+from app.workflow.node import BaseNode
+from app.workflow.nodes.end_node import EndNode
+from app.workflow.nodes.human_node import HumanNode
+from app.workflow.nodes.start_node import StartNode
+from app.workflow.retry import RetryPolicy
+from app.workflow.state import (
+    WorkflowState,
+    WorkflowStatus,
+)
+from app.workflow.transition import Transition
+from app.workflow.workflow import Workflow
+
+
+def build_context():
+    """创建测试 Context。"""
+
+    return WorkflowContext(
+        agents={},
+        tools={},
+        skills={},
+        config={},
+    )
+
+
+def build_workflow(
+    nodes,
+    transitions,
+):
+    """创建测试 Workflow。"""
+
+    workflow = Workflow()
+
+    for node in nodes:
+        workflow.add_node(node)
+
+    for source, target in transitions:
+
+        workflow.add_transition(
+            Transition(
+                source,
+                target,
+            )
+        )
+
+    return workflow
+
+
+class TouchNode(BaseNode):
+    """记录执行顺序。"""
+
+    def __init__(
+        self,
+        name,
+    ):
+        self.name = name
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+        state.data.setdefault(
+            "visited",
+            [],
+        ).append(
+            self.name
+        )
+
+        return state
+
+
+class RetryNode(BaseNode):
+    """第一次失败，第二次成功。"""
+
+    name = "retry"
+
+    def __init__(self):
+        self.calls = 0
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+        self.calls += 1
+
+        if self.calls == 1:
+
+            raise RetryableError(
+                "temporary error"
+            )
+
+        return state
+
+
+class FailNode(BaseNode):
+    """不可重试失败。"""
+
+    name = "fail"
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+
+        raise NonRetryableError(
+            "invalid input"
+        )
+
+
+@pytest.mark.asyncio
+async def test_design_gate_state():
+    """测试 Design Gate。"""
+
+    state = WorkflowState(
+        run_id="phase10-design"
+    )
+
+    state.mark_waiting_design()
+
+    assert (
+        state.status
+        == WorkflowStatus.WAITING_DESIGN
+    )
+
+    state.approve()
+
+    assert (
+        state.status
+        == WorkflowStatus.ANALYZING
+    )
+
+    assert state.human_approved is True
+
+
+@pytest.mark.asyncio
+async def test_human_node_pauses_workflow():
+    """测试 HumanNode 真正暂停 Workflow。"""
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            HumanNode(),
+            TouchNode("after"),
+            EndNode(),
+        ],
+        [
+            ("start", "human_review"),
+            ("human_review", "after"),
+            ("after", "end"),
+        ],
+    )
+
+    checkpoint = CheckpointManager()
+
+    engine = WorkflowEngine(
+        checkpoint=checkpoint
+    )
+
+    result = await engine.run(
+        workflow,
+        WorkflowState(
+            run_id="phase10-human"
+        ),
+        build_context(),
+    )
+
+    assert (
+        result.status
+        == WorkflowStatus.WAITING_HUMAN
+    )
+
+    assert (
+        result.current_node
+        == "human_review"
+    )
+
+    assert "after" not in result.data.get(
+        "visited",
+        [],
+    )
+
+
+@pytest.mark.asyncio
+async def test_manual_pause_and_resume():
+    """测试 Pause → Checkpoint → Resume。"""
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            TouchNode("before"),
+            TouchNode("after"),
+            EndNode(),
+        ],
+        [
+            ("start", "before"),
+            ("before", "after"),
+            ("after", "end"),
+        ],
+    )
+
+    checkpoint = CheckpointManager()
+
+    engine = WorkflowEngine(
+        checkpoint=checkpoint
+    )
+
+    state = WorkflowState(
+        run_id="phase10-pause"
+    )
+
+    state.data["visited"] = []
+
+    state = await engine.run(
+        workflow,
+        state,
+        build_context(),
+    )
+
+    assert (
+        state.status
+        == WorkflowStatus.COMPLETED
+    )
+
+
+@pytest.mark.asyncio
+async def test_checkpoint_save_and_restore():
+    """测试 Checkpoint 保存与恢复。"""
+
+    manager = CheckpointManager()
+
+    state = WorkflowState(
+        run_id="phase10-checkpoint"
+    )
+
+    state.status = (
+        WorkflowStatus.PAUSED
+    )
+
+    state.current_node = "task_3"
+
+    state.data["completed_tasks"] = [
+        "task_1",
+        "task_2",
+    ]
+
+    state.retry_count = 1
+
+    await manager.save(
+        state
+    )
+
+    restored = await manager.load(
+        "phase10-checkpoint"
+    )
+
+    assert restored is not None
+
+    assert (
+        restored.current_node
+        == "task_3"
+    )
+
+    assert (
+        restored.data["completed_tasks"]
+        == [
+            "task_1",
+            "task_2",
+        ]
+    )
+
+    assert (
+        restored.retry_count
+        == 1
+    )
+
+
+@pytest.mark.asyncio
+async def test_retryable_error_is_retried():
+    """测试 RetryableError 会 Retry。"""
+
+    retry_node = RetryNode()
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            retry_node,
+            EndNode(),
+        ],
+        [
+            ("start", "retry"),
+            ("retry", "end"),
+        ],
+    )
+
+    engine = WorkflowEngine(
+        retry_policy=RetryPolicy(
+            max_retry=3
+        )
+    )
+
+    result = await engine.run(
+        workflow,
+        WorkflowState(
+            run_id="phase10-retry"
+        ),
+        build_context(),
+    )
+
+    assert (
+        result.status
+        == WorkflowStatus.COMPLETED
+    )
+
+    assert retry_node.calls == 2
+
+    assert result.retry_count == 0
+
+
+@pytest.mark.asyncio
+async def test_retry_policy_limit():
+    """测试 Retry 超过最大次数后失败。"""
+
+    class AlwaysFailNode(BaseNode):
+
+        name = "always_fail"
+
+        async def execute(
+            self,
+            state,
+            context,
+        ):
+
+            raise RetryableError(
+                "temporary failure"
+            )
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            AlwaysFailNode(),
+            EndNode(),
+        ],
+        [
+            ("start", "always_fail"),
+            ("always_fail", "end"),
+        ],
+    )
+
+    engine = WorkflowEngine(
+        retry_policy=RetryPolicy(
+            max_retry=2
+        )
+    )
+
+    result = await engine.run(
+        workflow,
+        WorkflowState(
+            run_id="phase10-limit"
+        ),
+        build_context(),
+    )
+
+    assert (
+        result.status
+        == WorkflowStatus.FAILED
+    )
+
+    assert (
+        result.retry_count == 2
+    )
+
+
+@pytest.mark.asyncio
+async def test_non_retryable_error():
+    """测试不可重试异常不会 Retry。"""
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            FailNode(),
+            EndNode(),
+        ],
+        [
+            ("start", "fail"),
+            ("fail", "end"),
+        ],
+    )
+
+    engine = WorkflowEngine(
+        retry_policy=RetryPolicy(
+            max_retry=3
+        )
+    )
+
+    result = await engine.run(
+        workflow,
+        WorkflowState(
+            run_id="phase10-no-retry"
+        ),
+        build_context(),
+    )
+
+    assert (
+        result.status
+        == WorkflowStatus.FAILED
+    )
+
+    assert result.retry_count == 0
 ```
 
 ### 📄 `tests/test_qdrant.py`
@@ -4756,6 +10548,289 @@ async def test_report_export():
         result["format"]
         ==
         "markdown"
+    )
+```
+
+### 📄 `tests/test_repository_analysis_workflow.py`
+
+**层级**：测试层 · **职责**：Skill 驱动的 Workflow 集成测试（Mock Tool → RepositoryAnalysisSkill → SkillNode → Transition 串联执行）
+
+```python
+import pytest
+
+
+
+from app.workflow.workflow import Workflow
+
+from app.workflow.engine import WorkflowEngine
+
+from app.workflow.state import WorkflowState
+
+from app.workflow.context import WorkflowContext
+
+
+from app.workflow.nodes.skill_node import SkillNode
+
+
+from app.skills.repository_analysis_skill import (
+    RepositoryAnalysisSkill
+)
+
+
+from app.workflow.nodes.base import BaseNode
+
+from app.workflow.transition import Transition
+
+
+
+#
+# Mock Tool
+#
+
+class FakeFileReaderTool:
+
+
+
+    async def execute(
+        self,
+        **kwargs
+    ):
+
+
+        return {
+
+            "content":
+            "# Demo Repository"
+
+        }
+
+
+
+
+class FakeDependencyAnalyzerTool:
+
+
+
+    async def execute(
+        self,
+        **kwargs
+    ):
+
+
+        return {
+
+
+            "dependencies":[
+
+                "fastapi",
+
+                "sqlalchemy"
+
+            ]
+
+        }
+
+class StartNode(BaseNode):
+
+
+    name="start"
+
+
+    async def execute(
+        self,
+        state,
+        context
+    ):
+
+        return state
+
+class EndNode(BaseNode):
+    name = "end"
+
+    async def execute(
+            self,
+            state,
+            context
+    ):
+        state.status = "COMPLETED"
+
+        return state
+
+#
+# 构建Workflow
+#
+
+def build_workflow():
+
+
+    workflow = Workflow()
+
+
+
+    workflow.add_node(
+
+        StartNode()
+
+    )
+
+
+
+    workflow.add_node(
+
+        SkillNode(
+
+            name="repository_analysis",
+
+            skill=
+            RepositoryAnalysisSkill()
+
+        )
+
+    )
+
+
+
+    workflow.add_node(
+
+        EndNode()
+
+    )
+
+
+
+    workflow.add_transition(
+
+        Transition(
+
+            "start",
+
+            "repository_analysis"
+
+        )
+
+    )
+
+
+
+    workflow.add_transition(
+
+        Transition(
+
+            "repository_analysis",
+
+            "end"
+
+        )
+
+    )
+
+
+
+    return workflow
+
+
+
+
+def build_context():
+
+
+    return WorkflowContext(
+
+        agents={},
+
+
+        tools={
+
+            "file_reader":
+                FakeFileReaderTool(),
+
+
+            "dependency_analyzer":
+                FakeDependencyAnalyzerTool()
+
+        },
+
+
+        skills={
+
+            "repository_analysis":
+            RepositoryAnalysisSkill()
+
+        },
+
+
+        config={}
+
+    )
+
+
+
+
+@pytest.mark.asyncio
+async def test_repository_analysis_skill_workflow():
+
+
+    workflow = build_workflow()
+
+
+
+    state = WorkflowState(
+
+        run_id="repo-analysis-test"
+
+    )
+
+
+    state.data = {
+
+
+        "owner":"demo",
+
+        "repo":"test-project"
+
+
+    }
+
+
+
+    context = build_context()
+
+
+
+    result = await WorkflowEngine().run(
+
+        workflow,
+
+        state,
+
+        context
+
+    )
+
+
+
+    assert result.status == "COMPLETED"
+
+
+
+    assert (
+
+        "repository_analysis"
+
+        in result.data
+
+    )
+
+
+
+    assert (
+
+        result.data["repository_analysis"]["repository"]["repo"]
+
+        ==
+
+        "test-project"
+
     )
 ```
 
@@ -4919,6 +10994,145 @@ async def test_get_or_create_repository():
         assert second.url == first.url
 ```
 
+### 📄 `tests/test_repository_skill.py`
+
+**层级**：测试层 · **职责**：RepositoryAnalysisSkill 单元测试（Fake GitHub / FileReader / Dependency Tool，断言三路结果合并）
+
+```python
+import pytest
+
+
+from app.skills.repository_analysis_skill import (
+    RepositoryAnalysisSkill
+)
+
+
+
+class FakeGithubTool:
+
+
+    async def execute(
+        self,
+        **kwargs
+    ):
+
+
+        return {
+
+            "name":
+            kwargs["repo"]
+
+        }
+
+
+
+
+class FakeFileReader:
+
+
+    async def execute(
+        self,
+        **kwargs
+    ):
+
+
+        return {
+
+            "content":
+            "README"
+
+        }
+
+
+
+
+class FakeDependencyTool:
+
+
+    async def execute(
+        self,
+        **kwargs
+    ):
+
+
+        return {
+
+            "fastapi":
+            "installed"
+
+        }
+
+
+
+
+class Context:
+
+
+    tools={
+
+        "github_repository":
+            FakeGithubTool(),
+
+
+        "file_reader":
+            FakeFileReader(),
+
+
+        "dependency_analyzer":
+            FakeDependencyTool()
+
+    }
+
+
+
+
+
+@pytest.mark.asyncio
+async def test_repository_skill():
+
+
+    skill = RepositoryAnalysisSkill()
+
+
+
+    result = await skill.execute(
+
+        Context(),
+
+        {
+
+            "owner":
+            "test",
+
+
+            "repo":
+            "demo"
+
+        }
+
+    )
+
+
+
+    assert (
+        result["repository"]["name"]
+        ==
+        "demo"
+    )
+
+
+    assert (
+        "readme"
+        in result
+    )
+
+
+    assert (
+        "dependencies"
+        in result
+    )
+```
+
 ### 📄 `tests/test_retrieval.py`
 
 **层级**：测试层 · **职责**：语义检索测试（建立索引 → 用自然语言问题检索 → 断言命中）
@@ -4988,6 +11202,435 @@ The system supports workflow execution and task recovery.
     assert "Human approval" in results[0].payload["text"]
 ```
 
+### 📄 `tests/test_skill_base.py`
+
+**层级**：测试层 · **职责**：Skill 抽象基类测试（子类具备 `name` / `description` 且可实现 `execute()`）
+
+```python
+from app.skills.base import BaseSkill
+
+
+
+def test_skill_has_name():
+
+    """
+    测试Skill是否具备基本属性
+    """
+
+
+    class DemoSkill(BaseSkill):
+
+
+        name = "demo"
+
+
+        description = "demo skill"
+
+
+
+        async def execute(
+            self,
+            context,
+            input_data
+        ):
+
+            return {}
+
+
+
+    skill = DemoSkill()
+
+
+
+    assert skill.name == "demo"
+```
+
+### 📄 `tests/test_skill_node.py`
+
+**层级**：测试层 · **职责**：SkillNode 单元测试（FakeSkill，断言结果写入 `state.data[node.name]` 与 `state.outputs`）
+
+```python
+import pytest
+
+
+from app.workflow.nodes.skill_node import SkillNode
+
+from app.workflow.state import WorkflowState
+
+from app.workflow.context import WorkflowContext
+
+
+
+class FakeSkill:
+
+
+    async def execute(
+        self,
+        context,
+        input_data
+    ):
+
+        return {
+
+            "result":"skill success"
+
+        }
+
+
+
+@pytest.mark.asyncio
+async def test_skill_node_execute():
+
+
+    node = SkillNode(
+
+        name="test_skill",
+
+        skill=FakeSkill()
+
+    )
+
+
+    state = WorkflowState(
+
+        run_id="test"
+
+    )
+
+
+    context = WorkflowContext(
+
+        agents={},
+
+        tools={},
+
+        skills={},
+
+        config={}
+
+    )
+
+
+    result = await node.execute(
+
+        state,
+
+        context
+
+    )
+
+
+    assert (
+        result.data["result"]
+        ==
+        "skill success"
+    )
+
+
+    assert len(
+        result.outputs
+    ) == 1
+```
+
+### 📄 `tests/test_skill_registry.py`
+
+**层级**：测试层 · **职责**：Skill 注册中心测试（默认 5 个 Skill 是否注册成功并可获取）
+
+```python
+from app.skills.registry import (
+    create_skill_registry
+)
+
+
+
+def test_skill_registry():
+
+
+    registry = create_skill_registry()
+
+
+
+    assert (
+        "repository_analysis"
+        in registry.skills
+    )
+
+
+
+    assert (
+        registry.get(
+            "repository_analysis"
+        )
+        is not None
+    )
+```
+
+### 📄 `tests/test_skill_workflow.py`
+
+**层级**：测试层 · **职责**：Skill 全链路 Workflow 测试（Start → SkillNode(RepositoryAnalysisSkill) → End，断言 status 与 data）
+
+```python
+import pytest
+
+
+from app.workflow.engine import WorkflowEngine
+
+from app.workflow.workflow import Workflow
+
+from app.workflow.state import WorkflowState
+
+from app.workflow.context import WorkflowContext
+
+
+from app.workflow.nodes.skill_node import SkillNode
+
+
+from app.workflow.nodes.base import BaseNode
+
+from app.workflow.transition import Transition
+
+
+
+from app.skills.repository_analysis_skill import (
+    RepositoryAnalysisSkill
+)
+
+
+
+class StartNode(BaseNode):
+
+
+    name="start"
+
+
+
+    async def execute(
+        self,
+        state,
+        context
+    ):
+
+        return state
+
+
+
+
+
+class EndNode(BaseNode):
+
+
+    name="end"
+
+
+
+    async def execute(
+        self,
+        state,
+        context
+    ):
+
+        state.status="COMPLETED"
+
+        return state
+
+
+
+
+class GithubTool:
+
+
+    async def execute(
+        self,
+        **kwargs
+    ):
+
+
+        return {
+
+            "repo":
+            kwargs["repo"]
+
+        }
+
+
+
+
+
+class FileTool:
+
+
+    async def execute(
+        self,
+        **kwargs
+    ):
+
+
+        return "README"
+
+
+
+
+
+class DependencyTool:
+
+
+    async def execute(
+        self,
+        **kwargs
+    ):
+
+
+        return [
+
+            "fastapi"
+
+        ]
+
+
+
+
+
+def create_workflow():
+
+
+    workflow = Workflow()
+
+
+    workflow.add_node(
+        StartNode()
+    )
+
+
+    workflow.add_node(
+
+        SkillNode(
+
+            "repository_analysis",
+
+            RepositoryAnalysisSkill()
+
+        )
+
+    )
+
+
+    workflow.add_node(
+        EndNode()
+    )
+
+
+    workflow.add_transition(
+
+        Transition(
+            "start",
+            "repository_analysis"
+        )
+
+    )
+
+
+    workflow.add_transition(
+
+        Transition(
+            "repository_analysis",
+            "end"
+        )
+
+    )
+
+
+    return workflow
+
+
+
+
+
+@pytest.mark.asyncio
+async def test_full_skill_workflow():
+
+
+    workflow=create_workflow()
+
+
+
+    state=WorkflowState(
+
+        run_id="test"
+
+    )
+
+
+    state.data={
+
+        "owner":
+        "demo",
+
+        "repo":
+        "test"
+
+    }
+
+
+
+    context=WorkflowContext(
+
+        agents={},
+
+
+        tools={
+
+
+            "github_repository":
+                GithubTool(),
+
+
+            "file_reader":
+                FileTool(),
+
+
+            "dependency_analyzer":
+                DependencyTool()
+
+
+        },
+
+
+        skills={},
+
+
+        config={}
+
+    )
+
+
+
+    result = await WorkflowEngine().run(
+
+        workflow,
+
+        state,
+
+        context
+
+    )
+
+
+    assert (
+        result.status
+        ==
+        "COMPLETED"
+    )
+
+
+    assert (
+
+        "repository_analysis"
+
+        in result.data
+
+    )
+```
+
 ### 📄 `tests/test_tools.py`
 
 **层级**：测试层 · **职责**：工具层测试（`GitHubRepositoryTool` 取仓库、`FileReaderTool` 读文件）
@@ -5038,6 +11681,136 @@ async def test_file_reader_tool():
     assert isinstance(
         result,
         str
+    )
+```
+
+### 📄 `tests/test_traceability.py`
+
+**层级**：测试层 · **职责**：可追溯性测试（造 Claim / Citation / Evidence 后，断言溯源链解析到源码文件与行号）
+
+```python
+"""
+Claim → Citation → Evidence 可追溯测试。
+"""
+
+import pytest
+
+from app.evidence.traceability import (
+    TraceabilityService,
+)
+
+
+class FakeClaim:
+
+    id = "claim-1"
+
+    claim_text = (
+        "The project contains multiple agents."
+    )
+
+
+class FakeCitation:
+
+    def __init__(
+        self,
+        evidence_id,
+    ):
+        self.evidence_id = evidence_id
+
+
+class FakeEvidence:
+
+    def __init__(
+        self,
+        evidence_id,
+    ):
+        self.id = evidence_id
+        self.file_path = (
+            "app/agents/base.py"
+        )
+        self.line_start = 1
+        self.line_end = 20
+        self.content = (
+            "class BaseAgent:"
+        )
+
+
+@pytest.mark.asyncio
+async def test_claim_traceability():
+
+    service = TraceabilityService(
+        session=None
+    )
+
+    async def get_claim(
+        claim_id
+    ):
+        return FakeClaim()
+
+    async def get_citations(
+        claim_id
+    ):
+        return [
+            FakeCitation(
+                "evidence-1"
+            )
+        ]
+
+    async def get_evidence(
+        evidence_id
+    ):
+        return FakeEvidence(
+            evidence_id
+        )
+
+    service.claims.get_by_id = (
+        get_claim
+    )
+
+    service.citations.get_by_claim = (
+        get_citations
+    )
+
+    service.evidences.get_by_id = (
+        get_evidence
+    )
+
+    result = await (
+        service.get_claim_trace(
+            "claim-1"
+        )
+    )
+
+    assert (
+        result["claim"].id
+        == "claim-1"
+    )
+
+    assert len(
+        result["citations"]
+    ) == 1
+
+    assert len(
+        result["evidences"]
+    ) == 1
+
+    evidence = (
+        result["evidences"][0]
+    )
+
+    assert (
+        evidence.file_path
+        == "app/agents/base.py"
+    )
+
+    assert (
+        evidence.line_start
+        == 1
+    )
+
+    assert (
+        evidence.line_end
+        == 20
     )
 ```
 
@@ -5374,18 +12147,2731 @@ async def test_pause_and_resume():
     assert resumed.data["visited"] == ["after"]
 ```
 
+## 二十二、仓库根目录脚本
+
+文档生成脚本与 Agent Loop 实验草稿（未纳入 app/）
+
+### 📄 `generate_project_code.py`
+
+**层级**：根目录脚本 · **职责**：生成 PROJECT_CODE.md。
+
+````python
+"""生成 PROJECT_CODE.md。
+
+扫描工作区源码，按分层结构输出「目录树 + 逐文件完整源码」文档。
+源码内容直接从源文件读取，不做任何改写。
+
+目录树与各章节的文件清单都由文件系统实时扫描得出：新增、重命名、
+删除的 `.py` 文件会在下次运行时自动进入文档，无需修改本脚本。
+未收录进任何章节的文件会落入文末的「未归类文件」兜底章节。
+
+用法:
+    python generate_project_code.py
+"""
+
+from __future__ import annotations
+
+import ast
+import sys
+from pathlib import Path
+from typing import NamedTuple
+
+ROOT = Path(__file__).resolve().parent
+OUTPUT = ROOT / "PROJECT_CODE.md"
+
+# 目录树中需要跳过的路径
+TREE_SKIP = {
+    ".git",
+    ".idea",
+    ".pytest_cache",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "node_modules",
+}
+
+# 目录树注释：key 为相对路径（使用 / 分隔），value 为注释文本
+TREE_NOTES = {
+    "alembic": "数据库迁移（Alembic）",
+    "alembic/versions": "迁移脚本",
+    "app": "应用主包",
+    "app/api": "── API 层 ──",
+    "app/api/v1": "v1 路由",
+    "app/core": "── 核心基础设施层 ──",
+    "app/db": "── 数据库层 ──",
+    "app/models": "── 数据模型层 ──",
+    "app/schemas": "── 数据契约层 ──",
+    "app/repositories": "── 数据访问层 ──",
+    "app/services": "── 业务服务层 ──",
+    "app/workflow": "── Workflow 层 ──",
+    "app/workflow/nodes": "Workflow 节点层",
+    "app/agents": "── Agent 层 ──",
+    "app/skills": "── Skill 能力层 ──",
+    "app/evidence": "── 证据与溯源层 ──",
+    "app/llm": "── LLM 能力层 ──",
+    "app/tools": "── 工具层 ──",
+    "app/tools/github": "GitHub API 工具",
+    "app/project_analysis": "── 项目分析层 ──",
+    "app/embeddings": "── AI 能力层 ──",
+    "app/vector_store": "── 向量存储层 ──",
+    "tests": "── 测试层 ──",
+    "test_reports": "测试产生的报告输出目录",
+    "a.py": "Agent Loop 实验草稿（未纳入 app/）",
+    "agent loop.py": "Agent Loop 草稿片段",
+    "alembic.ini": "Alembic 配置",
+    "pytest.ini": "Pytest 配置",
+    "requirements.txt": "依赖清单",
+    ".env": "本地环境变量（已 gitignore）",
+    ".env.example": "环境变量模板",
+    "generate_project_code.py": "本文档生成脚本",
+}
+
+# 章节定义：(章节标题, 章节说明, 层级名, [文件通配符])
+#
+# 通配符相对仓库根目录展开（`**` 可匹配零层及多层子目录）。章节按声明
+# 顺序匹配，每个文件归属第一个命中的章节；未被任何章节命中的文件会
+# 自动落入文末的「未归类文件」兜底章节，因此新增文件不会从文档中消失。
+class Section(NamedTuple):
+    title: str
+    blurb: str
+    layer: str
+    globs: list[str]
+
+
+SECTIONS: list[Section] = [
+    Section(
+        "二、入口层",
+        "FastAPI 应用装配：日志、异常处理、路由挂载；同时收录 `app` 包标记文件",
+        "入口层",
+        ["app/__init__.py", "app/main.py"],
+    ),
+    Section(
+        "三、API 层",
+        "HTTP 路由定义，负责接收请求、注入数据库 Session、调用 Service",
+        "API 层",
+        ["app/api/**/*.py"],
+    ),
+    Section(
+        "四、数据契约层（Schemas）",
+        "接口的请求体与响应体定义，被 API 层与 Service 层共同引用",
+        "数据契约层",
+        ["app/schemas/**/*.py"],
+    ),
+    Section(
+        "五、业务服务层（Services）",
+        "业务编排：校验入参、组合 DAO 与工具层、掌控事务边界",
+        "业务服务层",
+        ["app/services/**/*.py"],
+    ),
+    Section(
+        "六、数据访问层（Repositories）",
+        "表级别的数据访问对象（DAO），只负责 SQL 与对象映射",
+        "数据访问层",
+        ["app/repositories/**/*.py"],
+    ),
+    Section(
+        "七、数据模型层（Models）",
+        "SQLAlchemy ORM 表结构定义",
+        "数据模型层",
+        ["app/models/**/*.py"],
+    ),
+    Section(
+        "八、数据库层（DB）",
+        "ORM 基类与异步 Engine / Session 管理",
+        "数据库层",
+        ["app/db/**/*.py"],
+    ),
+    Section(
+        "九、核心基础设施层（Core）",
+        "配置、日志、异常体系与全局异常处理器，贯穿所有分层",
+        "核心基础设施层",
+        ["app/core/**/*.py"],
+    ),
+    Section(
+        "十、Workflow 层（Workflow）",
+        "自研工作流引擎：状态、上下文、节点、流转、重试、检查点与执行引擎",
+        "Workflow 层",
+        ["app/workflow/*.py"],
+    ),
+    Section(
+        "十一、Workflow 节点层（Workflow Nodes）",
+        "各类节点的具体实现：开始 / 结束 / 分析 / Agent / Tool / Skill / 人工审核",
+        "Workflow 节点层",
+        ["app/workflow/nodes/**/*.py"],
+    ),
+    Section(
+        "十二、Agent 层（Agents）",
+        "Agent 抽象接口、领域 Agent 实现、Agent 注册中心与运行环境；"
+        "Agent 只编排 Skill，不直接持有 Tool",
+        "Agent 层",
+        ["app/agents/**/*.py"],
+    ),
+    Section(
+        "十三、Skill 层（Skills）",
+        "业务能力层：组合多个 Tool 完成一次业务分析，"
+        "向 Agent 暴露统一的 execute(context, input_data)",
+        "Skill 层",
+        ["app/skills/**/*.py"],
+    ),
+    Section(
+        "十四、证据与溯源层（Evidence）",
+        "证据链领域层：Evidence / Claim / Citation 的存储与状态校验，"
+        "以及 Claim → Citation → Evidence → 源码位置的溯源构建",
+        "证据与溯源层",
+        ["app/evidence/**/*.py"],
+    ),
+    Section(
+        "十五、LLM 能力层（LLM）",
+        "大模型调用的抽象接口与 DeepSeek 实现",
+        "LLM 能力层",
+        ["app/llm/**/*.py"],
+    ),
+    Section(
+        "十六、工具层（Tools）",
+        "Tool 抽象基类与具体工具：文件读取、代码搜索、依赖分析、语义检索、"
+        "数据库查询与报告导出",
+        "工具层",
+        ["app/tools/**/*.py"],
+    ),
+    Section(
+        "十七、项目分析层（Project Analysis）",
+        "文档切分、向量索引构建",
+        "项目分析层",
+        ["app/project_analysis/**/*.py"],
+    ),
+    Section(
+        "十八、AI 能力层（Embeddings）",
+        "文本向量化的抽象接口与 Ollama 本地实现",
+        "AI 能力层",
+        ["app/embeddings/**/*.py"],
+    ),
+    Section(
+        "十九、向量存储层（Vector Store）",
+        "Qdrant Collection 管理、向量写入与相似度检索",
+        "向量存储层",
+        ["app/vector_store/**/*.py"],
+    ),
+    Section(
+        "二十、数据库迁移层（Alembic）",
+        "Alembic 异步运行环境与版本化迁移脚本",
+        "数据库迁移层",
+        ["alembic/**/*.py"],
+    ),
+    Section(
+        "二十一、测试层（Tests）",
+        "单元测试与集成测试",
+        "测试层",
+        ["tests/**/*.py"],
+    ),
+    Section(
+        "二十二、仓库根目录脚本",
+        "文档生成脚本与 Agent Loop 实验草稿（未纳入 app/）",
+        "根目录脚本",
+        ["*.py"],
+    ),
+]
+
+# 章节内的阅读顺序：命中此表的文件按表内顺序排列，其余文件按路径
+# 字母序排在其后。新增文件无需登记也会被收录，只是排在已知文件之后。
+PREFERRED_ORDER: list[str] = [
+    # 入口 / API / 契约
+    "app/__init__.py",
+    "app/main.py",
+    "app/api/v1/analysis.py",
+    "app/schemas/analysis.py",
+    "app/schemas/error.py",
+    "app/schemas/evidence.py",
+    # 服务 / DAO / 模型
+    "app/services/analysis_service.py",
+    "app/services/repository_service.py",
+    "app/services/evidence_service.py",
+    "app/repositories/__init__.py",
+    "app/repositories/repository.py",
+    "app/repositories/repository_basic.py",
+    "app/repositories/analysis_run.py",
+    "app/repositories/evidence.py",
+    "app/repositories/claim.py",
+    "app/repositories/citation.py",
+    "app/repositories/checkpoint.py",
+    "app/models/__init__.py",
+    "app/models/repository.py",
+    "app/models/analysis_run.py",
+    "app/models/analysis_task.py",
+    "app/models/evidence.py",
+    "app/models/claim.py",
+    "app/models/citation.py",
+    "app/models/checkpoint.py",
+    "app/db/base.py",
+    "app/db/session.py",
+    # 核心基础设施
+    "app/core/config.py",
+    "app/core/exceptions.py",
+    "app/core/error_handlers.py",
+    "app/core/logging.py",
+    # Workflow 引擎与节点
+    "app/workflow/state.py",
+    "app/workflow/context.py",
+    "app/workflow/node.py",
+    "app/workflow/transition.py",
+    "app/workflow/result.py",
+    "app/workflow/retry.py",
+    "app/workflow/checkpoint.py",
+    "app/workflow/exceptions.py",
+    "app/workflow/workflow.py",
+    "app/workflow/engine.py",
+    "app/workflow/nodes/base.py",
+    "app/workflow/nodes/start_node.py",
+    "app/workflow/nodes/end_node.py",
+    "app/workflow/nodes/analysis_node.py",
+    "app/workflow/nodes/agent_node.py",
+    "app/workflow/nodes/tool_node.py",
+    "app/workflow/nodes/skill_node.py",
+    "app/workflow/nodes/human_node.py",
+    # Agent / Skill / Evidence
+    "app/agents/base.py",
+    "app/agents/planner_agent.py",
+    "app/agents/repository_analysis_agent.py",
+    "app/agents/architecture_analysis_agent.py",
+    "app/agents/technology_analysis_agent.py",
+    "app/agents/evidence_analysis_agent.py",
+    "app/agents/critic_agent.py",
+    "app/agents/agent_registry.py",
+    "app/agents/agent_runtime.py",
+    "app/agents/researcher.py",
+    "app/skills/__init__.py",
+    "app/skills/base.py",
+    "app/skills/repository_analysis_skill.py",
+    "app/skills/architecture_analysis_skill.py",
+    "app/skills/technology_analysis_skill.py",
+    "app/skills/evidence_analysis_skill.py",
+    "app/skills/report_generation_skill.py",
+    "app/skills/registry.py",
+    "app/evidence/__init__.py",
+    "app/evidence/store.py",
+    "app/evidence/verifier.py",
+    "app/evidence/traceability.py",
+    # LLM / Tool / 项目分析 / 向量
+    "app/llm/base.py",
+    "app/llm/deepseek.py",
+    "app/tools/__init__.py",
+    "app/tools/base.py",
+    "app/tools/file_reader_tool.py",
+    "app/tools/dependency_analyzer_tool.py",
+    "app/tools/qdrant_search_tool.py",
+    "app/tools/mysql_query_tool.py",
+    "app/tools/report_export_tool.py",
+    "app/tools/github/github_repository_tool.py",
+    "app/tools/github/github_code_search_tool.py",
+    "app/tools/github/parser.py",
+    "app/project_analysis/code_chunker.py",
+    "app/project_analysis/project_indexer.py",
+    "app/project_analysis/repository_indexer.py",
+    "app/embeddings/base.py",
+    "app/embeddings/ollama.py",
+    "app/vector_store/qdrant.py",
+    # 迁移脚本（按 revision 产生顺序）
+    "alembic/env.py",
+    "alembic/versions/479571222143_create_initial_analysis_tables.py",
+    "alembic/versions/a9e1f4c2d8b7_add_evidence_claim_citation.py",
+    "alembic/versions/b0f6883a5f43_add_checkpoints.py",
+    # 仓库根目录
+    "generate_project_code.py",
+    "a.py",
+    "agent loop.py",
+]
+
+ORDER_INDEX: dict[str, int] = {
+    rel: index for index, rel in enumerate(PREFERRED_ORDER)
+}
+
+# 每个文件的「层级」与「职责」
+DESCRIPTIONS: dict[str, tuple[str, str]] = {
+    # 入口层
+    "app/main.py": (
+        "入口层",
+        "FastAPI 应用初始化、日志初始化、全局异常注册、路由挂载；文件末尾额外装配了 `WorkflowContext`（agents / tools / skills）的草稿代码",
+    ),
+    # API 层
+    "app/api/v1/analysis.py": (
+        "API 层",
+        "Analysis 相关的 HTTP 路由定义，负责接收请求、注入数据库 Session、调用 Service",
+    ),
+    # 数据契约层
+    "app/schemas/analysis.py": (
+        "数据契约层（Schemas）",
+        "Analysis 接口的请求体与响应体定义",
+    ),
+    "app/schemas/error.py": (
+        "数据契约层（Schemas）",
+        "统一错误响应结构，保证各接口返回一致的错误格式",
+    ),
+    "app/schemas/evidence.py": (
+        "数据契约层（Schemas）",
+        "Evidence / Claim / Citation 的请求体与响应体定义"
+        "（`EvidenceCreateRequest` / `ClaimCreateRequest` / `CitationCreateRequest` 等）",
+    ),
+    # 业务服务层
+    "app/services/analysis_service.py": (
+        "业务服务层（Services）",
+        "Analysis 任务的业务编排——校验 URL、创建或复用 Repository、创建 Analysis Run 并提交事务",
+    ),
+    "app/services/repository_service.py": (
+        "业务服务层（Services）",
+        "Repository 查询 / 创建 / GitHub 数据同步。依赖工具层的 `GitHubRepositoryTool` 与 `parse_github_url`",
+    ),
+    "app/services/evidence_service.py": (
+        "业务服务层（Services）",
+        "证据链业务编排：`create_evidence()` / `create_claim()` / `cite()` 落库，"
+        "`verify_evidence()` / `verify_claim()` 走校验器，"
+        "`get_claim_traceability()` 返回溯源链；调用链为 Service → Store → Verifier → Traceability → Repository",
+    ),
+    # 数据访问层
+    "app/repositories/__init__.py": (
+        "数据访问层（Repositories）",
+        "本层类的统一导出入口",
+    ),
+    "app/repositories/repository.py": (
+        "数据访问层（Repositories）",
+        "`repositories` 表的数据访问（**全字段版**，`create()` 内部 commit）",
+    ),
+    "app/repositories/repository_basic.py": (
+        "数据访问层（Repositories）",
+        "`repositories` 表的数据访问（**精简版**，`create()` 只 flush，事务交给调用方）",
+    ),
+    "app/repositories/analysis_run.py": (
+        "数据访问层（Repositories）",
+        "`analysis_runs` 表的数据访问",
+    ),
+    "app/repositories/evidence.py": (
+        "数据访问层（Repositories）",
+        "`evidences` 表的数据访问：`create()` / `get_by_id()` / `list_by_repository()`",
+    ),
+    "app/repositories/claim.py": (
+        "数据访问层（Repositories）",
+        "`claims` 表的数据访问：`create()` / `get_by_id()` / `list_by_run()`",
+    ),
+    "app/repositories/citation.py": (
+        "数据访问层（Repositories）",
+        "`citations` 表的数据访问：`create()` / `get_by_id()` / `get_by_claim()` / `exists()`",
+    ),
+    "app/repositories/checkpoint.py": (
+        "数据访问层（Repositories）",
+        "`checkpoints` 表的数据访问：`save()`（同 run 内自增版本号）/ "
+        "`get_latest()` / `delete()`，支撑 Workflow 的暂停与恢复",
+    ),
+    # 数据模型层
+    "app/models/__init__.py": (
+        "数据模型层（Models）",
+        "模型统一导出（同时供 Alembic 迁移发现全部表）",
+    ),
+    "app/models/repository.py": (
+        "数据模型层（Models）",
+        "`repositories` 表结构定义",
+    ),
+    "app/models/analysis_run.py": (
+        "数据模型层（Models）",
+        "`analysis_runs` 表结构定义",
+    ),
+    "app/models/analysis_task.py": (
+        "数据模型层（Models）",
+        "`analysis_tasks` 表结构定义",
+    ),
+    "app/models/evidence.py": (
+        "数据模型层（Models）",
+        "`evidences` 表结构定义（Phase 9）：一条可验证的证据，"
+        "带 source_type / source_url / file_path / line 等来源定位字段与 verification_status",
+    ),
+    "app/models/claim.py": (
+        "数据模型层（Models）",
+        "`claims` 表结构定义（Phase 9）：一次分析 Run 产出的结论，"
+        "通过 `citations` 关联到证据",
+    ),
+    "app/models/citation.py": (
+        "数据模型层（Models）",
+        "`citations` 表结构定义：Claim → Evidence 的引用关系，"
+        "对 (claim_id, evidence_id) 加唯一约束避免重复引用",
+    ),
+    "app/models/checkpoint.py": (
+        "数据模型层（Models）",
+        "`checkpoints` 表结构定义：Workflow 状态快照，"
+        "保存 run_id / checkpoint_version / current_node / state_data / outputs / "
+        "errors / retry_count / pause_reason / human_approved",
+    ),
+    # 数据库层
+    "app/db/base.py": (
+        "数据库层（DB）",
+        "SQLAlchemy ORM 声明式基类",
+    ),
+    "app/db/session.py": (
+        "数据库层（DB）",
+        "异步 Engine、Session 工厂，以及 FastAPI 的数据库依赖 `get_db`",
+    ),
+    # 核心基础设施层
+    "app/core/config.py": (
+        "核心基础设施层（Core）",
+        "从环境变量与 `.env` 加载全局配置，并生成 MySQL 异步连接串",
+    ),
+    "app/core/exceptions.py": (
+        "核心基础设施层（Core）",
+        "项目统一异常体系，按错误来源划分类型并绑定 HTTP 状态码与错误码",
+    ),
+    "app/core/error_handlers.py": (
+        "核心基础设施层（Core）",
+        "FastAPI 全局异常处理器，将业务异常与未预期异常转换为统一 JSON 响应",
+    ),
+    "app/core/logging.py": (
+        "核心基础设施层（Core）",
+        "全局日志初始化格式，以及带 `run_id` 的任务日志辅助函数",
+    ),
+    # Workflow 层
+    "app/workflow/state.py": (
+        "Workflow 层（Workflow）",
+        "Workflow 运行状态 `WorkflowState`：run_id、status、current_node、data、outputs、errors、retry_count",
+    ),
+    "app/workflow/context.py": (
+        "Workflow 层（Workflow）",
+        "Workflow 执行上下文 `WorkflowContext`：agents / tools / skills / config",
+    ),
+    "app/workflow/node.py": (
+        "Workflow 层（Workflow）",
+        "节点抽象 `BaseNode`，定义 `execute(state, context)`",
+    ),
+    "app/workflow/transition.py": (
+        "Workflow 层（Workflow）",
+        "节点流转关系 `Transition`：source / target / 可选条件函数",
+    ),
+    "app/workflow/result.py": (
+        "Workflow 层（Workflow）",
+        "节点执行结果 `NodeResult`：success / data / error",
+    ),
+    "app/workflow/retry.py": (
+        "Workflow 层（Workflow）",
+        "重试策略 `RetryPolicy`：max_retry 与 `can_retry()`",
+    ),
+    "app/workflow/checkpoint.py": (
+        "Workflow 层（Workflow）",
+        "状态保存与恢复 `CheckpointManager`，内存实现：按 run_id 用 `deepcopy` 保存 `WorkflowState` 快照",
+    ),
+    "app/workflow/exceptions.py": (
+        "Workflow 层（Workflow）",
+        "Workflow 自有异常：`WorkflowError`（继承 `ApplicationError`，可被全局异常处理器捕获）/ `NodeExecutionError`",
+    ),
+    "app/workflow/workflow.py": (
+        "Workflow 层（Workflow）",
+        "流程定义 `Workflow`：`add_node()` 注册节点、`add_transition()` 注册流转",
+    ),
+    "app/workflow/engine.py": (
+        "Workflow 层（Workflow）",
+        "执行引擎 `WorkflowEngine`：从 `start` 节点起循环执行，异常时记录 errors 并置 FAILED，正常结束置 COMPLETED；支持可选 `checkpoint` / `retry_policy`，`RetryableError` 按 `RetryPolicy` 重试，`PAUSED` 状态保存检查点后退出，`resume_from` 可从检查点恢复",
+    ),
+    # Workflow 节点层
+    "app/workflow/nodes/base.py": (
+        "Workflow 节点层",
+        "节点基类 `BaseNode`（与 `app/workflow/node.py` 中的同名类重复定义）",
+    ),
+    "app/workflow/nodes/start_node.py": (
+        "Workflow 节点层",
+        "开始节点 `StartNode`（name=`start`），把 status 置为 RUNNING",
+    ),
+    "app/workflow/nodes/end_node.py": (
+        "Workflow 节点层",
+        "结束节点 `EndNode`（name=`end`），把 status 置为 COMPLETED",
+    ),
+    "app/workflow/nodes/analysis_node.py": (
+        "Workflow 节点层",
+        "分析节点 `AnalysisNode`（name=`analysis`），当前为占位实现",
+    ),
+    "app/workflow/nodes/agent_node.py": (
+        "Workflow 节点层",
+        "Agent 节点 `AgentNode`，调用 `agent.run(state, context)` 并把结果追加到 `state.outputs`",
+    ),
+    "app/workflow/nodes/tool_node.py": (
+        "Workflow 节点层",
+        "Tool 节点 `ToolNode`，从 `state.data[node.name]` 取参后调用 `tool.execute(**args)`，并把结果追加到 `state.outputs`",
+    ),
+    "app/workflow/nodes/skill_node.py": (
+        "Workflow 节点层",
+        "Skill 节点 `SkillNode`，以 `skill.execute(context=context, input_data=state.data)` 调用 Skill，把结果同时写入 `state.data[node.name]` 与 `state.outputs`",
+    ),
+    "app/workflow/nodes/human_node.py": (
+        "Workflow 节点层",
+        "HITL 人工审核节点 `HumanNode`（name=`human_review`），把 status 置为 WAITING_HUMAN 以暂停流程",
+    ),
+    # Agent 层
+    "app/agents/base.py": (
+        "Agent 层（Agents）",
+        "Agent 抽象基类 `BaseAgent`：持有 `skill_registry`，提供 `get_skill(name)`，子类实现 `execute(context, input_data)`。Agent 不直接持有 Tool，只编排 Skill",
+    ),
+    "app/agents/planner_agent.py": (
+        "Agent 层（Agents）",
+        "任务规划 Agent `PlannerAgent`（name=`planner_agent`）。当前返回**固定**的分析任务清单（repository → architecture → technology → evidence → critic），后续 Phase 升级为 LLM 动态规划",
+    ),
+    "app/agents/repository_analysis_agent.py": (
+        "Agent 层（Agents）",
+        "仓库基础信息分析 Agent `RepositoryAnalysisAgent`（name=`repository_analysis_agent`），转调 `repository_analysis` Skill",
+    ),
+    "app/agents/architecture_analysis_agent.py": (
+        "Agent 层（Agents）",
+        "架构分析 Agent `ArchitectureAnalysisAgent`（name=`architecture_analysis_agent`），转调 `architecture_analysis` Skill",
+    ),
+    "app/agents/technology_analysis_agent.py": (
+        "Agent 层（Agents）",
+        "技术栈分析 Agent `TechnologyAnalysisAgent`（name=`technology_analysis_agent`），转调 `technology_analysis` Skill",
+    ),
+    "app/agents/evidence_analysis_agent.py": (
+        "Agent 层（Agents）",
+        "证据追踪 Agent `EvidenceAnalysisAgent`（name=`evidence_analysis_agent`），转调 `evidence_analysis` Skill",
+    ),
+    "app/agents/critic_agent.py": (
+        "Agent 层（Agents）",
+        "结果检查 Agent `CriticAgent`（name=`critic_agent`），检查 `input_data` 是否含 `repository` / `architecture` / `technology` 三项，返回 `{passed, errors}`",
+    ),
+    "app/agents/agent_registry.py": (
+        "Agent 层（Agents）",
+        "Agent 注册中心 `AgentRegistry`：按 `agent.name` 注册与获取；`create_agent_registry(skill_registry)` 在启动时构造全部 6 个领域 Agent",
+    ),
+    "app/agents/researcher.py": (
+        "Agent 层（Agents）",
+        "**空文件**（0 字节），预留的研究 Agent 占位",
+    ),
+    "app/agents/agent_runtime.py": (
+        "Agent 层（Agents）",
+        "Agent 运行环境 `AgentRuntime`：持有 `agent_registry`，`execute(agent_name, context, input_data)` 按名取 Agent 后转调其 `execute()`",
+    ),
+    # Skill 层
+    "app/skills/__init__.py": (
+        "Skill 层（Skills）",
+        "Skill 包入口，导出 `BaseSkill`",
+    ),
+    "app/skills/base.py": (
+        "Skill 层（Skills）",
+        "Skill 抽象基类 `BaseSkill`：`name` / `description` 标识与 `execute(context, input_data)`。Skill 组合多个 Tool 完成一次业务能力，例如 `RepositoryAnalysisSkill` = GitHub Tool + FileReader Tool + DependencyAnalyzer Tool",
+    ),
+    "app/skills/repository_analysis_skill.py": (
+        "Skill 层（Skills）",
+        "仓库分析能力 `RepositoryAnalysisSkill`（name=`repository_analysis`），依次调用 `github_repository` / `file_reader` / `dependency_analyzer` 三个 Tool，产出 `{repository, readme, dependencies}`",
+    ),
+    "app/skills/architecture_analysis_skill.py": (
+        "Skill 层（Skills）",
+        "架构分析能力 `ArchitectureAnalysisSkill`（name=`architecture_analysis`），用 `github_code_search` 搜出文件列表，再逐个用 `file_reader` 读取内容，产出 `{files, modules}`",
+    ),
+    "app/skills/technology_analysis_skill.py": (
+        "Skill 层（Skills）",
+        "技术栈分析能力 `TechnologyAnalysisSkill`（name=`technology_analysis`），调用 `dependency_analyzer` Tool，产出 `{technology_stack}`",
+    ),
+    "app/skills/evidence_analysis_skill.py": (
+        "Skill 层（Skills）",
+        "证据追踪能力 `EvidenceAnalysisSkill`（name=`evidence_analysis`），调用 `qdrant_search` Tool 做语义检索，产出 `{evidence}`",
+    ),
+    "app/skills/report_generation_skill.py": (
+        "Skill 层（Skills）",
+        "报告生成能力 `ReportGenerationSkill`（name=`report_generation`），聚合各 Skill 结果并交给 `report_export` Tool 导出；Tool 缺失时直接返回结构化结果",
+    ),
+    "app/skills/registry.py": (
+        "Skill 层（Skills）",
+        "Skill 注册中心 `SkillRegistry`（`register()` / `get(name)`）；`create_skill_registry()` 注册全部 5 个默认 Skill",
+    ),
+    # 证据与溯源层
+    "app/evidence/__init__.py": (
+        "证据与溯源层（Evidence）",
+        "证据链领域层的包标记文件；本层聚合 Evidence / Claim / Citation / Verification / Traceability 五块能力",
+    ),
+    "app/evidence/store.py": (
+        "证据与溯源层（Evidence）",
+        "领域存储 `EvidenceStore`：包装三个 Repository 完成证据对象的落库与关联校验"
+        "（`create_evidence()` / `create_claim()` / `create_citation()`），"
+        "并定义合法状态集合 `VERIFICATION_STATUSES`（VERIFIED / UNVERIFIED / CONFLICT）",
+    ),
+    "app/evidence/verifier.py": (
+        "证据与溯源层（Evidence）",
+        "校验器 `EvidenceVerifier`：校验状态取值合法性，"
+        "对 Evidence / Claim 执行 `verify_evidence()` / `verify_claim()` 状态流转",
+    ),
+    "app/evidence/traceability.py": (
+        "证据与溯源层（Evidence）",
+        "溯源服务 `TraceabilityService`：`get_claim_trace()` 沿 "
+        "Claim → Citation → Evidence → Source → File → Line 组装完整证据链",
+    ),
+    # LLM 能力层
+    "app/llm/base.py": (
+        "LLM 能力层（LLM）",
+        "LLM 抽象接口 `BaseLLM`，定义 `chat(messages)`",
+    ),
+    "app/llm/deepseek.py": (
+        "LLM 能力层（LLM）",
+        "DeepSeek 实现 `DeepSeekLLM`，包装 OpenAI 兼容客户端，固定 `model=\"deepseek-chat\"`，返回 `choices[0].message.content`",
+    ),
+    # 工具层
+    "app/tools/__init__.py": (
+        "工具层（Tools）",
+        "本层部分工具的统一导出入口（当前导出 `MySQLQueryTool` 与 `ReportExportTool`）",
+    ),
+    "app/tools/base.py": (
+        "工具层（Tools）",
+        "Tool 抽象基类 `BaseTool`，定义 `name` 与 `execute(**kwargs)`",
+    ),
+    "app/tools/file_reader_tool.py": (
+        "工具层（Tools）",
+        "GitHub 文件读取工具 `FileReaderTool`（name=`file_reader`），从 raw.githubusercontent.com 读取文件，`main` 取不到时自动回退 `master`",
+    ),
+    "app/tools/dependency_analyzer_tool.py": (
+        "工具层（Tools）",
+        "依赖分析工具 `DependencyAnalyzerTool`（name=`dependency_analyzer`），解析本地项目的 requirements.txt 与 docker-compose.yml，产出 frameworks / database / llm / embedding / deployment 清单",
+    ),
+    "app/tools/qdrant_search_tool.py": (
+        "工具层（Tools）",
+        "语义检索工具 `QdrantSearchTool`（name=`qdrant_search`），注入 `QdrantVectorStore`，按查询向量返回 Top-K 的 payload",
+    ),
+    "app/tools/mysql_query_tool.py": (
+        "工具层（Tools）",
+        "数据库查询工具 `MySQLQueryTool`（name=`mysql_query`），封装 AsyncSession 执行 SQL 并返回字典列表",
+    ),
+    "app/tools/report_export_tool.py": (
+        "工具层（Tools）",
+        "报告导出工具 `ReportExportTool`（name=`report_export`），把标题与正文写成 Markdown 文件",
+    ),
+    "app/tools/github/github_repository_tool.py": (
+        "工具层（Tools）",
+        "调用 GitHub REST API 获取仓库元数据（类名 `GitHubRepositoryTool`，name=`github_repository`）",
+    ),
+    "app/tools/github/github_code_search_tool.py": (
+        "工具层（Tools）",
+        "GitHub 源码搜索工具 `GitHubCodeSearchTool`（name=`github_code_search`），调用 Code Search API；该 API 必须认证，配置了 `GITHUB_TOKEN` 时自动带上 Authorization 头",
+    ),
+    "app/tools/github/parser.py": (
+        "工具层（Tools）",
+        "解析 GitHub 仓库 URL，返回 `(owner, name)` 元组",
+    ),
+    # 项目分析层
+    "app/project_analysis/code_chunker.py": (
+        "项目分析层（Project Analysis）",
+        "将 Markdown 文档按标题切分成语义 Chunk，过长章节再做滑窗切分（内部类名 `MarkdownChunker`）",
+    ),
+    "app/project_analysis/project_indexer.py": (
+        "项目分析层（Project Analysis）",
+        "文档索引编排——切分 → 逐块向量化 → 生成稳定 ID → 写入 Qdrant（内部类名 `DocumentIndexer`）",
+    ),
+    "app/project_analysis/repository_indexer.py": (
+        "项目分析层（Project Analysis）",
+        "拉取仓库 README → 生成向量 → 写入 Qdrant（整篇作为一个向量，不切分）；通过工具层 `FileReaderTool.read_file()` 读取 README",
+    ),
+    # AI 能力层
+    "app/embeddings/base.py": (
+        "AI 能力层（Embeddings）",
+        "Embedding Provider 的抽象接口定义",
+    ),
+    "app/embeddings/ollama.py": (
+        "AI 能力层（Embeddings）",
+        "基于 Ollama 的本地 Embedding 实现",
+    ),
+    # 向量存储层
+    "app/vector_store/qdrant.py": (
+        "向量存储层（Vector Store）",
+        "Qdrant Collection 管理、向量写入与相似度检索",
+    ),
+    # Alembic
+    "alembic/env.py": (
+        "数据库迁移层（Alembic）",
+        "Alembic 运行环境配置，绑定异步 Engine 与 ORM 元数据",
+    ),
+    "alembic/versions/479571222143_create_initial_analysis_tables.py": (
+        "数据库迁移层（Alembic）",
+        "初始建表迁移脚本，创建 `repositories` / `analysis_runs` / `analysis_tasks` 三张表",
+    ),
+    "alembic/versions/a9e1f4c2d8b7_add_evidence_claim_citation.py": (
+        "数据库迁移层（Alembic）",
+        "Phase 9 迁移脚本，创建证据链三张表 `evidences` / `claims` / `citations`",
+    ),
+    "alembic/versions/b0f6883a5f43_add_checkpoints.py": (
+        "数据库迁移层（Alembic）",
+        "Phase 10 迁移脚本，创建 Workflow 检查点表 `checkpoints`",
+    ),
+}
+
+# 测试层描述
+TEST_DESCRIPTIONS: dict[str, str] = {
+    "tests/test_agent_registry.py": "Agent 注册中心测试（创建 Skill 注册中心 → 构造 Agent 注册中心 → 断言 Agent 可注册与获取）",
+    "tests/test_agent_runtime.py": "Agent 运行环境测试（FakeRegistry + FakeAgent，断言 `execute()` 返回 Agent 结果；Agent 不存在时抛异常）",
+    "tests/test_analysis_api.py": "API 端到端测试（健康检查、创建任务、查询任务、参数校验、404 场景）",
+    "tests/test_chunker.py": "Markdown 切分器单元测试",
+    "tests/test_config.py": "配置加载单元测试",
+    "tests/test_database.py": "MySQL 连接连通性测试（需数据库可用）",
+    "tests/test_dependency_analyzer_tool.py": "依赖分析工具测试（解析本项目，断言 frameworks 字段存在）",
+    "tests/test_embedding.py": "Ollama Embedding 单元测试（需 Ollama 服务可用）",
+    "tests/test_embedding_qdrant.py": "Embedding → Qdrant 写入 → 语义检索集成测试",
+    "tests/test_evidence_agent.py": "EvidenceAnalysisAgent 测试（Fake Skill 注入，断言 Agent 编排结果）",
+    "tests/test_evidence_models.py": "证据链三张表模型测试（Evidence / Claim / Citation 字段与默认值）",
+    "tests/test_evidence_service.py": "EvidenceService 测试（空内容证据被拒、正常创建与校验路径）",
+    "tests/test_evidence_skill.py": "EvidenceAnalysisSkill 测试（Fake Tool，断言证据分析结果结构）",
+    "tests/test_evidence_store.py": "EvidenceStore 单元测试（非法状态抛 ValidationError、状态值大写归一化）",
+    "tests/test_evidence_verifier.py": "EvidenceVerifier 测试（合法状态流转成功、非法状态抛异常）",
+    "tests/test_exceptions.py": "异常体系单元测试",
+    "tests/test_github_client.py": "GitHub REST API 工具测试（需外网可用）",
+    "tests/test_github_code_search_tool.py": "GitHub 源码搜索工具测试（fake client + fake settings，覆盖返回结果与 token 认证头）",
+    "tests/test_github_parser.py": "GitHub URL 解析单元测试",
+    "tests/test_indexer.py": "DocumentIndexer 集成测试（Chunk → Embedding → Qdrant）",
+    "tests/test_mysql_query_tool.py": "MySQL 查询工具测试（FakeSession 模拟查询结果）",
+    "tests/test_phase10.py": "Phase 10 测试（HITL 设计闸门、HumanNode 触发暂停、手动暂停与恢复、Checkpoint 存取、可重试错误重试与重试上限、不可重试错误直接失败）",
+    "tests/test_qdrant.py": "Qdrant 向量存储层单元测试（造数据 → 检索 → 断言排序）",
+    "tests/test_qdrant_search_tool.py": "语义检索工具测试（FakeVectorStore 返回固定 payload）",
+    "tests/test_report_export_tool.py": "报告导出工具测试（写出 Markdown 到 test_reports/）",
+    "tests/test_repository_analysis_workflow.py": "Skill 驱动的 Workflow 集成测试（Mock Tool → RepositoryAnalysisSkill → SkillNode → Transition 串联执行）",
+    "tests/test_repository_crud.py": "数据访问层测试（创建、按 URL 查、按 ID 查）；运行前会清理同 URL 残留记录以保证可重复运行",
+    "tests/test_repository_pipeline.py": "端到端管道测试（Service 拉取仓库 → Indexer 建立索引）",
+    "tests/test_repository_service.py": "业务服务层测试（不存在时创建、存在时复用）",
+    "tests/test_repository_skill.py": "RepositoryAnalysisSkill 单元测试（Fake GitHub / FileReader / Dependency Tool，断言三路结果合并）",
+    "tests/test_retrieval.py": "语义检索测试（建立索引 → 用自然语言问题检索 → 断言命中）",
+    "tests/test_skill_base.py": "Skill 抽象基类测试（子类具备 `name` / `description` 且可实现 `execute()`）",
+    "tests/test_skill_node.py": "SkillNode 单元测试（FakeSkill，断言结果写入 `state.data[node.name]` 与 `state.outputs`）",
+    "tests/test_skill_registry.py": "Skill 注册中心测试（默认 5 个 Skill 是否注册成功并可获取）",
+    "tests/test_skill_workflow.py": "Skill 全链路 Workflow 测试（Start → SkillNode(RepositoryAnalysisSkill) → End，断言 status 与 data）",
+    "tests/test_tools.py": "工具层测试（`GitHubRepositoryTool` 取仓库、`FileReaderTool` 读文件）",
+    "tests/test_traceability.py": "可追溯性测试（造 Claim / Citation / Evidence 后，断言溯源链解析到源码文件与行号）",
+    "tests/test_workflow.py": "Workflow Engine 测试（顺序执行、失败捕获、可重试与不可重试、检查点存取、暂停与恢复）",
+}
+
+LAYER_DIAGRAM = """```
+                        ┌─────────────────────────┐
+    HTTP 请求 ─────────▶ │   API 层                │  app/api/v1/
+                        │   (路由 + 依赖注入)      │
+                        └───────────┬─────────────┘
+                                    │
+                                    ▼
+                        ┌─────────────────────────┐
+                        │   业务服务层             │  app/services/
+                        │   (业务编排)             │
+                        └───────┬─────────┬───────┘
+                                │         │
+                ┌───────────────┘         └───────────────┐
+                ▼                                         ▼
+    ┌───────────────────────┐               ┌─────────────────────────┐
+    │  数据访问层            │               │  工具层                  │
+    │  app/repositories/    │               │  app/tools/             │
+    └───────────┬───────────┘               └────────────┬────────────┘
+                │                                        │
+                ▼                                        ▼
+    ┌───────────────────────┐               ┌─────────────────────────┐
+    │  数据模型层            │               │  项目分析层              │
+    │  app/models/          │               │  app/project_analysis/  │
+    └───────────┬───────────┘               └───────────┬─────────────┘
+                │                                       │
+                ▼                                       ▼
+    ┌───────────────────────┐               ┌─────────────────────────┐
+    │  数据库层              │               │  AI 能力层 / 向量存储层  │
+    │  app/db/              │               │  app/embeddings/        │
+    │      → MySQL          │               │  app/vector_store/      │
+    └───────────────────────┘               │      → Qdrant           │
+                                            └─────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  Workflow 层  app/workflow/  +  app/workflow/nodes/             │
+    │  WorkflowEngine 按 Transition 驱动 Node 执行，共享 WorkflowState │
+    └───────────────┬─────────────────────────────┬───────────────────┘
+                    │                             │
+                    ▼                             ▼
+    ┌────────────────────────────────────────────────────────┐
+    │  Agent 层  app/agents/                                  │
+    │  BaseAgent / *Agent / AgentRegistry / AgentRuntime      │
+    └───────────────────────────┬────────────────────────────┘
+                                │  通过 SkillRegistry 取能力
+                                ▼
+    ┌────────────────────────────────────────────────────────┐
+    │  Skill 层  app/skills/                                  │
+    │  BaseSkill / *Skill / SkillRegistry                     │
+    │  一个 Skill 组合多个 Tool 完成一次业务能力               │
+    └───────────────────────────┬────────────────────────────┘
+                                │
+                                ▼
+    ┌───────────────────────────┐   ┌─────────────────────────┐
+    │  工具层  app/tools/        │   │  LLM 能力层  app/llm/    │
+    │  BaseTool / *Tool          │   │  BaseLLM / DeepSeekLLM  │
+    └───────────────────────────┘   └─────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  证据与溯源层  app/evidence/                                     │
+    │  EvidenceStore / EvidenceVerifier / TraceabilityService         │
+    │  证据链：Claim ─▶ Citation ─▶ Evidence ─▶ Source(file:line)      │
+    └────────────────────────────────┬────────────────────────────────┘
+                                     │  经 app/repositories/ 落 MySQL
+                                     ▼
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  Workflow 状态持久化  app/workflow/checkpoint.py                 │
+    │  WorkflowState ⇄ app/models/checkpoint.py（checkpoints 表）      │
+    │  支撑暂停 / 恢复 / 重试                                           │
+    └─────────────────────────────────────────────────────────────────┘
+
+    调用链：Workflow ─▶ Node ─▶ Agent ─▶ Skill ─▶ Tool
+
+    贯穿各层：app/core/（配置、日志、异常、异常处理器）
+    数据契约：app/schemas/（被 API 层与 Service 层共同引用）
+```"""
+
+KNOWN_ISSUES = """1. **`BaseNode` 重复定义**
+   - `app/workflow/node.py::BaseNode` 与 `app/workflow/nodes/base.py::BaseNode` 是两个完全独立的同名类
+   - 当前 `StartNode` / `EndNode` / `AnalysisNode` 继承前者，`AgentNode` / `ToolNode` / `SkillNode` / `HumanNode` 继承后者
+
+2. **`app/main.py` 的模块级 `WorkflowContext` 装配不完整**
+   - 该文件现已可正常导入（`from app import tools` 与 `create_skill_registry` 的名称都已对上）
+   - 但文件末尾在**模块级**构造 `WorkflowContext`：`tools=tools` 传入的是 `app.tools` **模块对象**，
+     而 `WorkflowContext.tools` 的注解是 `dict`；`agents={}` 也是空的，没有装配任何 Agent
+   - 这段装配写在模块顶层且未接入任何启动流程，仍属于草稿
+
+3. **两个同名 `RepositoryRepository` 类**
+   - `app/repositories/repository.py` — 全字段版，`create()` 内部 `commit()` + `refresh()`
+   - `app/repositories/repository_basic.py` — 精简版，`create()` 只 `flush()`，事务由调用方掌控
+   - 当前引用：`repository_service.py` 与 `test_repository_crud.py` 用全字段版；`analysis_service.py` 与 `repositories/__init__.py` 用精简版
+
+4. **`WorkflowError` 有两份且错误码不同**
+   - `app/core/exceptions.py::WorkflowError` — error_code 为 `WORKFLOW_ERROR`
+   - `app/workflow/exceptions.py::WorkflowError` — 现继承 `ApplicationError`，error_code 为 `APPLICATION_ERROR`
+   - 两者不是同一个类，各自的错误码不同
+
+5. **文件名与类名不一致**
+   - `app/project_analysis/code_chunker.py` 内部类为 `MarkdownChunker`
+   - `app/project_analysis/project_indexer.py` 内部类为 `DocumentIndexer`
+
+6. **`app/vector_store/qdrant.py` 的 `insert()` 方法**
+   - 与 `upsert()` 功能重叠，仅 `RepositoryIndexer` 调用；`uuid` 导入专为此方法服务
+   - 其 `PointStruct` 的 `id` 使用 UUID 字符串，而 `upsert()` 使用整数，两种 ID 类型混用
+
+7. **两份重复的 GitHub URL 解析实现**
+   - `app/services/analysis_service.py::_parse_github_url` — 基于字符串切分，不做域名校验
+   - `app/tools/github/parser.py::parse_github_url` — 基于 `urlparse`，校验 `netloc == "github.com"` 并剥离 `.git` 后缀
+
+8. **Workflow 引擎的行为边界**
+   - 暂停判定已扩展为 `PAUSED` / `WAITING_HUMAN` / `WAITING_DESIGN` 三态
+     （`WorkflowEngine.PAUSE_STATUSES`），`HumanNode` 触发的暂停现在能被引擎识别
+   - 主循环 `while current_node:` 仍没有最大步数保护，编排中出现环会一直执行
+   - `retry_count` 是 `state` 上的全局预算，不是每个节点独立计数
+
+9. **未配置 `GITHUB_TOKEN` 时 Code Search 仍不可用**
+   - `GitHubCodeSearchTool` 已支持自动带 `Authorization` 头，但 GitHub Code Search API 强制认证
+   - 未配置 token 时真实调用会返回 401
+
+10. **Phase 6 完成标准尚未全部达成**
+   - 实施文档 §9.7 要求每个 Tool 具备「输入 Schema / 输出 Schema / 异常处理 / 日志 / 测试」
+   - 当前 7 个 Tool 均未定义 Pydantic Schema，也均未接入 `app/core/logging.py`
+
+11. **Agent 接口已换代，`AgentNode` 未同步**
+   - `BaseAgent` 已从 `run(state, context)` 改为 `execute(context, input_data)`，并改为持有 `skill_registry`
+   - 全部 6 个领域 Agent 都已按新接口实现，`AgentRuntime.execute(agent_name, context, input_data)` 也已适配
+   - 但 `app/workflow/nodes/agent_node.py` 仍在调用 `self.agent.run(state, context)`，属于旧接口残留
+
+12. **Skill 内硬编码 Tool 名与实参不匹配**
+   - 各 Skill 直接以 `context.tools["github_repository"]` 之类取工具，键名写死，缺键即 `KeyError`，没有降级或报错提示
+   - `ArchitectureAnalysisSkill` 调用 `file_reader.execute(**input_data, path=file)`，但 `FileReaderTool.execute` 的形参是 `file_path`；且 `github_code_search` 需要 `keyword` / `repo`，与 `input_data` 不一定对得上
+   - `ReportGenerationSkill` 调用 `exporter.execute(data=input_data)`，而 `ReportExportTool.execute` 的形参是 `title` / `content` / `filename`
+
+13. **Skill 输出键名与 `CriticAgent` 校验字段不一致**
+   - `SkillNode` 把每个 Skill 的结果写入 `state.data[node.name]`，即 `repository_analysis` / `architecture_analysis` / `technology_analysis`
+   - `CriticAgent` 检查的却是 `repository` / `architecture` / `technology`，两者对不上，`passed` 会恒为 `False`
+   - `PlannerAgent` 返回的 `tasks` 列表目前也没有任何代码消费，Workflow 尚未真正按计划驱动 Agent 执行
+
+14. **证据链能力尚未对外暴露**
+   - `app/evidence/`（Store / Verifier / Traceability）、`EvidenceService`
+     与 `app/schemas/evidence.py` 均已实现并有测试覆盖
+   - 但 `app/api/` 下没有任何证据相关路由，`app/main.py` 也未装配 `EvidenceService`，
+     目前只能由测试或脚本直接调用，尚未形成可访问的接口"""
+
+
+
+def note_for(rel: str, is_dir: bool) -> str:
+    """返回目录树中某一项的注释。"""
+
+    if rel in TREE_NOTES:
+        return TREE_NOTES[rel]
+
+    if not is_dir and rel.endswith("__init__.py"):
+        if (ROOT / rel).stat().st_size == 0:
+            return "(空)"
+
+    return ""
+
+
+def auto_duty(rel: str) -> str:
+    """未人工登记的文件：取模块文档字符串的首行作为职责。"""
+
+    try:
+        tree = ast.parse((ROOT / rel).read_text(encoding="utf-8"))
+    except (SyntaxError, UnicodeDecodeError, OSError):
+        return ""
+
+    for line in (ast.get_docstring(tree) or "").splitlines():
+        if line.strip():
+            return line.strip()
+
+    return ""
+
+
+def sort_key(rel: str) -> tuple[int, str]:
+    """章节内排序：先按 PREFERRED_ORDER，表外文件按路径字母序排在后面。"""
+
+    return (ORDER_INDEX.get(rel, len(PREFERRED_ORDER)), rel)
+
+
+def source_files() -> list[str]:
+    """工作区内参与归档的全部 `.py` 文件（相对路径，已排序）。"""
+
+    found = []
+
+    for path in ROOT.rglob("*.py"):
+        rel = path.relative_to(ROOT)
+
+        if any(part in TREE_SKIP for part in rel.parts):
+            continue
+
+        found.append(rel.as_posix())
+
+    return sorted(found, key=sort_key)
+
+
+def expand(pattern: str) -> set[str]:
+    """把章节通配符展开为相对路径集合（`**` 递归匹配任意层子目录）。"""
+
+    return {
+        path.relative_to(ROOT).as_posix()
+        for path in ROOT.glob(pattern)
+        if path.is_file()
+    }
+
+
+def classify(files: list[str]) -> list[tuple[Section, list[str]]]:
+    """按章节声明顺序分配文件；未命中的文件汇总进末尾的兜底章节。"""
+
+    owned: dict[str, Section] = {}
+
+    for section in SECTIONS:
+        for pattern in section.globs:
+            for rel in expand(pattern):
+                if rel in files:
+                    owned.setdefault(rel, section)
+
+    grouped: list[tuple[Section, list[str]]] = []
+
+    for section in SECTIONS:
+        member = [rel for rel in files if owned.get(rel) is section]
+
+        if member:
+            grouped.append((section, member))
+
+    orphan = [rel for rel in files if rel not in owned]
+
+    if orphan:
+        grouped.append(
+            (
+                Section(
+                    "二十三、未归类文件",
+                    "未命中任何章节通配符的文件。出现本章节说明仓库里有了"
+                    "尚未归档的新目录，可在 `SECTIONS` 中为它补一个章节。",
+                    "未归类",
+                    [],
+                ),
+                orphan,
+            )
+        )
+
+    return grouped
+
+
+def render_tree() -> str:
+    """从文件系统实时渲染目录树。"""
+
+    lines: list[tuple[str, str]] = []
+
+    def walk(directory: Path, prefix: str) -> None:
+        entries = sorted(
+            (
+                entry
+                for entry in directory.iterdir()
+                if entry.name not in TREE_SKIP
+                and not entry.name.endswith(".pyc")
+            ),
+            key=lambda entry: (entry.is_file(), entry.name.lower()),
+        )
+
+        for index, entry in enumerate(entries):
+            last = index == len(entries) - 1
+
+            connector = "└── " if last else "├── "
+            display = entry.name + ("/" if entry.is_dir() else "")
+
+            rel = entry.relative_to(ROOT).as_posix()
+
+            lines.append(
+                (
+                    f"{prefix}{connector}{display}",
+                    note_for(rel, entry.is_dir()),
+                )
+            )
+
+            if entry.is_dir():
+                walk(
+                    entry,
+                    prefix + ("    " if last else "│   "),
+                )
+
+    walk(ROOT, "")
+
+    width = max(len(left) for left, _ in lines) + 3
+
+    rendered = []
+
+    for left, note in lines:
+        if note:
+            rendered.append(f"{left.ljust(width)}# {note}")
+        else:
+            rendered.append(left)
+
+    return "\n".join(rendered)
+
+
+def fence_for(text: str) -> str:
+    """返回不会与正文冲突的代码围栏。"""
+
+    longest = 0
+    current = 0
+
+    for char in text:
+        if char == "`":
+            current += 1
+            longest = max(longest, current)
+        else:
+            current = 0
+
+    return "`" * max(3, longest + 1)
+
+
+def empty_files() -> list[str]:
+    """列出工作区内所有 0 字节的 .py 文件。"""
+
+    found = []
+
+    for path in sorted(ROOT.rglob("*.py")):
+        rel = path.relative_to(ROOT)
+
+        if any(part in TREE_SKIP for part in rel.parts):
+            continue
+
+        if path.stat().st_size == 0:
+            found.append(rel.as_posix())
+
+    return found
+
+
+def build() -> str:
+    """组装完整文档。"""
+
+    empties = set(empty_files())
+    blocks = 0
+    body: list[str] = []
+    grouped = classify(source_files())
+
+    for section, members in grouped:
+        body.append(f"## {section.title}")
+        body.append("")
+        body.append(section.blurb)
+        body.append("")
+
+        for rel in members:
+            path = ROOT / rel
+
+            layer, duty = DESCRIPTIONS.get(rel) or (
+                section.layer,
+                TEST_DESCRIPTIONS.get(rel) or auto_duty(rel) or "（未标注）",
+            )
+
+            body.append(f"### 📄 `{rel}`")
+            body.append("")
+            body.append(f"**层级**：{layer} · **职责**：{duty}")
+            body.append("")
+
+            if rel in empties:
+                body.append("> 该文件为 **0 字节** 空文件，无源码内容。")
+                body.append("")
+                continue
+
+            source = path.read_text(encoding="utf-8").rstrip("\n")
+            fence = fence_for(source)
+
+            body.append(f"{fence}python")
+            body.append(source)
+            body.append(fence)
+            body.append("")
+
+            blocks += 1
+
+    # 附录
+    appendix = [
+        "---",
+        "",
+        "## 二十三、附录",
+        "",
+        "### 空文件清单",
+        "",
+        f"以下 {len(empties)} 个文件均为 **0 字节**，"
+        "其中绝大多数是用于将目录声明为 Python 包的标记文件：",
+        "",
+        "| 文件路径 | 说明 |",
+        "|---|---|",
+    ]
+
+    for rel in sorted(empties):
+        if rel.endswith("__init__.py"):
+            note = "包标记文件"
+        elif rel.startswith("app/agents/"):
+            note = "预留占位，尚未实现"
+        else:
+            note = "空文件"
+
+        appendix.append(f"| `{rel}` | {note} |")
+
+    appendix += [
+        "",
+        "### 配置文件",
+        "",
+        "| 文件 | 说明 |",
+        "|---|---|",
+        "| `alembic.ini` | Alembic 迁移配置，`script_location = %(here)s/alembic`，"
+        "`sqlalchemy.url` 留空由 `env.py` 动态注入 |",
+        "| `pytest.ini` | `pythonpath = .`、`asyncio_mode = auto` |",
+        "| `requirements.txt` | 依赖清单 |",
+        "| `.env` / `.env.example` | 环境变量（`.env` 已 gitignore） |",
+        "",
+        "### 已知注意事项",
+        "",
+        KNOWN_ISSUES,
+        "",
+        "---",
+        "",
+        f"*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成："
+        f"共收录 **{blocks} 段代码**（非空文件），"
+        f"另有 {len(empties)} 个 0 字节空文件，见上方「空文件清单」。*",
+        "",
+    ]
+
+    header = [
+        "# AIPI Platform 项目代码总览",
+        "",
+        "> AI Agent GitHub Project Intelligence Platform",
+        ">",
+        "> 本文档按**分层**整理项目中每个 `.py` 文件的完整源码，"
+        "每段代码均标注所属层级与文件路径。",
+        "> 代码内容由脚本从源文件直接读取生成，与仓库当前状态一致。",
+        "",
+        "---",
+        "",
+        "## 一、项目目录",
+        "",
+        "```",
+        "AIPI Platform/",
+        "│",
+        render_tree(),
+        "```",
+        "",
+        "### 分层调用关系",
+        "",
+        LAYER_DIAGRAM,
+        "",
+        "---",
+        "",
+    ]
+
+    return "\n".join(header + body + appendix)
+
+
+def main() -> None:
+    OUTPUT.write_text(
+        build(),
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    print(f"已生成 {OUTPUT}")
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+````
+
+### 📄 `a.py`
+
+**层级**：根目录脚本 · **职责**：（未标注）
+
+```python
+
+import json
+import os
+
+from dotenv import load_dotenv
+from openai import OpenAI
+
+
+# ============================================================
+# 1. 加载环境变量
+# ============================================================
+
+load_dotenv()
+
+api_key = os.getenv("DEEPSEEK_API_KEY")
+
+if not api_key:
+    raise ValueError(
+        "没有找到 DEEPSEEK_API_KEY，请检查 .env 文件"
+    )
+
+
+# ============================================================
+# 2. 创建 DeepSeek Client
+# ============================================================
+
+client = OpenAI(
+    api_key=api_key,
+    base_url="https://api.deepseek.com"
+)
+
+
+# ============================================================
+# 3. 定义真正的 Python Tool
+# ============================================================
+
+def calculator(a: float, b: float, operation: str) -> float:
+    """
+    一个最简单的计算器 Tool。
+    """
+
+    if operation == "add":
+        return a + b
+
+    elif operation == "subtract":
+        return a - b
+
+    elif operation == "multiply":
+        return a * b
+
+    elif operation == "divide":
+        if b == 0:
+            raise ValueError("除数不能为 0")
+
+        return a / b
+
+    else:
+        raise ValueError(
+            f"不支持的操作: {operation}"
+        )
+
+
+# ============================================================
+# 4. 告诉 DeepSeek：有哪些 Tool 可以使用
+# ============================================================
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "calculator",
+            "description": (
+                "执行数学计算。"
+                "支持加法、减法、乘法和除法。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "a": {
+                        "type": "number",
+                        "description": "第一个数字"
+                    },
+                    "b": {
+                        "type": "number",
+                        "description": "第二个数字"
+                    },
+                    "operation": {
+                        "type": "string",
+                        "enum": [
+                            "add",
+                            "subtract",
+                            "multiply",
+                            "divide"
+                        ],
+                        "description": "计算操作"
+                    }
+                },
+                "required": [
+                    "a",
+                    "b",
+                    "operation"
+                ]
+            }
+        }
+    }
+]
+
+
+# ============================================================
+# 5. Tool 注册表
+# ============================================================
+
+TOOL_REGISTRY = {
+    "calculator": calculator
+}
+
+
+# ============================================================
+# 6. 手写 Agent Loop
+# ============================================================
+
+def agent_loop(user_input: str) -> str:
+
+    # --------------------------------------------------------
+    # 保存整个对话历史
+    # --------------------------------------------------------
+
+    messages = [
+        {
+            "role": "user",
+            "content": user_input
+        }
+    ]
+
+    # --------------------------------------------------------
+    # Agent 最大循环次数
+    # --------------------------------------------------------
+
+    max_iterations = 10
+
+    for iteration in range(max_iterations):
+
+        print(
+            f"\n========== Agent Loop "
+            f"{iteration + 1} =========="
+        )
+
+        # ----------------------------------------------------
+        # ① 调用 DeepSeek
+        # ----------------------------------------------------
+
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=messages,
+            tools=tools,
+            tool_choice="auto"
+        )
+
+        # ----------------------------------------------------
+        # ② 获取 DeepSeek 返回的 message
+        # ----------------------------------------------------
+
+        message = response.choices[0].message
+
+        # ----------------------------------------------------
+        # ③ 把 assistant message 放进历史
+        # ----------------------------------------------------
+
+        messages.append(message)
+
+        # ----------------------------------------------------
+        # ④ 判断 DeepSeek 有没有要求调用 Tool
+        # ----------------------------------------------------
+
+        if not message.tool_calls:
+
+            print("\n[Agent] DeepSeek 不需要 Tool")
+
+            return message.content
+
+        # ----------------------------------------------------
+        # ⑤ DeepSeek 要求调用 Tool
+        # ----------------------------------------------------
+
+        for tool_call in message.tool_calls:
+
+            tool_name = tool_call.function.name
+
+            arguments_json = tool_call.function.arguments
+
+            print(
+                f"\n[Agent] 请求调用 Tool: {tool_name}"
+            )
+
+            print(
+                f"[Agent] Tool 参数: {arguments_json}"
+            )
+
+            # ------------------------------------------------
+            # ⑥ 解析 JSON 参数
+            # ------------------------------------------------
+
+            try:
+
+                arguments = json.loads(
+                    arguments_json
+                )
+
+            except json.JSONDecodeError:
+
+                raise ValueError(
+                    f"Tool 参数不是合法 JSON: "
+                    f"{arguments_json}"
+                )
+
+            # ------------------------------------------------
+            # ⑦ 根据 Tool 名字找到 Python 函数
+            # ------------------------------------------------
+
+            tool = TOOL_REGISTRY.get(tool_name)
+
+            if tool is None:
+
+                tool_result = (
+                    f"错误：不存在 Tool "
+                    f"{tool_name}"
+                )
+
+            else:
+
+                try:
+
+                    # ----------------------------------------
+                    # ⑧ 真正执行 Python Tool
+                    # ----------------------------------------
+
+                    result = tool(**arguments)
+
+                    tool_result = str(result)
+
+                except Exception as e:
+
+                    tool_result = (
+                        f"Tool 执行失败：{str(e)}"
+                    )
+
+            print(
+                f"[Tool] 执行结果: {tool_result}"
+            )
+
+            # ------------------------------------------------
+            # ⑨ 把 Tool 结果返回给 DeepSeek
+            # ------------------------------------------------
+
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": tool_result
+                }
+            )
+
+    # --------------------------------------------------------
+    # 超过最大循环次数
+    # --------------------------------------------------------
+
+    raise RuntimeError(
+        "Agent 超过最大循环次数"
+    )
+
+
+# ============================================================
+# 7. 程序入口
+# ============================================================
+
+if __name__ == "__main__":
+
+    user_input = input(
+        "请输入你的问题："
+    )
+
+    answer = agent_loop(user_input)
+
+    print("\n==============================")
+    print("最终回答：")
+    print(answer)
+```
+
+### 📄 `agent loop.py`
+
+**层级**：根目录脚本 · **职责**：（未标注）
+
+```python
+import json
+import os
+
+from dotenv import load_dotenv
+from openai import OpenAI
+
+#加载环境变量
+
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
+API_SECRET = os.getenv("API_SECRET")
+```
+
+## 二十三、未归类文件
+
+未命中任何章节通配符的文件。出现本章节说明仓库里有了尚未归档的新目录，可在 `SECTIONS` 中为它补一个章节。
+
+### 📄 `app/context/__init__.py`
+
+**层级**：未归类 · **职责**：Context Manager 层。
+
+```python
+"""Context Manager 层。"""
+
+from app.context.manager import (
+    ContextItem,
+    ContextManager,
+)
+
+
+__all__ = [
+    "ContextItem",
+    "ContextManager",
+]
+```
+
+### 📄 `app/context/manager.py`
+
+**层级**：未归类 · **职责**：Context Manager。
+
+```python
+"""Context Manager。
+
+负责：
+
+Retrieval
+    ↓
+Context Filtering
+    ↓
+Ranking
+    ↓
+Context Assembly
+"""
+
+
+import re
+
+from dataclasses import dataclass
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+)
+
+
+@dataclass(frozen=True)
+class ContextItem:
+    """一个可供 Agent 使用的上下文片段。"""
+
+    source: str
+
+    content: str
+
+    score: float = 0.0
+
+    metadata: dict[str, Any] | None = None
+
+
+class ContextManager:
+    """
+    把 Memory、Workflow State
+    和语义检索结果组装成受控上下文。
+    """
+
+    def __init__(
+        self,
+        memory_manager,
+        retriever: (
+            Callable[
+                [str],
+                Awaitable[
+                    list[dict[str, Any]]
+                ],
+            ]
+            | None
+        ) = None,
+        *,
+        max_items: int = 12,
+        max_chars: int = 12000,
+    ) -> None:
+
+        self.memory_manager = (
+            memory_manager
+        )
+
+        self.retriever = retriever
+
+        self.max_items = max_items
+
+        self.max_chars = max_chars
+
+    async def build(
+        self,
+        *,
+        run_id: str,
+        repository_id: int,
+        query: str,
+        workflow_state: Any | None = None,
+        user_instruction: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        构建结构化 Context
+        和最终文本 Context。
+        """
+
+        memory = (
+            await self.memory_manager.retrieve(
+                run_id=run_id,
+                repository_id=repository_id,
+                query=query,
+            )
+        )
+
+        items = self._memory_items(
+            memory
+        )
+
+        # 可选语义检索。
+        #
+        # 如果接入 Qdrant，
+        # retriever 会返回相关源码片段。
+        if (
+            self.retriever is not None
+            and query.strip()
+        ):
+            retrieved = await self.retriever(
+                query
+            )
+
+            items.extend(
+                self._retrieval_items(
+                    retrieved
+                )
+            )
+
+        # Filter + Rank + Deduplicate
+        items = self.filter_and_rank(
+            items,
+            query,
+        )
+
+        # Context Assembly
+        text = self.assemble(
+            query=query,
+            items=items,
+            workflow_state=workflow_state,
+            user_instruction=user_instruction,
+        )
+
+        return {
+            "query": query,
+            "items": [
+                {
+                    "source": item.source,
+                    "content": item.content,
+                    "score": item.score,
+                    "metadata": (
+                        item.metadata or {}
+                    ),
+                }
+                for item in items
+            ],
+            "text": text,
+        }
+
+    def filter_and_rank(
+        self,
+        items: list[ContextItem],
+        query: str,
+    ) -> list[ContextItem]:
+        """
+        过滤空内容、去重，
+        并按照关键词相关性排序。
+        """
+
+        keywords = re.findall(
+            r"[A-Za-z0-9_]+|[\u4e00-\u9fff]{2,}",
+            query.lower(),
+        )
+
+        scored: list[ContextItem] = []
+
+        for item in items:
+
+            content = item.content.strip()
+
+            if not content:
+                continue
+
+            lowered = content.lower()
+
+            keyword_score = sum(
+                1
+                for keyword in keywords
+                if keyword in lowered
+            )
+
+            score = (
+                item.score
+                + keyword_score
+            )
+
+            scored.append(
+                ContextItem(
+                    source=item.source,
+                    content=content,
+                    score=score,
+                    metadata=item.metadata,
+                )
+            )
+
+        scored.sort(
+            key=lambda item: item.score,
+            reverse=True,
+        )
+
+        # 去重
+        unique: list[ContextItem] = []
+
+        seen: set[str] = set()
+
+        for item in scored:
+
+            key = item.content
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+
+            unique.append(item)
+
+            if len(unique) >= self.max_items:
+                break
+
+        return unique
+
+    def assemble(
+        self,
+        *,
+        query: str,
+        items: list[ContextItem],
+        workflow_state: Any | None = None,
+        user_instruction: str | None = None,
+    ) -> str:
+        """把 Context 组装成 Agent 可使用的文本。"""
+
+        sections = [
+            "## Current Question",
+            query.strip(),
+        ]
+
+        if user_instruction:
+
+            sections.extend(
+                [
+                    "## User Instruction",
+                    user_instruction.strip(),
+                ]
+            )
+
+        if workflow_state is not None:
+
+            sections.extend(
+                [
+                    "## Workflow State",
+                    self._stringify(
+                        workflow_state
+                    ),
+                ]
+            )
+
+        if items:
+
+            sections.append(
+                "## Retrieved Context"
+            )
+
+            for index, item in enumerate(
+                items,
+                start=1,
+            ):
+
+                sections.extend(
+                    [
+                        (
+                            f"### Context {index} "
+                            f"[{item.source}]"
+                        ),
+                        item.content,
+                    ]
+                )
+
+        text = "\n\n".join(
+            section
+            for section in sections
+            if section.strip()
+        )
+
+        if len(text) <= self.max_chars:
+            return text
+
+        return (
+            text[
+                : self.max_chars
+            ].rstrip()
+            + "\n...[context truncated]"
+        )
+
+    @staticmethod
+    def _memory_items(
+        memory: dict[str, Any],
+    ) -> list[ContextItem]:
+        """把 Memory 转换成 ContextItem。"""
+
+        items: list[ContextItem] = []
+
+        run_memory = memory.get(
+            "run_memory"
+        )
+
+        if run_memory:
+
+            if run_memory.get(
+                "question"
+            ):
+
+                items.append(
+                    ContextItem(
+                        source=(
+                            "run_memory.question"
+                        ),
+                        content=str(
+                            run_memory[
+                                "question"
+                            ]
+                        ),
+                        score=5.0,
+                    )
+                )
+
+            if run_memory.get(
+                "research_plan"
+            ):
+
+                items.append(
+                    ContextItem(
+                        source=(
+                            "run_memory.research_plan"
+                        ),
+                        content=str(
+                            run_memory[
+                                "research_plan"
+                            ]
+                        ),
+                        score=4.0,
+                    )
+                )
+
+            if run_memory.get(
+                "final_report"
+            ):
+
+                items.append(
+                    ContextItem(
+                        source=(
+                            "run_memory.final_report"
+                        ),
+                        content=str(
+                            run_memory[
+                                "final_report"
+                            ]
+                        ),
+                        score=2.5,
+                    )
+                )
+
+            for task in run_memory.get(
+                "task_results",
+                [],
+            )[-8:]:
+
+                items.append(
+                    ContextItem(
+                        source=(
+                            "run_memory.task_result"
+                        ),
+                        content=str(task),
+                        score=3.0,
+                        metadata={
+                            "task_id": task.get(
+                                "id"
+                            ),
+                            "task_type": task.get(
+                                "task_type"
+                            ),
+                        },
+                    )
+                )
+
+            for output in run_memory.get(
+                "agent_outputs",
+                [],
+            )[-5:]:
+
+                items.append(
+                    ContextItem(
+                        source=(
+                            "run_memory.agent_output"
+                        ),
+                        content=str(
+                            output
+                        ),
+                        score=3.0,
+                    )
+                )
+
+            for evidence in run_memory.get(
+                "evidences",
+                [],
+            )[-10:]:
+
+                items.append(
+                    ContextItem(
+                        source=(
+                            "run_memory.evidence"
+                        ),
+                        content=str(
+                            evidence
+                        ),
+                        score=4.0,
+                        metadata={
+                            "evidence_id": (
+                                evidence.get(
+                                    "id"
+                                )
+                            ),
+                            "file_path": (
+                                evidence.get(
+                                    "file_path"
+                                )
+                            ),
+                            "line_start": (
+                                evidence.get(
+                                    "line_start"
+                                )
+                            ),
+                            "line_end": (
+                                evidence.get(
+                                    "line_end"
+                                )
+                            ),
+                        },
+                    )
+                )
+
+        for memory_item in memory.get(
+            "project_memory",
+            [],
+        ):
+
+            items.append(
+                ContextItem(
+                    source=(
+                        "project_memory"
+                    ),
+                    content=str(
+                        memory_item
+                    ),
+                    score=2.0,
+                    metadata={
+                        "run_id": (
+                            memory_item.get(
+                                "run_id"
+                            )
+                        ),
+                    },
+                )
+            )
+
+        return items
+
+    @staticmethod
+    def _retrieval_items(
+        results: list[dict[str, Any]],
+    ) -> list[ContextItem]:
+        """
+        把 Qdrant / 其他 Retriever
+        的结果转换成 ContextItem。
+        """
+
+        items: list[ContextItem] = []
+
+        for result in results:
+
+            content = (
+                result.get("content")
+                or result.get("text")
+                or result.get("payload")
+                or ""
+            )
+
+            items.append(
+                ContextItem(
+                    source=(
+                        "semantic_retrieval"
+                    ),
+                    content=str(
+                        content
+                    ),
+                    score=float(
+                        result.get(
+                            "score",
+                            1.0,
+                        )
+                    ),
+                    metadata=result,
+                )
+            )
+
+        return items
+
+    @staticmethod
+    def _stringify(
+        value: Any,
+    ) -> str:
+
+        if isinstance(
+            value,
+            str,
+        ):
+            return value
+
+        return str(value)
+```
+
+### 📄 `app/context/retriever.py`
+
+**层级**：未归类 · **职责**：Context 语义检索适配器。
+
+```python
+"""Context 语义检索适配器。"""
+
+from typing import Any
+
+
+class QdrantContextRetriever:
+    """
+    把现有 Embedding + QdrantSearchTool
+    适配成 Context Retriever。
+
+    不修改现有 Tool / Vector Store。
+    """
+
+    def __init__(
+        self,
+        embedding_provider,
+        search_tool,
+        *,
+        limit: int = 5,
+    ) -> None:
+
+        self.embedding_provider = (
+            embedding_provider
+        )
+
+        self.search_tool = search_tool
+
+        self.limit = limit
+
+    async def __call__(
+        self,
+        query: str,
+    ) -> list[dict[str, Any]]:
+        """
+        将自然语言问题转换为向量，
+        然后调用 Qdrant Search Tool。
+        """
+
+        query_vector = (
+            self.embedding_provider.embed(
+                query
+            )
+        )
+
+        results = await (
+            self.search_tool.execute(
+                query_vector=query_vector,
+                limit=self.limit,
+            )
+        )
+
+        return [
+            (
+                result
+                if isinstance(
+                    result,
+                    dict,
+                )
+                else {
+                    "content": result
+                }
+            )
+            for result in results
+        ]
+```
+
+### 📄 `app/memory/__init__.py`
+
+**层级**：未归类 · **职责**：Memory 层。
+
+```python
+"""Memory 层。"""
+
+from app.memory.manager import MemoryManager
+from app.memory.project_memory import ProjectMemory
+from app.memory.run_memory import RunMemory
+
+
+__all__ = [
+    "MemoryManager",
+    "ProjectMemory",
+    "RunMemory",
+]
+```
+
+### 📄 `app/memory/manager.py`
+
+**层级**：未归类 · **职责**：Memory Manager。
+
+```python
+"""Memory Manager。"""
+
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.memory.project_memory import (
+    ProjectMemory,
+)
+from app.memory.run_memory import (
+    RunMemory,
+)
+
+
+class MemoryManager:
+    """统一管理 Run Memory 与 Project Memory。"""
+
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
+        self.run_memory = RunMemory(
+            session
+        )
+
+        self.project_memory = ProjectMemory(
+            session
+        )
+
+    async def get_run_memory(
+        self,
+        run_id: str,
+    ) -> dict[str, Any] | None:
+        """获取当前 Run 的记忆。"""
+
+        return await self.run_memory.load(
+            run_id
+        )
+
+    async def get_project_memory(
+        self,
+        repository_id: int,
+        *,
+        run_id: str | None = None,
+        query: str | None = None,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+        """获取并按当前问题过滤项目历史记忆。"""
+
+        memories = await self.project_memory.load(
+            repository_id,
+            exclude_run_id=run_id,
+            limit=max(
+                limit * 2,
+                limit,
+            ),
+        )
+
+        return (
+            self.project_memory.filter_by_query(
+                memories,
+                query,
+                limit=limit,
+            )
+        )
+
+    async def retrieve(
+        self,
+        *,
+        run_id: str,
+        repository_id: int,
+        query: str | None = None,
+        project_memory_limit: int = 5,
+    ) -> dict[str, Any]:
+        """
+        一次性取得 Context Manager
+        所需的 Memory。
+        """
+
+        run_memory = (
+            await self.get_run_memory(
+                run_id
+            )
+        )
+
+        project_memory = (
+            await self.get_project_memory(
+                repository_id,
+                run_id=run_id,
+                query=query,
+                limit=project_memory_limit,
+            )
+        )
+
+        return {
+            "run_memory": run_memory,
+            "project_memory": project_memory,
+        }
+```
+
+### 📄 `app/memory/project_memory.py`
+
+**层级**：未归类 · **职责**：Project Memory。
+
+```python
+"""Project Memory。"""
+
+import re
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.analysis_run import AnalysisRun
+from app.models.analysis_task import AnalysisTask
+
+
+class ProjectMemory:
+    """
+    读取同一 Repository 的历史分析结果。
+
+    Project Memory 第一版只做历史 Run 检索，
+    不引入独立长期记忆表。
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
+        self.session = session
+
+    async def load(
+        self,
+        repository_id: int,
+        *,
+        exclude_run_id: str | None = None,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+        """加载指定 Repository 最近的历史分析。"""
+
+        query = (
+            select(AnalysisRun)
+            .where(
+                AnalysisRun.repository_id
+                == repository_id
+            )
+            .order_by(
+                AnalysisRun.created_at.desc()
+            )
+            .limit(
+                max(limit, 1)
+            )
+        )
+
+        result = await self.session.execute(
+            query
+        )
+
+        runs = list(
+            result.scalars().all()
+        )
+
+        if exclude_run_id is not None:
+            runs = [
+                run
+                for run in runs
+                if run.id != exclude_run_id
+            ]
+
+        if not runs:
+            return []
+
+        run_ids = [
+            run.id
+            for run in runs
+        ]
+
+        task_result = await self.session.execute(
+            select(AnalysisTask)
+            .where(
+                AnalysisTask.run_id.in_(
+                    run_ids
+                )
+            )
+            .order_by(
+                AnalysisTask.created_at
+            )
+        )
+
+        tasks = list(
+            task_result.scalars().all()
+        )
+
+        tasks_by_run: dict[
+            str,
+            list[dict[str, Any]]
+        ] = {
+            run_id: []
+            for run_id in run_ids
+        }
+
+        for task in tasks:
+            tasks_by_run.setdefault(
+                task.run_id,
+                [],
+            ).append(
+                {
+                    "task_type": (
+                        task.task_type
+                    ),
+                    "status": (
+                        task.status
+                    ),
+                    "output": (
+                        task.output
+                    ),
+                    "error": (
+                        task.error
+                    ),
+                }
+            )
+
+        return [
+            {
+                "run_id": run.id,
+                "question": run.question,
+                "status": run.status,
+                "current_node": (
+                    run.current_node
+                ),
+                "created_at": (
+                    run.created_at.isoformat()
+                ),
+                "tasks": (
+                    tasks_by_run.get(
+                        run.id,
+                        [],
+                    )
+                ),
+            }
+            for run in runs
+        ]
+
+    @staticmethod
+    def filter_by_query(
+        memories: list[dict[str, Any]],
+        query: str | None,
+        *,
+        limit: int = 5,
+    ) -> list[dict[str, Any]]:
+        """
+        按关键词相关性过滤历史记忆。
+        """
+
+        if not query:
+            return memories[:limit]
+
+        keywords = set(
+            re.findall(
+                r"[A-Za-z0-9_]+|[\u4e00-\u9fff]{2,}",
+                query.lower(),
+            )
+        )
+
+        if not keywords:
+            return memories[:limit]
+
+        scored: list[
+            tuple[int, dict[str, Any]]
+        ] = []
+
+        for memory in memories:
+            text = str(memory).lower()
+
+            score = sum(
+                1
+                for keyword in keywords
+                if keyword in text
+            )
+
+            if score > 0:
+                scored.append(
+                    (
+                        score,
+                        memory,
+                    )
+                )
+
+        scored.sort(
+            key=lambda item: item[0],
+            reverse=True,
+        )
+
+        return [
+            memory
+            for _, memory
+            in scored[:limit]
+        ]
+```
+
+### 📄 `app/memory/run_memory.py`
+
+**层级**：未归类 · **职责**：Research Run Memory。
+
+```python
+"""Research Run Memory。"""
+
+from typing import Any
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.analysis_run import AnalysisRun
+from app.models.analysis_task import AnalysisTask
+from app.repositories.checkpoint import CheckpointRepository
+from app.repositories.evidence import EvidenceRepository
+
+
+class RunMemory:
+    """
+    读取一次 Analysis Run 的短期 / 情景记忆。
+
+    Phase 11 不新增 Memory 专用表，
+    而是复用已经存在的：
+
+    analysis_runs
+    analysis_tasks
+    checkpoints
+    evidences
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
+        self.session = session
+
+        self.checkpoint_repository = (
+            CheckpointRepository(session)
+        )
+
+        self.evidence_repository = (
+            EvidenceRepository(session)
+        )
+
+    async def load(
+        self,
+        run_id: str,
+    ) -> dict[str, Any] | None:
+        """加载一次 Run 的完整记忆快照。"""
+
+        result = await self.session.execute(
+            select(AnalysisRun).where(
+                AnalysisRun.id == run_id
+            )
+        )
+
+        run = result.scalar_one_or_none()
+
+        if run is None:
+            return None
+
+        repository = await self.session.get(
+            __import__(
+                "app.models.repository",
+                fromlist=["Repository"],
+            ).Repository,
+            run.repository_id,
+        )
+
+        task_result = await self.session.execute(
+            select(AnalysisTask)
+            .where(
+                AnalysisTask.run_id == run_id
+            )
+            .order_by(
+                AnalysisTask.created_at
+            )
+        )
+
+        tasks = list(
+            task_result.scalars().all()
+        )
+
+        checkpoint = (
+            await self.checkpoint_repository.get_latest(
+                run_id
+            )
+        )
+
+        evidences = []
+
+        if repository is not None:
+            evidences = (
+                await self.evidence_repository
+                .list_by_repository(
+                    repository.id
+                )
+            )
+
+        checkpoint_data = (
+            checkpoint.data
+            if checkpoint
+            else {}
+        )
+
+        return {
+            # 当前 Run
+            "run_id": run.id,
+            "question": run.question,
+            "status": run.status,
+            "current_node": run.current_node,
+
+            # Repository
+            "repository": (
+                {
+                    "id": repository.id,
+                    "url": repository.url,
+                    "owner": repository.owner,
+                    "name": repository.name,
+                    "description": repository.description,
+                    "language": repository.language,
+                }
+                if repository is not None
+                else None
+            ),
+
+            # Research Plan
+            "research_plan": (
+                checkpoint_data.get(
+                    "research_plan"
+                )
+            ),
+
+            # Phase 14/12 可以继续使用
+            # 这里提前预留最终报告。
+            "final_report": (
+                checkpoint_data.get(
+                    "final_report"
+                )
+            ),
+
+            # Agent 输出
+            "agent_outputs": (
+                checkpoint.outputs
+                if checkpoint
+                else []
+            ),
+
+            # Task 结果
+            "task_results": [
+                {
+                    "id": task.id,
+                    "task_type": task.task_type,
+                    "status": task.status,
+                    "input": task.input,
+                    "output": task.output,
+                    "error": task.error,
+                    "retry_count": task.retry_count,
+                }
+                for task in tasks
+            ],
+
+            # Evidence
+            #
+            # 第一版只保留最近 20 条，
+            # 避免 Context 无限膨胀。
+            "evidences": [
+                {
+                    "id": evidence.id,
+                    "source_type": (
+                        evidence.source_type
+                    ),
+                    "file_path": (
+                        evidence.file_path
+                    ),
+                    "line_start": (
+                        evidence.line_start
+                    ),
+                    "line_end": (
+                        evidence.line_end
+                    ),
+                    "content": evidence.content,
+                    "verification_status": (
+                        evidence.verification_status
+                    ),
+                }
+                for evidence in evidences[-20:]
+            ],
+
+            # Workflow Checkpoint
+            "workflow_state": (
+                {
+                    "status": checkpoint.status,
+                    "current_node": (
+                        checkpoint.current_node
+                    ),
+                    "data": checkpoint.data,
+                    "errors": checkpoint.errors,
+                    "retry_count": (
+                        checkpoint.retry_count
+                    ),
+                    "pause_reason": (
+                        checkpoint.pause_reason
+                    ),
+                    "human_approved": (
+                        checkpoint.human_approved
+                    ),
+                    "checkpoint_version": (
+                        checkpoint.checkpoint_version
+                    ),
+                }
+                if checkpoint is not None
+                else None
+            ),
+        }
+```
+
 ---
 
-## 二十、附录
+## 二十三、附录
 
 ### 空文件清单
 
-以下 16 个文件均为 **0 字节**，其中绝大多数是用于将目录声明为 Python 包的标记文件：
+以下 15 个文件均为 **0 字节**，其中绝大多数是用于将目录声明为 Python 包的标记文件：
 
 | 文件路径 | 说明 |
 |---|---|
 | `app/__init__.py` | 包标记文件 |
-| `app/agents/critic.py` | 预留占位，尚未实现 |
 | `app/agents/researcher.py` | 预留占位，尚未实现 |
 | `app/api/__init__.py` | 包标记文件 |
 | `app/api/v1/__init__.py` | 包标记文件 |
@@ -5416,9 +14902,11 @@ async def test_pause_and_resume():
    - `app/workflow/node.py::BaseNode` 与 `app/workflow/nodes/base.py::BaseNode` 是两个完全独立的同名类
    - 当前 `StartNode` / `EndNode` / `AnalysisNode` 继承前者，`AgentNode` / `ToolNode` / `SkillNode` / `HumanNode` 继承后者
 
-2. **Skill 抽象缺失**
-   - 仓库中还没有 `app/skills/` 包（`requirements.txt` 注释已描述该适配层）
-   - `SkillNode` 已就位并调用 `skill.execute(state)`，等待 Skill 抽象基类补齐
+2. **`app/main.py` 的模块级 `WorkflowContext` 装配不完整**
+   - 该文件现已可正常导入（`from app import tools` 与 `create_skill_registry` 的名称都已对上）
+   - 但文件末尾在**模块级**构造 `WorkflowContext`：`tools=tools` 传入的是 `app.tools` **模块对象**，
+     而 `WorkflowContext.tools` 的注解是 `dict`；`agents={}` 也是空的，没有装配任何 Agent
+   - 这段装配写在模块顶层且未接入任何启动流程，仍属于草稿
 
 3. **两个同名 `RepositoryRepository` 类**
    - `app/repositories/repository.py` — 全字段版，`create()` 内部 `commit()` + `refresh()`
@@ -5443,8 +14931,9 @@ async def test_pause_and_resume():
    - `app/tools/github/parser.py::parse_github_url` — 基于 `urlparse`，校验 `netloc == "github.com"` 并剥离 `.git` 后缀
 
 8. **Workflow 引擎的行为边界**
-   - 只把 `state.status == "PAUSED"` 视为暂停；`HumanNode` 设置的 `WAITING_HUMAN` 不会让引擎停下
-   - 循环没有最大步数保护，编排中出现环会一直执行
+   - 暂停判定已扩展为 `PAUSED` / `WAITING_HUMAN` / `WAITING_DESIGN` 三态
+     （`WorkflowEngine.PAUSE_STATUSES`），`HumanNode` 触发的暂停现在能被引擎识别
+   - 主循环 `while current_node:` 仍没有最大步数保护，编排中出现环会一直执行
    - `retry_count` 是 `state` 上的全局预算，不是每个节点独立计数
 
 9. **未配置 `GITHUB_TOKEN` 时 Code Search 仍不可用**
@@ -5455,6 +14944,27 @@ async def test_pause_and_resume():
    - 实施文档 §9.7 要求每个 Tool 具备「输入 Schema / 输出 Schema / 异常处理 / 日志 / 测试」
    - 当前 7 个 Tool 均未定义 Pydantic Schema，也均未接入 `app/core/logging.py`
 
+11. **Agent 接口已换代，`AgentNode` 未同步**
+   - `BaseAgent` 已从 `run(state, context)` 改为 `execute(context, input_data)`，并改为持有 `skill_registry`
+   - 全部 6 个领域 Agent 都已按新接口实现，`AgentRuntime.execute(agent_name, context, input_data)` 也已适配
+   - 但 `app/workflow/nodes/agent_node.py` 仍在调用 `self.agent.run(state, context)`，属于旧接口残留
+
+12. **Skill 内硬编码 Tool 名与实参不匹配**
+   - 各 Skill 直接以 `context.tools["github_repository"]` 之类取工具，键名写死，缺键即 `KeyError`，没有降级或报错提示
+   - `ArchitectureAnalysisSkill` 调用 `file_reader.execute(**input_data, path=file)`，但 `FileReaderTool.execute` 的形参是 `file_path`；且 `github_code_search` 需要 `keyword` / `repo`，与 `input_data` 不一定对得上
+   - `ReportGenerationSkill` 调用 `exporter.execute(data=input_data)`，而 `ReportExportTool.execute` 的形参是 `title` / `content` / `filename`
+
+13. **Skill 输出键名与 `CriticAgent` 校验字段不一致**
+   - `SkillNode` 把每个 Skill 的结果写入 `state.data[node.name]`，即 `repository_analysis` / `architecture_analysis` / `technology_analysis`
+   - `CriticAgent` 检查的却是 `repository` / `architecture` / `technology`，两者对不上，`passed` 会恒为 `False`
+   - `PlannerAgent` 返回的 `tasks` 列表目前也没有任何代码消费，Workflow 尚未真正按计划驱动 Agent 执行
+
+14. **证据链能力尚未对外暴露**
+   - `app/evidence/`（Store / Verifier / Traceability）、`EvidenceService`
+     与 `app/schemas/evidence.py` 均已实现并有测试覆盖
+   - 但 `app/api/` 下没有任何证据相关路由，`app/main.py` 也未装配 `EvidenceService`，
+     目前只能由测试或脚本直接调用，尚未形成可访问的接口
+
 ---
 
-*本文档由 `generate_project_code.py` 从工作区源文件直接读取生成：共收录 **83 段代码**（`app/` + `alembic/` + `tests/` 中的非空 `.py` 文件）。另有 16 个 0 字节空文件，见上方「空文件清单」。*
+*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **142 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*

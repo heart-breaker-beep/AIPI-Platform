@@ -1,24 +1,15 @@
 """
-Workflow节点基类。
+Workflow 节点基类兼容入口。
+
+项目只保留：
+    app.workflow.node.BaseNode
+
+这里通过重新导出保持旧代码兼容。
 """
 
-from abc import ABC, abstractmethod
+from app.workflow.node import BaseNode
 
-class BaseNode(ABC):
-    """
-    所有Workflow节点的父类。
-    """
-    # 节点名称
-    name: str
 
-    @abstractmethod
-    async def execute(
-        self,
-        state,
-        context
-    ):
-        """
-        执行节点。
-        """
-
-        pass
+__all__ = [
+    "BaseNode",
+]

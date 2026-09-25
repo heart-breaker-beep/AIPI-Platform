@@ -1,23 +1,29 @@
 """
-Workflow异常定义。
+Workflow 层异常定义。
+
+统一使用：
+
+    app.core.exceptions.WorkflowError
+
+避免项目中出现两个不同的 WorkflowError。
 """
 
-from app.core.exceptions import (
-    ApplicationError,
-)
+from app.core.exceptions import WorkflowError
 
-
-class WorkflowError(ApplicationError):
-    """
-    Workflow基础异常。
-
-    继承 ApplicationError，使其能被全局异常处理器识别。
-    """
-    pass
 
 class NodeExecutionError(WorkflowError):
     """
-    Node执行失败异常。
+    Workflow Node 执行异常。
+
+    继承统一的 WorkflowError，
+    因此可以被 WorkflowError / ApplicationError
+    统一捕获。
     """
 
     pass
+
+
+__all__ = [
+    "WorkflowError",
+    "NodeExecutionError",
+]

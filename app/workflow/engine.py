@@ -1,29 +1,41 @@
 """
-Workflow执行引擎。
+Workflow 执行引擎。
+
+Phase 12：
+    - 顺序执行
+    - Checkpoint
+    - Pause
+    - Resume
+    - Retry
+    - Human Gate
 """
+
 
 from app.core.exceptions import (
     NonRetryableError,
     RetryableError,
 )
 from app.workflow.retry import RetryPolicy
+from app.workflow.state import WorkflowStatus
 
 
 class WorkflowEngine:
+    """自研 Workflow 执行引擎。"""
 
-    # 暂停状态标识
-    PAUSED_STATUS = "PAUSED"
+    PAUSE_STATUSES = {
+        WorkflowStatus.PAUSED,
+        WorkflowStatus.WAITING_HUMAN,
+        WorkflowStatus.WAITING_DESIGN,
+    }
 
     def __init__(
         self,
         checkpoint=None,
         retry_policy=None,
-    ):
+    ) -> None:
 
-        # 检查点管理器，可选
         self.checkpoint = checkpoint
 
-        # 节点重试策略
         self.retry_policy = (
             retry_policy
             or RetryPolicy()
@@ -37,7 +49,14 @@ class WorkflowEngine:
         resume_from=None,
     ):
         """
-        执行Workflow。
+        执行 Workflow。
+
+        resume_from：
+            从 Checkpoint 恢复，并执行当前节点的下一个节点。
+
+        state：
+            如果 state 本身已经存在 current_node，
+            则用于 Retry 当前节点。
         """
 
         if resume_from is not None:
@@ -46,10 +65,29 @@ class WorkflowEngine:
                 resume_from
             )
 
-            # 当前节点已执行过，从它的下一节点继续
-            current_node = self._get_next_node(
-                workflow,
-                state,
+            if state is None:
+                raise ValueError(
+                    f"Checkpoint not found: {resume_from}"
+                )
+
+            current_node = (
+                self._get_next_node(
+                    workflow,
+                    state,
+                    state.current_node,
+                )
+            )
+
+            state.resume()
+
+        elif (
+            state is not None
+            and state.current_node
+        ):
+
+            # Retry：
+            # 从失败节点重新执行。
+            current_node = (
                 state.current_node
             )
 
@@ -59,80 +97,81 @@ class WorkflowEngine:
 
         while current_node:
 
-
-            # 获取节点
-            node = workflow.nodes[
+            node = workflow.nodes.get(
                 current_node
-            ]
+            )
 
+            if node is None:
 
-            # 更新状态
+                state.errors.append(
+                    f"Node not found: {current_node}"
+                )
+
+                state.status = (
+                    WorkflowStatus.FAILED
+                )
+
+                await self._save(state)
+
+                return state
+
             state.current_node = (
                 current_node
             )
 
             try:
 
-                # 执行节点
                 state = await self._execute_node(
                     node,
                     state,
-                    context
+                    context,
                 )
-            except Exception as e:
+
+            except Exception as error:
 
                 state.errors.append(
-                    str(e)
+                    str(error)
                 )
 
                 state.status = (
-                    "FAILED"
+                    WorkflowStatus.FAILED
                 )
-
-                return state
-
-            # 暂停：保存检查点后退出，等待 Resume
-            if state.status == self.PAUSED_STATUS:
 
                 await self._save(state)
 
                 return state
 
-            # 每执行完一个节点保存一次检查点
+            if state.status in self.PAUSE_STATUSES:
+
+                await self._save(state)
+
+                return state
+
             await self._save(state)
 
-            # 查找下一节点
+
             current_node = (
                 self._get_next_node(
                     workflow,
                     state,
-                    current_node
+                    current_node,
                 )
             )
 
-
-
         state.status = (
-            "COMPLETED"
+            WorkflowStatus.COMPLETED
         )
 
+        await self._save(state)
 
         return state
-
-
 
     async def _execute_node(
         self,
         node,
         state,
-        context
+        context,
     ):
-        """
-        执行节点。
-
-        可重试异常按 RetryPolicy 重试，
-        不可重试异常直接抛出。
-        """
 
         while True:
 
@@ -140,83 +179,132 @@ class WorkflowEngine:
 
                 return await node.execute(
                     state,
-                    context
+                    context,
                 )
 
             except NonRetryableError:
 
                 raise
 
-            except RetryableError as e:
+            except RetryableError as error:
 
-                if not self.retry_policy.can_retry(
-                    state.retry_count
+                if not self.retry_policy.should_retry(
+                    error,
+                    state.retry_count,
                 ):
+                    raise
 
-                    raise e
+                state.increase_retry()
+                state.start_retry()
 
-                state.retry_count += 1
+                await self._save(state)
 
+                state.status = (
+                    WorkflowStatus.ANALYZING
+                )
 
+    async def pause(
+        self,
+        state,
+        reason: str = "manual_pause",
+    ):
+
+        state.pause(
+            reason=reason
+        )
+
+        await self._save(state)
+
+        return state
+
+    async def approve(
+        self,
+        state,
+    ):
+
+        state.approve()
+
+        await self._save(state)
+
+        return state
+
+    async def resume(
+        self,
+        workflow,
+        context,
+        run_id: str,
+    ):
+
+        return await self.run(
+            workflow,
+            None,
+            context,
+            resume_from=run_id,
+        )
+
+    async def retry(
+        self,
+        workflow,
+        context,
+        run_id: str,
+    ):
+
+        state = await self._restore(
+            run_id
+        )
+
+        if state is None:
+            raise ValueError(
+                f"Checkpoint not found: {run_id}"
+            )
+
+        state.status = (
+            WorkflowStatus.RETRYING
+        )
+
+        state.errors = []
+
+        await self._save(state)
+
+        return await self.run(
+            workflow,
+            state,
+            context,
+        )
 
     async def _save(
         self,
-        state
+        state,
     ):
-        """
-        保存检查点，未配置时跳过。
-        """
 
         if self.checkpoint is None:
-
             return
 
         await self.checkpoint.save(
             state
         )
 
-
-
     async def _restore(
         self,
-        run_id
+        run_id: str,
     ):
-        """
-        从检查点恢复状态。
-        """
 
         if self.checkpoint is None:
-
             raise ValueError(
-                "resume_from requires a checkpoint manager"
+                "Checkpoint manager is required"
             )
 
-        state = await self.checkpoint.load(
+        return await self.checkpoint.load(
             run_id
         )
-
-        if state is None:
-
-            raise ValueError(
-                f"Checkpoint not found: {run_id}"
-            )
-
-        # 恢复后重新进入运行态
-        state.status = "RUNNING"
-
-        return state
-
-
 
     def _get_next_node(
         self,
         workflow,
         state,
-        current
+        current,
     ):
-        """
-        获取下一执行节点。
-        """
+
         for transition in workflow.transitions:
 
             if transition.source != current:
@@ -230,7 +318,5 @@ class WorkflowEngine:
                     continue
 
             return transition.target
-
-
 
         return None

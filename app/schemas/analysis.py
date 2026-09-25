@@ -14,9 +14,16 @@ class AnalysisCreateRequest(BaseModel):
         description="GitHub repository URL",
     )
 
+    question: str | None = Field(
+        default=None,
+        max_length=5000,
+        description="本次项目分析问题，用于 Run Memory 和 Context Manager",
+    )
+
 
 class AnalysisResponse(BaseModel):
     """分析任务的基础响应信息。"""
+
     run_id: str
     status: str
     repo_url: str

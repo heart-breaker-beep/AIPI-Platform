@@ -1,4 +1,4 @@
-"""Analysis API 的请求和响应数据模型。"""
+"""Analysis API 请求与响应模型。"""
 
 from datetime import datetime
 
@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class AnalysisCreateRequest(BaseModel):
-    """创建项目分析任务时的请求参数。"""
+    """创建项目分析任务。"""
 
     repo_url: str = Field(
         ...,
@@ -17,14 +17,33 @@ class AnalysisCreateRequest(BaseModel):
     question: str | None = Field(
         default=None,
         max_length=5000,
-        description="本次项目分析问题，用于 Run Memory 和 Context Manager",
+        description="本次项目分析问题",
     )
 
 
 class AnalysisResponse(BaseModel):
-    """分析任务的基础响应信息。"""
+    """Analysis Run 当前状态。"""
 
     run_id: str
+
     status: str
+
     repo_url: str
+
+    question: str | None = None
+
+    current_node: str | None = None
+
+    progress: int = 0
+
     created_at: datetime
+
+
+class AnalysisReportResponse(BaseModel):
+    """最终项目分析报告。"""
+
+    run_id: str
+
+    status: str
+
+    report: dict | None = None

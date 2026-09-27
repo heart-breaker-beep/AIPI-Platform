@@ -2,22 +2,19 @@
 Planner 计划执行节点。
 
 负责：
-    1. 读取 PlannerAgent 生成的 tasks
-    2. 按 tasks 顺序获取 Agent
-    3. 依次执行 Agent
-    4. 将 Agent 输出合并回 WorkflowState.data
 
-Planner 只负责规划。
-PlanExecutorNode 负责消费规划结果。
+1. 读取 PlannerAgent 生成的 tasks
+2. 按 tasks 顺序获取 Agent
+3. 构建当前 Agent 所需 Context
+4. 依次执行 Agent
+5. 将 Agent 输出合并回 WorkflowState.data
 """
 
 from .base import BaseNode
 
 
 class PlanExecutorNode(BaseNode):
-    """
-    根据 PlannerAgent 输出的 tasks 执行 Agent。
-    """
+    """根据 PlannerAgent 输出执行 Agent。"""
 
     name = "plan_executor"
 
@@ -34,21 +31,7 @@ class PlanExecutorNode(BaseNode):
         state,
         context,
     ):
-        """
-        执行 Planner 生成的任务列表。
-
-        Planner 输出：
-
-        {
-            "tasks": [
-                "repository_analysis_agent",
-                "architecture_analysis_agent",
-                "technology_analysis_agent",
-                "evidence_analysis_agent",
-                "critic_agent"
-            ]
-        }
-        """
+        """执行 Planner 生成的任务列表。"""
 
         planner_result = state.data.get(
             self.planner_key
@@ -102,28 +85,49 @@ class PlanExecutorNode(BaseNode):
                     f"Agent not found: {agent_name}"
                 )
 
-            result = await agent.execute(
-                context,
-                state.data,
+            agent_input = dict(
+                state.data
             )
 
-            # 保留 Agent 级别结果。
+            # Phase 11 Context Manager 接入。
+            if (
+                context.context_manager is not None
+                and state.data.get(
+                    "repository_id"
+                ) is not None
+            ):
+                query = (
+                    state.data.get("question")
+                    or "GitHub project analysis"
+                )
+
+                agent_context = (
+                    await context.context_manager.build(
+                        run_id=state.run_id,
+                        repository_id=state.data[
+                            "repository_id"
+                        ],
+                        query=query,
+                        workflow_state=state.data,
+                        user_instruction=query,
+                    )
+                )
+
+                agent_input["_context"] = (
+                    agent_context
+                )
+
+            result = await agent.execute(
+                context,
+                agent_input,
+            )
+
+            # 保存 Agent 级别输出。
             state.data[
                 agent_name
             ] = result
 
-            # 将结构化 Agent 输出合并到当前 Workflow 数据。
-            #
-            # 例如：
-            #
-            # RepositoryAnalysisAgent
-            #     -> {"repository": ...}
-            #
-            # 合并后：
-            #
-            # state.data["repository"]
-            #
-            # 这样 CriticAgent 可以直接读取。
+            # 合并结构化输出。
             if isinstance(
                 result,
                 dict,

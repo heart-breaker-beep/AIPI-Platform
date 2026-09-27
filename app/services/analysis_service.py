@@ -5,7 +5,11 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ValidationError
-from app.core.logging import get_logger, log_with_run_id
+from app.core.logging import (
+    get_logger,
+    log_with_run_id,
+)
+from app.models.repository import Repository
 from app.repositories.analysis_run import (
     AnalysisRunRepository,
 )
@@ -14,23 +18,30 @@ from app.repositories.repository_basic import (
 )
 from app.schemas.analysis import (
     AnalysisCreateRequest,
+    AnalysisReportResponse,
     AnalysisResponse,
 )
-from app.models.repository import Repository
+from app.services.analysis_workflow import (
+    AnalysisWorkflowRunner,
+)
 
 
 logger = get_logger(__name__)
 
 
 class AnalysisService:
-    """负责 Analysis 任务的业务编排。"""
+    """负责 Analysis Run 与 Workflow 的业务编排。"""
+
+    workflow_runner_factory = (
+        AnalysisWorkflowRunner
+    )
 
     async def create_analysis(
         self,
         session: AsyncSession,
         request: AnalysisCreateRequest,
     ) -> AnalysisResponse:
-        """创建 Repository 和 Analysis Run。"""
+        """创建并启动单项目分析 Workflow。"""
 
         repo_url = request.repo_url.strip()
 
@@ -53,29 +64,35 @@ class AnalysisService:
             repo_url
         )
 
-        repository_repo = RepositoryRepository(
-            session
+        repository_repo = (
+            RepositoryRepository(
+                session
+            )
         )
 
-        analysis_run_repo = AnalysisRunRepository(
-            session
+        analysis_run_repo = (
+            AnalysisRunRepository(
+                session
+            )
         )
 
-        repository = await repository_repo.get_by_url(
-            repo_url
+        repository = (
+            await repository_repo.get_by_url(
+                repo_url
+            )
         )
 
         if repository is None:
-            repository = await repository_repo.create(
-                url=repo_url,
-                owner=owner,
-                name=name,
+            repository = (
+                await repository_repo.create(
+                    url=repo_url,
+                    owner=owner,
+                    name=name,
+                )
             )
 
         run_id = str(uuid4())
 
-        # Phase 11：
-        # 将用户问题真正保存到 AnalysisRun。
         run = await analysis_run_repo.create(
             run_id=run_id,
             repository_id=repository.id,
@@ -87,15 +104,34 @@ class AnalysisService:
         log_with_run_id(
             logger,
             level=20,
-            message="analysis task created",
+            message="analysis workflow starting",
             run_id=run_id,
         )
 
-        return AnalysisResponse(
-            run_id=run.id,
-            status=run.status,
-            repo_url=repository.url,
-            created_at=run.created_at,
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        # POST /analysis 不再只是创建数据库记录，
+        # 而是真正启动 Workflow。
+        await runner.start(
+            run_id
+        )
+
+        run = await analysis_run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        return await self._to_response(
+            session,
+            run,
         )
 
     async def get_analysis(
@@ -103,13 +139,13 @@ class AnalysisService:
         session: AsyncSession,
         run_id: str,
     ) -> AnalysisResponse:
-        """根据 run_id 查询分析任务。"""
+        """查询 Analysis Run。"""
 
-        repository_run = AnalysisRunRepository(
+        run_repo = AnalysisRunRepository(
             session
         )
 
-        run = await repository_run.get_by_id(
+        run = await run_repo.get_by_id(
             run_id
         )
 
@@ -118,56 +154,17 @@ class AnalysisService:
                 f"Analysis run not found: {run_id}"
             )
 
-        repository_repo = RepositoryRepository(
-            session
+        return await self._to_response(
+            session,
+            run,
         )
-
-        repository = await session.get(
-            Repository,
-            run.repository_id,
-        )
-
-        if repository is None:
-            raise ValidationError(
-                f"Repository not found: {run.repository_id}"
-            )
-
-        return AnalysisResponse(
-            run_id=run.id,
-            status=run.status,
-            repo_url=repository.url,
-            created_at=run.created_at,
-        )
-
-    @staticmethod
-    def _parse_github_url(
-        repo_url: str,
-    ) -> tuple[str, str]:
-        """解析 GitHub owner 和 repository name。"""
-
-        path = repo_url.rstrip("/").split("/")
-
-        if len(path) < 2:
-            raise ValidationError(
-                "Invalid GitHub repository URL."
-            )
-
-        owner = path[-2]
-        name = path[-1]
-
-        if not owner or not name:
-            raise ValidationError(
-                "Invalid GitHub repository URL."
-            )
-
-        return owner, name
 
     async def approve_analysis(
         self,
         session: AsyncSession,
         run_id: str,
     ) -> AnalysisResponse:
-        """通过 Design Gate。"""
+        """批准 Design Gate 或 Human Review。"""
 
         run_repo = AnalysisRunRepository(
             session
@@ -183,37 +180,31 @@ class AnalysisService:
             )
 
         if run.status not in {
-            "pending",
             "WAITING_DESIGN",
-            "WAITING_DESIGN_APPROVAL",
+            "WAITING_HUMAN",
         }:
             raise ValidationError(
                 f"Analysis run cannot be approved "
                 f"from status: {run.status}"
             )
 
-        await run_repo.update_runtime_state(
-            run,
-            status="ANALYZING",
-        )
-
-        await session.commit()
-
-        repository = await session.get(
-            Repository,
-            run.repository_id,
-        )
-
-        if repository is None:
-            raise ValidationError(
-                f"Repository not found: {run.repository_id}"
+        runner = (
+            self.workflow_runner_factory(
+                session
             )
+        )
 
-        return AnalysisResponse(
-            run_id=run.id,
-            status=run.status,
-            repo_url=repository.url,
-            created_at=run.created_at,
+        await runner.approve(
+            run_id
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        return await self._to_response(
+            session,
+            run,
         )
 
     async def pause_analysis(
@@ -221,57 +212,7 @@ class AnalysisService:
         session: AsyncSession,
         run_id: str,
     ) -> AnalysisResponse:
-        """人工暂停 Analysis Run。"""
-
-        run_repo = AnalysisRunRepository(
-            session
-        )
-
-        run = await run_repo.get_by_id(
-            run_id
-        )
-
-        if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
-
-        if run.status != "ANALYZING":
-            raise ValidationError(
-                f"Analysis run cannot be paused "
-                f"from status: {run.status}"
-            )
-
-        await run_repo.update_runtime_state(
-            run,
-            status="PAUSED",
-        )
-
-        await session.commit()
-
-        repository = await session.get(
-            Repository,
-            run.repository_id,
-        )
-
-        if repository is None:
-            raise ValidationError(
-                f"Repository not found: {run.repository_id}"
-            )
-
-        return AnalysisResponse(
-            run_id=run.id,
-            status=run.status,
-            repo_url=repository.url,
-            created_at=run.created_at,
-        )
-
-    async def resume_analysis(
-        self,
-        session: AsyncSession,
-        run_id: str,
-    ) -> AnalysisResponse:
-        """从 Checkpoint 恢复 Analysis Run。"""
+        """暂停 Workflow。"""
 
         run_repo = AnalysisRunRepository(
             session
@@ -287,36 +228,77 @@ class AnalysisService:
             )
 
         if run.status not in {
-            "PAUSED",
+            "ANALYZING",
+            "WAITING_DESIGN",
             "WAITING_HUMAN",
         }:
+            raise ValidationError(
+                f"Analysis run cannot be paused "
+                f"from status: {run.status}"
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        await runner.pause(
+            run_id
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        return await self._to_response(
+            session,
+            run,
+        )
+
+    async def resume_analysis(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisResponse:
+        """从 PAUSED Checkpoint 恢复。"""
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        if run.status != "PAUSED":
             raise ValidationError(
                 f"Analysis run cannot be resumed "
                 f"from status: {run.status}"
             )
 
-        await run_repo.update_runtime_state(
-            run,
-            status="ANALYZING",
-        )
-
-        await session.commit()
-
-        repository = await session.get(
-            Repository,
-            run.repository_id,
-        )
-
-        if repository is None:
-            raise ValidationError(
-                f"Repository not found: {run.repository_id}"
+        runner = (
+            self.workflow_runner_factory(
+                session
             )
+        )
 
-        return AnalysisResponse(
-            run_id=run.id,
-            status=run.status,
-            repo_url=repository.url,
-            created_at=run.created_at,
+        await runner.resume(
+            run_id
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        return await self._to_response(
+            session,
+            run,
         )
 
     async def retry_analysis(
@@ -324,7 +306,7 @@ class AnalysisService:
         session: AsyncSession,
         run_id: str,
     ) -> AnalysisResponse:
-        """重新执行失败的 Analysis Run。"""
+        """重新执行失败的 Workflow。"""
 
         run_repo = AnalysisRunRepository(
             session
@@ -345,13 +327,72 @@ class AnalysisService:
                 f"from status: {run.status}"
             )
 
-        await run_repo.update_runtime_state(
-            run,
-            status="RETRYING",
-            retry_count=run.retry_count + 1,
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
         )
 
-        await session.commit()
+        await runner.retry(
+            run_id
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        return await self._to_response(
+            session,
+            run,
+        )
+
+    async def get_report(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisReportResponse:
+        """获取最终分析报告。"""
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        report = await runner.get_report(
+            run_id
+        )
+
+        return AnalysisReportResponse(
+            run_id=run.id,
+            status=run.status,
+            report=report,
+        )
+
+    async def _to_response(
+        self,
+        session: AsyncSession,
+        run,
+    ) -> AnalysisResponse:
+        """将 AnalysisRun 转成 API Response。"""
+
+        if run is None:
+            raise ValidationError(
+                "Analysis run not found."
+            )
 
         repository = await session.get(
             Repository,
@@ -360,15 +401,80 @@ class AnalysisService:
 
         if repository is None:
             raise ValidationError(
-                f"Repository not found: {run.repository_id}"
+                f"Repository not found: "
+                f"{run.repository_id}"
             )
 
         return AnalysisResponse(
             run_id=run.id,
             status=run.status,
             repo_url=repository.url,
+            question=run.question,
+            current_node=run.current_node,
+            progress=self._progress(
+                run.status,
+                run.current_node,
+            ),
             created_at=run.created_at,
         )
+
+    @staticmethod
+    def _progress(
+        status: str,
+        current_node: str | None,
+    ) -> int:
+        """计算第一版 Workflow 进度。"""
+
+        if status == "COMPLETED":
+            return 100
+
+        if status == "FAILED":
+            return 100
+
+        mapping = {
+            "start": 5,
+            "planner_agent": 15,
+            "design_gate": 20,
+            "plan_executor": 70,
+            "human_review": 85,
+            "finalizer": 95,
+            "end": 100,
+        }
+
+        return mapping.get(
+            current_node,
+            0,
+        )
+
+    @staticmethod
+    def _parse_github_url(
+        repo_url: str,
+    ) -> tuple[str, str]:
+        """解析 GitHub owner/repository。"""
+
+        path = (
+            repo_url
+            .rstrip("/")
+            .split("/")
+        )
+
+        if len(path) < 2:
+            raise ValidationError(
+                "Invalid GitHub repository URL."
+            )
+
+        owner = path[-2]
+        name = path[-1]
+
+        if name.endswith(".git"):
+            name = name[:-4]
+
+        if not owner or not name:
+            raise ValidationError(
+                "Invalid GitHub repository URL."
+            )
+
+        return owner, name
 
 
 analysis_service = AnalysisService()

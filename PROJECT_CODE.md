@@ -102,6 +102,7 @@ AIPI Platform/
 │   ├── services/                                                    # ── 业务服务层 ──
 │   │   ├── __init__.py                                              # (空)
 │   │   ├── analysis_service.py
+│   │   ├── analysis_workflow.py
 │   │   ├── evidence_service.py
 │   │   └── repository_service.py
 │   ├── skills/                                                      # ── Skill 能力层 ──
@@ -135,12 +136,16 @@ AIPI Platform/
 │   │   │   ├── agent_node.py
 │   │   │   ├── analysis_node.py
 │   │   │   ├── base.py
+│   │   │   ├── design_gate_node.py
 │   │   │   ├── end_node.py
+│   │   │   ├── finalizer_node.py
 │   │   │   ├── human_node.py
+│   │   │   ├── plan_executor_node.py
 │   │   │   ├── skill_node.py
 │   │   │   ├── start_node.py
 │   │   │   └── tool_node.py
 │   │   ├── __init__.py                                              # (空)
+│   │   ├── analysis_workflow.py
 │   │   ├── checkpoint.py
 │   │   ├── context.py
 │   │   ├── engine.py
@@ -153,6 +158,7 @@ AIPI Platform/
 │   │   └── workflow.py
 │   ├── __init__.py                                                  # (空)
 │   └── main.py
+├── reports/
 ├── test_reports/                                                    # 测试产生的报告输出目录
 │   └── test.md
 ├── tests/                                                           # ── 测试层 ──
@@ -181,6 +187,8 @@ AIPI Platform/
 │   ├── test_memory.py
 │   ├── test_mysql_query_tool.py
 │   ├── test_phase10.py
+│   ├── test_phase12.py
+│   ├── test_pre_phase12_integration.py
 │   ├── test_pre_phase12_structure.py
 │   ├── test_qdrant.py
 │   ├── test_qdrant_search_tool.py
@@ -423,6 +431,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.schemas.analysis import (
     AnalysisCreateRequest,
+    AnalysisReportResponse,
     AnalysisResponse,
 )
 from app.services.analysis_service import (
@@ -444,7 +453,7 @@ async def create_analysis(
     request: AnalysisCreateRequest,
     session: AsyncSession = Depends(get_db),
 ) -> AnalysisResponse:
-    """创建 GitHub 项目分析任务。"""
+    """创建并启动 GitHub 项目分析 Workflow。"""
 
     return await analysis_service.create_analysis(
         session,
@@ -460,7 +469,7 @@ async def get_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
 ) -> AnalysisResponse:
-    """根据 run_id 查询分析任务。"""
+    """查询分析任务。"""
 
     return await analysis_service.get_analysis(
         session,
@@ -476,7 +485,7 @@ async def approve_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
 ) -> AnalysisResponse:
-    """通过 Design Gate。"""
+    """批准 Design Gate 或 Human Review。"""
 
     return await analysis_service.approve_analysis(
         session,
@@ -492,7 +501,7 @@ async def pause_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
 ) -> AnalysisResponse:
-    """暂停分析任务。"""
+    """暂停 Workflow。"""
 
     return await analysis_service.pause_analysis(
         session,
@@ -508,7 +517,7 @@ async def resume_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
 ) -> AnalysisResponse:
-    """恢复分析任务。"""
+    """恢复 PAUSED Workflow。"""
 
     return await analysis_service.resume_analysis(
         session,
@@ -524,9 +533,25 @@ async def retry_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
 ) -> AnalysisResponse:
-    """重试失败的分析任务。"""
+    """重试失败 Workflow。"""
 
     return await analysis_service.retry_analysis(
+        session,
+        run_id,
+    )
+
+
+@router.get(
+    "/{run_id}/report",
+    response_model=AnalysisReportResponse,
+)
+async def get_analysis_report(
+    run_id: str,
+    session: AsyncSession = Depends(get_db),
+) -> AnalysisReportResponse:
+    """获取最终项目智能分析报告。"""
+
+    return await analysis_service.get_report(
         session,
         run_id,
     )
@@ -553,7 +578,7 @@ async def retry_analysis(
 **层级**：数据契约层（Schemas） · **职责**：Analysis 接口的请求体与响应体定义
 
 ```python
-"""Analysis API 的请求和响应数据模型。"""
+"""Analysis API 请求与响应模型。"""
 
 from datetime import datetime
 
@@ -561,7 +586,7 @@ from pydantic import BaseModel, Field
 
 
 class AnalysisCreateRequest(BaseModel):
-    """创建项目分析任务时的请求参数。"""
+    """创建项目分析任务。"""
 
     repo_url: str = Field(
         ...,
@@ -572,17 +597,36 @@ class AnalysisCreateRequest(BaseModel):
     question: str | None = Field(
         default=None,
         max_length=5000,
-        description="本次项目分析问题，用于 Run Memory 和 Context Manager",
+        description="本次项目分析问题",
     )
 
 
 class AnalysisResponse(BaseModel):
-    """分析任务的基础响应信息。"""
+    """Analysis Run 当前状态。"""
 
     run_id: str
+
     status: str
+
     repo_url: str
+
+    question: str | None = None
+
+    current_node: str | None = None
+
+    progress: int = 0
+
     created_at: datetime
+
+
+class AnalysisReportResponse(BaseModel):
+    """最终项目分析报告。"""
+
+    run_id: str
+
+    status: str
+
+    report: dict | None = None
 ```
 
 ### 📄 `app/schemas/error.py`
@@ -729,7 +773,11 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ValidationError
-from app.core.logging import get_logger, log_with_run_id
+from app.core.logging import (
+    get_logger,
+    log_with_run_id,
+)
+from app.models.repository import Repository
 from app.repositories.analysis_run import (
     AnalysisRunRepository,
 )
@@ -738,23 +786,30 @@ from app.repositories.repository_basic import (
 )
 from app.schemas.analysis import (
     AnalysisCreateRequest,
+    AnalysisReportResponse,
     AnalysisResponse,
 )
-from app.models.repository import Repository
+from app.services.analysis_workflow import (
+    AnalysisWorkflowRunner,
+)
 
 
 logger = get_logger(__name__)
 
 
 class AnalysisService:
-    """负责 Analysis 任务的业务编排。"""
+    """负责 Analysis Run 与 Workflow 的业务编排。"""
+
+    workflow_runner_factory = (
+        AnalysisWorkflowRunner
+    )
 
     async def create_analysis(
         self,
         session: AsyncSession,
         request: AnalysisCreateRequest,
     ) -> AnalysisResponse:
-        """创建 Repository 和 Analysis Run。"""
+        """创建并启动单项目分析 Workflow。"""
 
         repo_url = request.repo_url.strip()
 
@@ -777,29 +832,35 @@ class AnalysisService:
             repo_url
         )
 
-        repository_repo = RepositoryRepository(
-            session
+        repository_repo = (
+            RepositoryRepository(
+                session
+            )
         )
 
-        analysis_run_repo = AnalysisRunRepository(
-            session
+        analysis_run_repo = (
+            AnalysisRunRepository(
+                session
+            )
         )
 
-        repository = await repository_repo.get_by_url(
-            repo_url
+        repository = (
+            await repository_repo.get_by_url(
+                repo_url
+            )
         )
 
         if repository is None:
-            repository = await repository_repo.create(
-                url=repo_url,
-                owner=owner,
-                name=name,
+            repository = (
+                await repository_repo.create(
+                    url=repo_url,
+                    owner=owner,
+                    name=name,
+                )
             )
 
         run_id = str(uuid4())
 
-        # Phase 11：
-        # 将用户问题真正保存到 AnalysisRun。
         run = await analysis_run_repo.create(
             run_id=run_id,
             repository_id=repository.id,
@@ -811,15 +872,34 @@ class AnalysisService:
         log_with_run_id(
             logger,
             level=20,
-            message="analysis task created",
+            message="analysis workflow starting",
             run_id=run_id,
         )
 
-        return AnalysisResponse(
-            run_id=run.id,
-            status=run.status,
-            repo_url=repository.url,
-            created_at=run.created_at,
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        # POST /analysis 不再只是创建数据库记录，
+        # 而是真正启动 Workflow。
+        await runner.start(
+            run_id
+        )
+
+        run = await analysis_run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        return await self._to_response(
+            session,
+            run,
         )
 
     async def get_analysis(
@@ -827,13 +907,13 @@ class AnalysisService:
         session: AsyncSession,
         run_id: str,
     ) -> AnalysisResponse:
-        """根据 run_id 查询分析任务。"""
+        """查询 Analysis Run。"""
 
-        repository_run = AnalysisRunRepository(
+        run_repo = AnalysisRunRepository(
             session
         )
 
-        run = await repository_run.get_by_id(
+        run = await run_repo.get_by_id(
             run_id
         )
 
@@ -842,56 +922,17 @@ class AnalysisService:
                 f"Analysis run not found: {run_id}"
             )
 
-        repository_repo = RepositoryRepository(
-            session
+        return await self._to_response(
+            session,
+            run,
         )
-
-        repository = await session.get(
-            Repository,
-            run.repository_id,
-        )
-
-        if repository is None:
-            raise ValidationError(
-                f"Repository not found: {run.repository_id}"
-            )
-
-        return AnalysisResponse(
-            run_id=run.id,
-            status=run.status,
-            repo_url=repository.url,
-            created_at=run.created_at,
-        )
-
-    @staticmethod
-    def _parse_github_url(
-        repo_url: str,
-    ) -> tuple[str, str]:
-        """解析 GitHub owner 和 repository name。"""
-
-        path = repo_url.rstrip("/").split("/")
-
-        if len(path) < 2:
-            raise ValidationError(
-                "Invalid GitHub repository URL."
-            )
-
-        owner = path[-2]
-        name = path[-1]
-
-        if not owner or not name:
-            raise ValidationError(
-                "Invalid GitHub repository URL."
-            )
-
-        return owner, name
 
     async def approve_analysis(
         self,
         session: AsyncSession,
         run_id: str,
     ) -> AnalysisResponse:
-        """通过 Design Gate。"""
+        """批准 Design Gate 或 Human Review。"""
 
         run_repo = AnalysisRunRepository(
             session
@@ -907,37 +948,31 @@ class AnalysisService:
             )
 
         if run.status not in {
-            "pending",
             "WAITING_DESIGN",
-            "WAITING_DESIGN_APPROVAL",
+            "WAITING_HUMAN",
         }:
             raise ValidationError(
                 f"Analysis run cannot be approved "
                 f"from status: {run.status}"
             )
 
-        await run_repo.update_runtime_state(
-            run,
-            status="ANALYZING",
-        )
-
-        await session.commit()
-
-        repository = await session.get(
-            Repository,
-            run.repository_id,
-        )
-
-        if repository is None:
-            raise ValidationError(
-                f"Repository not found: {run.repository_id}"
+        runner = (
+            self.workflow_runner_factory(
+                session
             )
+        )
 
-        return AnalysisResponse(
-            run_id=run.id,
-            status=run.status,
-            repo_url=repository.url,
-            created_at=run.created_at,
+        await runner.approve(
+            run_id
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        return await self._to_response(
+            session,
+            run,
         )
 
     async def pause_analysis(
@@ -945,57 +980,7 @@ class AnalysisService:
         session: AsyncSession,
         run_id: str,
     ) -> AnalysisResponse:
-        """人工暂停 Analysis Run。"""
-
-        run_repo = AnalysisRunRepository(
-            session
-        )
-
-        run = await run_repo.get_by_id(
-            run_id
-        )
-
-        if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
-
-        if run.status != "ANALYZING":
-            raise ValidationError(
-                f"Analysis run cannot be paused "
-                f"from status: {run.status}"
-            )
-
-        await run_repo.update_runtime_state(
-            run,
-            status="PAUSED",
-        )
-
-        await session.commit()
-
-        repository = await session.get(
-            Repository,
-            run.repository_id,
-        )
-
-        if repository is None:
-            raise ValidationError(
-                f"Repository not found: {run.repository_id}"
-            )
-
-        return AnalysisResponse(
-            run_id=run.id,
-            status=run.status,
-            repo_url=repository.url,
-            created_at=run.created_at,
-        )
-
-    async def resume_analysis(
-        self,
-        session: AsyncSession,
-        run_id: str,
-    ) -> AnalysisResponse:
-        """从 Checkpoint 恢复 Analysis Run。"""
+        """暂停 Workflow。"""
 
         run_repo = AnalysisRunRepository(
             session
@@ -1011,36 +996,77 @@ class AnalysisService:
             )
 
         if run.status not in {
-            "PAUSED",
+            "ANALYZING",
+            "WAITING_DESIGN",
             "WAITING_HUMAN",
         }:
+            raise ValidationError(
+                f"Analysis run cannot be paused "
+                f"from status: {run.status}"
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        await runner.pause(
+            run_id
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        return await self._to_response(
+            session,
+            run,
+        )
+
+    async def resume_analysis(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisResponse:
+        """从 PAUSED Checkpoint 恢复。"""
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        if run.status != "PAUSED":
             raise ValidationError(
                 f"Analysis run cannot be resumed "
                 f"from status: {run.status}"
             )
 
-        await run_repo.update_runtime_state(
-            run,
-            status="ANALYZING",
-        )
-
-        await session.commit()
-
-        repository = await session.get(
-            Repository,
-            run.repository_id,
-        )
-
-        if repository is None:
-            raise ValidationError(
-                f"Repository not found: {run.repository_id}"
+        runner = (
+            self.workflow_runner_factory(
+                session
             )
+        )
 
-        return AnalysisResponse(
-            run_id=run.id,
-            status=run.status,
-            repo_url=repository.url,
-            created_at=run.created_at,
+        await runner.resume(
+            run_id
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        return await self._to_response(
+            session,
+            run,
         )
 
     async def retry_analysis(
@@ -1048,7 +1074,7 @@ class AnalysisService:
         session: AsyncSession,
         run_id: str,
     ) -> AnalysisResponse:
-        """重新执行失败的 Analysis Run。"""
+        """重新执行失败的 Workflow。"""
 
         run_repo = AnalysisRunRepository(
             session
@@ -1069,13 +1095,72 @@ class AnalysisService:
                 f"from status: {run.status}"
             )
 
-        await run_repo.update_runtime_state(
-            run,
-            status="RETRYING",
-            retry_count=run.retry_count + 1,
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
         )
 
-        await session.commit()
+        await runner.retry(
+            run_id
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        return await self._to_response(
+            session,
+            run,
+        )
+
+    async def get_report(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisReportResponse:
+        """获取最终分析报告。"""
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        report = await runner.get_report(
+            run_id
+        )
+
+        return AnalysisReportResponse(
+            run_id=run.id,
+            status=run.status,
+            report=report,
+        )
+
+    async def _to_response(
+        self,
+        session: AsyncSession,
+        run,
+    ) -> AnalysisResponse:
+        """将 AnalysisRun 转成 API Response。"""
+
+        if run is None:
+            raise ValidationError(
+                "Analysis run not found."
+            )
 
         repository = await session.get(
             Repository,
@@ -1084,15 +1169,80 @@ class AnalysisService:
 
         if repository is None:
             raise ValidationError(
-                f"Repository not found: {run.repository_id}"
+                f"Repository not found: "
+                f"{run.repository_id}"
             )
 
         return AnalysisResponse(
             run_id=run.id,
             status=run.status,
             repo_url=repository.url,
+            question=run.question,
+            current_node=run.current_node,
+            progress=self._progress(
+                run.status,
+                run.current_node,
+            ),
             created_at=run.created_at,
         )
+
+    @staticmethod
+    def _progress(
+        status: str,
+        current_node: str | None,
+    ) -> int:
+        """计算第一版 Workflow 进度。"""
+
+        if status == "COMPLETED":
+            return 100
+
+        if status == "FAILED":
+            return 100
+
+        mapping = {
+            "start": 5,
+            "planner_agent": 15,
+            "design_gate": 20,
+            "plan_executor": 70,
+            "human_review": 85,
+            "finalizer": 95,
+            "end": 100,
+        }
+
+        return mapping.get(
+            current_node,
+            0,
+        )
+
+    @staticmethod
+    def _parse_github_url(
+        repo_url: str,
+    ) -> tuple[str, str]:
+        """解析 GitHub owner/repository。"""
+
+        path = (
+            repo_url
+            .rstrip("/")
+            .split("/")
+        )
+
+        if len(path) < 2:
+            raise ValidationError(
+                "Invalid GitHub repository URL."
+            )
+
+        owner = path[-2]
+        name = path[-1]
+
+        if name.endswith(".git"):
+            name = name[:-4]
+
+        if not owner or not name:
+            raise ValidationError(
+                "Invalid GitHub repository URL."
+            )
+
+        return owner, name
 
 
 analysis_service = AnalysisService()
@@ -1413,6 +1563,462 @@ class EvidenceService:
 **层级**：业务服务层 · **职责**：（未标注）
 
 > 该文件为 **0 字节** 空文件，无源码内容。
+
+### 📄 `app/services/analysis_workflow.py`
+
+**层级**：业务服务层 · **职责**：Analysis Workflow Runner。
+
+```python
+"""
+Analysis Workflow Runner。
+
+负责把：
+
+AnalysisRun
+    ↓
+Workflow
+    ↓
+WorkflowEngine
+    ↓
+Checkpoint
+    ↓
+AnalysisRun
+
+真正连接起来。
+"""
+
+from app.agents.agent_registry import (
+    create_agent_registry,
+)
+from app.context.manager import (
+    ContextManager,
+)
+from app.memory.manager import (
+    MemoryManager,
+)
+from app.models.repository import Repository
+from app.repositories.analysis_run import (
+    AnalysisRunRepository,
+)
+from app.repositories.checkpoint import (
+    CheckpointRepository,
+)
+from app.tools.dependency_analyzer_tool import (
+    DependencyAnalyzerTool,
+)
+from app.tools.file_reader_tool import (
+    FileReaderTool,
+)
+from app.tools.github.github_code_search_tool import (
+    GitHubCodeSearchTool,
+)
+from app.tools.github.github_repository_tool import (
+    GitHubRepositoryTool,
+)
+from app.tools.mysql_query_tool import (
+    MySQLQueryTool,
+)
+from app.tools.qdrant_search_tool import (
+    QdrantSearchTool,
+)
+from app.tools.report_export_tool import (
+    ReportExportTool,
+)
+from app.skills.registry import (
+    create_skill_registry,
+)
+from app.workflow.analysis_workflow import (
+    build_analysis_workflow,
+)
+from app.workflow.checkpoint import (
+    CheckpointManager,
+)
+from app.workflow.context import (
+    WorkflowContext,
+)
+from app.workflow.engine import (
+    WorkflowEngine,
+)
+from app.workflow.state import (
+    WorkflowState,
+)
+
+
+class AnalysisWorkflowRunner:
+    """Analysis Workflow 执行器。"""
+
+    def __init__(
+        self,
+        session,
+    ):
+        self.session = session
+
+        self.checkpoint_repository = (
+            CheckpointRepository(
+                session
+            )
+        )
+
+        self.checkpoint = (
+            CheckpointManager(
+                self.checkpoint_repository
+            )
+        )
+
+        self.engine = WorkflowEngine(
+            checkpoint=self.checkpoint
+        )
+
+    def build_context(
+        self,
+        *,
+        repository_id: int,
+    ) -> WorkflowContext:
+        """创建完整 WorkflowContext。"""
+
+        skill_registry = (
+            create_skill_registry()
+        )
+
+        agent_registry = (
+            create_agent_registry(
+                skill_registry
+            )
+        )
+
+        tools = {
+            "github_repository":
+                GitHubRepositoryTool(),
+
+            "github_code_search":
+                GitHubCodeSearchTool(),
+
+            "file_reader":
+                FileReaderTool(),
+
+            "dependency_analyzer":
+                DependencyAnalyzerTool(),
+
+            "qdrant_search":
+                QdrantSearchTool(),
+
+            "mysql_query":
+                MySQLQueryTool(
+                    self.session
+                ),
+
+            "report_export":
+                ReportExportTool(),
+        }
+
+        memory_manager = (
+            MemoryManager(
+                self.session
+            )
+        )
+
+        context_manager = (
+            ContextManager(
+                memory_manager
+            )
+        )
+
+        return WorkflowContext(
+            agents=agent_registry.agents,
+            tools=tools,
+            skills=skill_registry.skills,
+            config={
+                "session": self.session,
+                "repository_id": repository_id,
+            },
+            memory_manager=memory_manager,
+            context_manager=context_manager,
+        )
+
+    async def start(
+        self,
+        run_id: str,
+    ):
+        """启动新的 Analysis Workflow。"""
+
+        run_repo = AnalysisRunRepository(
+            self.session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValueError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        repository = await self.session.get(
+            Repository,
+            run.repository_id,
+        )
+
+        if repository is None:
+            raise ValueError(
+                f"Repository not found: "
+                f"{run.repository_id}"
+            )
+
+        state = WorkflowState(
+            run_id=run.id
+        )
+
+        state.data = {
+            "run_id": run.id,
+            "repository_id": repository.id,
+            "repo_url": repository.url,
+            "owner": repository.owner,
+            "repo": repository.name,
+            "question": (
+                run.question
+                or (
+                    "请分析这个 GitHub Agent 项目，"
+                    "重点分析 Multi-Agent、Workflow、"
+                    "Skill、Tool、RAG、Memory 和数据库。"
+                )
+            ),
+        }
+
+        context = self.build_context(
+            repository_id=repository.id
+        )
+
+        workflow = (
+            build_analysis_workflow(
+                context
+            )
+        )
+
+        result = await self.engine.run(
+            workflow,
+            state,
+            context,
+        )
+
+        return await self._sync_run(
+            result
+        )
+
+    async def approve(
+        self,
+        run_id: str,
+    ):
+        """批准 Design Gate 或 Human Review。"""
+
+        state = await self.checkpoint.load(
+            run_id
+        )
+
+        if state is None:
+            raise ValueError(
+                f"Checkpoint not found: {run_id}"
+            )
+
+        run_repo = AnalysisRunRepository(
+            self.session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValueError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        state.approve()
+
+        await self.checkpoint.save(
+            state
+        )
+
+        context = self.build_context(
+            repository_id=run.repository_id
+        )
+
+        workflow = (
+            build_analysis_workflow(
+                context
+            )
+        )
+
+        result = await self.engine.resume(
+            workflow,
+            context,
+            run_id,
+        )
+
+        return await self._sync_run(
+            result
+        )
+
+    async def pause(
+        self,
+        run_id: str,
+    ):
+        """人工暂停 Workflow。"""
+
+        state = await self.checkpoint.load(
+            run_id
+        )
+
+        if state is None:
+            raise ValueError(
+                f"Checkpoint not found: {run_id}"
+            )
+
+        result = await self.engine.pause(
+            state
+        )
+
+        return await self._sync_run(
+            result
+        )
+
+    async def resume(
+        self,
+        run_id: str,
+    ):
+        """从 PAUSED Checkpoint 恢复。"""
+
+        run_repo = AnalysisRunRepository(
+            self.session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValueError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        context = self.build_context(
+            repository_id=run.repository_id
+        )
+
+        workflow = (
+            build_analysis_workflow(
+                context
+            )
+        )
+
+        result = await self.engine.resume(
+            workflow,
+            context,
+            run_id,
+        )
+
+        return await self._sync_run(
+            result
+        )
+
+    async def retry(
+        self,
+        run_id: str,
+    ):
+        """重新执行失败的 Workflow。"""
+
+        run_repo = AnalysisRunRepository(
+            self.session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValueError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        state = await self.checkpoint.load(
+            run_id
+        )
+
+        if state is None:
+            raise ValueError(
+                f"Checkpoint not found: {run_id}"
+            )
+
+        context = self.build_context(
+            repository_id=run.repository_id
+        )
+
+        workflow = (
+            build_analysis_workflow(
+                context
+            )
+        )
+
+        result = await self.engine.retry(
+            workflow,
+            context,
+            run_id,
+        )
+
+        return await self._sync_run(
+            result
+        )
+
+    async def get_report(
+        self,
+        run_id: str,
+    ):
+        """获取最终报告。"""
+
+        state = await self.checkpoint.load(
+            run_id
+        )
+
+        if state is None:
+            raise ValueError(
+                f"Checkpoint not found: {run_id}"
+            )
+
+        return state.data.get(
+            "final_report"
+        )
+
+    async def _sync_run(
+        self,
+        state,
+    ):
+        """把 Workflow 状态同步到 AnalysisRun。"""
+
+        run_repo = AnalysisRunRepository(
+            self.session
+        )
+
+        run = await run_repo.get_by_id(
+            state.run_id
+        )
+
+        if run is None:
+            raise ValueError(
+                f"Analysis run not found: "
+                f"{state.run_id}"
+            )
+
+        await run_repo.update_runtime_state(
+            run,
+            status=state.status,
+            current_node=state.current_node,
+            retry_count=state.retry_count,
+        )
+
+        await self.session.commit()
+
+        return state
+```
 
 ## 六、数据访问层（Repositories）
 
@@ -3414,16 +4020,6 @@ class RetryPolicy:
 ```python
 """
 Workflow Checkpoint Manager。
-
-Phase 10：
-WorkflowState
-    ↓
-CheckpointManager
-    ↓
-Checkpoint Repository / MySQL
-
-当前 Manager 负责状态序列化与恢复。
-具体 MySQL 持久化由 Repository 完成。
 """
 
 from copy import deepcopy
@@ -3431,41 +4027,27 @@ from typing import Any
 
 
 class CheckpointManager:
-    """
-    Workflow Checkpoint 管理器。
-
-    repository 可以是：
-    - MySQL CheckpointRepository
-    - 测试环境下的 MemoryCheckpointRepository
-    """
+    """Workflow Checkpoint 管理器。"""
 
     def __init__(
         self,
         repository=None,
     ) -> None:
-
         self.repository = repository
-
-        # 测试 / 本地 fallback
         self._store: dict[str, Any] = {}
 
     async def save(
         self,
         state,
     ) -> str:
-        """
-        保存 WorkflowState。
+        """保存 WorkflowState 快照。"""
 
-        如果配置 Repository：
-            保存到 MySQL
+        # 先递增原状态版本。
+        state.checkpoint_version += 1
 
-        否则：
-            保存到内存
-        """
-
-        snapshot = deepcopy(state)
-
-        snapshot.checkpoint_version += 1
+        snapshot = deepcopy(
+            state
+        )
 
         if self.repository is not None:
 
@@ -3485,20 +4067,22 @@ class CheckpointManager:
         self,
         run_id: str,
     ):
-        """
-        根据 run_id 恢复最近一次 Checkpoint。
-        """
+        """读取最近一次 Checkpoint。"""
 
         if self.repository is not None:
 
-            state = await self.repository.get_latest(
-                run_id
+            state = (
+                await self.repository.get_latest(
+                    run_id
+                )
             )
 
             if state is None:
                 return None
 
-            return deepcopy(state)
+            return deepcopy(
+                state
+            )
 
         state = self._store.get(
             run_id
@@ -3507,7 +4091,9 @@ class CheckpointManager:
         if state is None:
             return None
 
-        return deepcopy(state)
+        return deepcopy(
+            state
+        )
 
     async def delete(
         self,
@@ -3996,6 +4582,156 @@ class WorkflowEngine:
 
 > 该文件为 **0 字节** 空文件，无源码内容。
 
+### 📄 `app/workflow/analysis_workflow.py`
+
+**层级**：Workflow 层 · **职责**：AIPI 单项目分析 Workflow。
+
+```python
+"""
+AIPI 单项目分析 Workflow。
+
+完整链路：
+
+Start
+    ↓
+Planner
+    ↓
+Design Gate
+    ↓
+Plan Executor
+    ↓
+Human Review
+    ↓
+Finalizer
+    ↓
+End
+"""
+
+from app.workflow.nodes.agent_node import AgentNode
+from app.workflow.nodes.design_gate_node import (
+    DesignGateNode,
+)
+from app.workflow.nodes.end_node import EndNode
+from app.workflow.nodes.finalizer_node import (
+    FinalizerNode,
+)
+from app.workflow.nodes.human_node import HumanNode
+from app.workflow.nodes.plan_executor_node import (
+    PlanExecutorNode,
+)
+from app.workflow.nodes.start_node import StartNode
+from app.workflow.transition import Transition
+from app.workflow.workflow import Workflow
+
+
+def build_analysis_workflow(
+    context,
+) -> Workflow:
+    """
+    创建单项目完整分析 Workflow。
+
+    Agent 的具体实例来自 WorkflowContext，
+    Workflow 本身不负责创建 Agent。
+    """
+
+    workflow = Workflow()
+
+    planner = context.agents.get(
+        "planner_agent"
+    )
+
+    if planner is None:
+        raise ValueError(
+            "Planner Agent is not registered."
+        )
+
+    report_skill = context.skills.get(
+        "report_generation"
+    )
+
+    if report_skill is None:
+        raise ValueError(
+            "Report generation skill is not registered."
+        )
+
+    workflow.add_node(
+        StartNode()
+    )
+
+    workflow.add_node(
+        AgentNode(
+            name="planner_agent",
+            agent=planner,
+        )
+    )
+
+    workflow.add_node(
+        DesignGateNode()
+    )
+
+    workflow.add_node(
+        PlanExecutorNode()
+    )
+
+    workflow.add_node(
+        HumanNode()
+    )
+
+    workflow.add_node(
+        FinalizerNode(
+            skill=report_skill,
+        )
+    )
+
+    workflow.add_node(
+        EndNode()
+    )
+
+    workflow.add_transition(
+        Transition(
+            "start",
+            "planner_agent",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "planner_agent",
+            "design_gate",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "design_gate",
+            "plan_executor",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "plan_executor",
+            "human_review",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "human_review",
+            "finalizer",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "finalizer",
+            "end",
+        )
+    )
+
+    return workflow
+```
+
 ## 十一、Workflow 节点层（Workflow Nodes）
 
 各类节点的具体实现：开始 / 结束 / 分析 / Agent / Tool / Skill / 人工审核
@@ -4128,50 +4864,56 @@ class AnalysisNode(BaseNode):
 
 ```python
 """
-Agent类型Workflow节点。
-"""
+Agent 类型 Workflow 节点。
 
+负责：
+    - 调用 Agent.execute()
+    - 将 Agent 输出保存到 WorkflowState
+    - 保留执行历史
+"""
 
 from .base import BaseNode
 
 
-
 class AgentNode(BaseNode):
     """
-    封装Agent执行。
+    封装 Agent 执行。
     """
-
 
     def __init__(
         self,
         name,
-        agent
+        agent,
     ):
-
         self.name = name
-
         self.agent = agent
-
-
 
     async def execute(
         self,
         state,
-        context
+        context,
     ):
+        """
+        执行 Agent。
 
-        # 调用Agent
-        result = await self.agent.run(
-            state,
-            context
+        Agent 新接口：
+
+            execute(
+                context,
+                input_data
+            )
+        """
+
+        result = await self.agent.execute(
+            context,
+            state.data,
         )
 
+        # 保存当前 Agent 输出。
+        state.data[self.name] = result
 
-        # 保存结果
-        state.outputs.append(
-            result
-        )
-
+        # 保留执行历史。
+        state.outputs.append(result)
 
         return state
 ```
@@ -4375,6 +5117,312 @@ class HumanNode(BaseNode):
 
 > 该文件为 **0 字节** 空文件，无源码内容。
 
+### 📄 `app/workflow/nodes/design_gate_node.py`
+
+**层级**：Workflow 节点层 · **职责**：Design Gate Workflow Node。
+
+```python
+"""
+Design Gate Workflow Node。
+
+职责：
+    - 读取 Planner Agent 生成的 Research Plan
+    - 将 Research Plan 提升到 WorkflowState.data 顶层
+    - 将 Workflow 置为 WAITING_DESIGN
+    - 等待人工审批后继续执行
+"""
+
+from app.workflow.node import BaseNode
+
+
+class DesignGateNode(BaseNode):
+    """
+    Phase 12 研究计划设计闸门。
+
+    Planner Agent 完成后进入该节点。
+
+    数据流：
+
+        planner_agent
+            ↓
+        planner_agent["research_plan"]
+            ↓
+        state.data["research_plan"]
+            ↓
+        WAITING_DESIGN
+            ↓
+        Human Approval
+    """
+
+    name = "design_gate"
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+        """
+        保存 Research Plan，并暂停 Workflow 等待设计审批。
+        """
+
+        # 获取 Planner Agent 的输出。
+        planner_result = state.data.get(
+            "planner_agent",
+            {},
+        )
+
+        # Planner Agent 应该返回 research_plan。
+        research_plan = planner_result.get(
+            "research_plan"
+        )
+
+        # 将 Research Plan 保存到 WorkflowState 顶层。
+        #
+        # 这样后续：
+        #   - PlanExecutorNode
+        #   - Checkpoint
+        #   - Memory
+        #   - Human Approval
+        #
+        # 都可以直接读取 state.data["research_plan"]。
+        if research_plan is not None:
+            state.data[
+                "research_plan"
+            ] = research_plan
+
+        # 进入 Design Gate，
+        # 等待人工确认研究计划。
+        state.mark_waiting_design()
+
+        return state
+```
+
+### 📄 `app/workflow/nodes/finalizer_node.py`
+
+**层级**：Workflow 节点层 · **职责**：Finalizer Workflow Node。
+
+```python
+"""
+Finalizer Workflow Node。
+
+负责：
+
+Human Review
+    ↓
+Finalizer
+    ↓
+ReportGenerationSkill
+    ↓
+Final Report
+"""
+
+from .base import BaseNode
+
+
+class FinalizerNode(BaseNode):
+    """最终报告生成节点。"""
+
+    name = "finalizer"
+
+    def __init__(
+        self,
+        skill,
+    ):
+        self.skill = skill
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+        """生成最终项目分析报告。"""
+
+        report_input = {
+            key: value
+            for key, value in state.data.items()
+            if not key.startswith("_")
+        }
+
+        report_input.setdefault(
+            "title",
+            "GitHub Project Intelligence Report",
+        )
+
+        report_input.setdefault(
+            "filename",
+            f"{state.run_id}_analysis.md",
+        )
+
+        result = await self.skill.execute(
+            context=context,
+            input_data=report_input,
+        )
+
+        state.data["final_report"] = result
+
+        state.outputs.append(result)
+
+        return state
+```
+
+### 📄 `app/workflow/nodes/plan_executor_node.py`
+
+**层级**：Workflow 节点层 · **职责**：Planner 计划执行节点。
+
+```python
+"""
+Planner 计划执行节点。
+
+负责：
+
+1. 读取 PlannerAgent 生成的 tasks
+2. 按 tasks 顺序获取 Agent
+3. 构建当前 Agent 所需 Context
+4. 依次执行 Agent
+5. 将 Agent 输出合并回 WorkflowState.data
+"""
+
+from .base import BaseNode
+
+
+class PlanExecutorNode(BaseNode):
+    """根据 PlannerAgent 输出执行 Agent。"""
+
+    name = "plan_executor"
+
+    def __init__(
+        self,
+        name: str = "plan_executor",
+        planner_key: str = "planner_agent",
+    ):
+        self.name = name
+        self.planner_key = planner_key
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+        """执行 Planner 生成的任务列表。"""
+
+        planner_result = state.data.get(
+            self.planner_key
+        )
+
+        if not isinstance(
+            planner_result,
+            dict,
+        ):
+            raise ValueError(
+                "Planner result is missing."
+            )
+
+        tasks = planner_result.get(
+            "tasks"
+        )
+
+        if not isinstance(
+            tasks,
+            list,
+        ):
+            raise ValueError(
+                "Planner result must contain "
+                "a list field named 'tasks'."
+            )
+
+        if not tasks:
+            raise ValueError(
+                "Planner returned an empty task list."
+            )
+
+        executed_tasks = []
+
+        for agent_name in tasks:
+
+            if not isinstance(
+                agent_name,
+                str,
+            ):
+                raise ValueError(
+                    "Planner task must be "
+                    "an Agent name string."
+                )
+
+            agent = context.agents.get(
+                agent_name
+            )
+
+            if agent is None:
+                raise ValueError(
+                    f"Agent not found: {agent_name}"
+                )
+
+            agent_input = dict(
+                state.data
+            )
+
+            # Phase 11 Context Manager 接入。
+            if (
+                context.context_manager is not None
+                and state.data.get(
+                    "repository_id"
+                ) is not None
+            ):
+                query = (
+                    state.data.get("question")
+                    or "GitHub project analysis"
+                )
+
+                agent_context = (
+                    await context.context_manager.build(
+                        run_id=state.run_id,
+                        repository_id=state.data[
+                            "repository_id"
+                        ],
+                        query=query,
+                        workflow_state=state.data,
+                        user_instruction=query,
+                    )
+                )
+
+                agent_input["_context"] = (
+                    agent_context
+                )
+
+            result = await agent.execute(
+                context,
+                agent_input,
+            )
+
+            # 保存 Agent 级别输出。
+            state.data[
+                agent_name
+            ] = result
+
+            # 合并结构化输出。
+            if isinstance(
+                result,
+                dict,
+            ):
+                state.data.update(
+                    result
+                )
+
+            state.outputs.append(
+                result
+            )
+
+            executed_tasks.append(
+                agent_name
+            )
+
+        state.data[
+            "executed_tasks"
+        ] = executed_tasks
+
+        return state
+```
+
 ## 十二、Agent 层（Agents）
 
 Agent 抽象接口、领域 Agent 实现、Agent 注册中心与运行环境；Agent 只编排 Skill，不直接持有 Tool
@@ -4518,88 +5566,56 @@ class BaseAgent(ABC):
 """
 Planner Agent。
 
-
 负责：
 
-根据用户需求生成任务计划。
-
-
-当前 Phase 8：
-
-先实现固定规划。
-
-
-Phase 9：
-
-升级为：
-
-LLM Dynamic Planning
-
-
+根据用户需求生成项目分析计划。
 """
 
-
 from app.agents.base import BaseAgent
-
-
 
 
 class PlannerAgent(
     BaseAgent
 ):
+    """项目分析规划 Agent。"""
 
+    name = "planner_agent"
 
-    name = (
-        "planner_agent"
+    description = (
+        "Create a research plan for GitHub "
+        "project analysis."
     )
-
-
 
     async def execute(
         self,
         context,
-        input_data
+        input_data,
     ):
-
-
-
-        # 当前先定义固定分析流程
-
-        # 后续由LLM动态决定
+        """生成第一版项目分析计划。"""
 
         tasks = [
-
-
-
             "repository_analysis_agent",
-
-
-
             "architecture_analysis_agent",
-
-
-
             "technology_analysis_agent",
-
-
-
             "evidence_analysis_agent",
-
-
-
-            "critic_agent"
-
+            "critic_agent",
         ]
 
-
+        research_plan = {
+            "plan_version": 1,
+            "analysis_type": (
+                "github_agent_project"
+            ),
+            "question": input_data.get(
+                "question"
+            ),
+            "tasks": tasks,
+            "evidence_required": True,
+        }
 
         return {
-
-
-            "tasks":
-
-                tasks
-
+            "tasks": tasks,
+            "research_plan": research_plan,
         }
 ```
 
@@ -4900,86 +5916,65 @@ class EvidenceAnalysisAgent(
 """
 Critic Agent。
 
-
-负责：
-
-检查其他 Agent 输出质量。
-
-
-例如：
-
-- 是否缺少关键结果
-- 是否分析失败
-- 是否需要重新执行
-
-
-后续 Phase 会扩展：
-
-Retry
-
-Human Review
-
-Validation
-
-
+负责检查分析结果是否完整。
 """
 
-
 from app.agents.base import BaseAgent
-
-
 
 
 class CriticAgent(
     BaseAgent
 ):
+    """
+    分析结果检查 Agent。
+    """
 
+    name = "critic_agent"
 
-    name = (
-        "critic_agent"
+    description = (
+        "Validate repository analysis results"
     )
+
     async def execute(
         self,
         context,
-        input_data
+        input_data,
     ):
         errors = []
-        # 必须存在的分析结果
 
-        required_fields = [
+        required_fields = {
+            "repository": [
+                "repository",
+                "repository_analysis",
+                "repository_analysis_agent",
+            ],
+            "architecture": [
+                "architecture",
+                "architecture_analysis",
+                "architecture_analysis_agent",
+            ],
+            "technology": [
+                "technology",
+                "technology_analysis",
+                "technology_analysis_agent",
+                "technology_stack",
+            ],
+        }
 
-            "repository",
-
-            "architecture",
-
-            "technology"
-
-        ]
-        for field in required_fields:
-
-
-            if field not in input_data:
-
-
+        for logical_name, aliases in (
+            required_fields.items()
+        ):
+            if not any(
+                alias in input_data
+                for alias in aliases
+            ):
                 errors.append(
-
-                    f"{field} missing"
-
+                    f"{logical_name} missing"
                 )
 
         return {
-
-            # 是否通过检查
-
-            "passed":
-
-                len(errors) == 0,
-            # 错误列表
-
-            "errors":
-
-                errors
-
+            "passed": not errors,
+            "errors": errors,
         }
 ```
 
@@ -5415,142 +6410,129 @@ class BaseSkill(ABC):
 
 ```python
 """
-Repository Analysis Skill
+Repository Analysis Skill。
 
-
-负责分析 GitHub 项目基础信息。
-
-
-执行流程:
-
-RepositoryAnalysisSkill
-
-        |
-        |
-        +---- GitHub Repository Tool
-        |
-        +---- File Reader Tool
-        |
-        +---- Dependency Analyzer Tool
-
-
-
-输出:
-
-{
-    repository:{},
-
-    readme:{},
-
-    dependencies:{}
-
-}
-
+负责：
+- 获取 GitHub Repository 基本信息
+- 获取 README
+- 分析项目依赖
 """
 
-
 from app.skills.base import BaseSkill
-
-
 
 
 class RepositoryAnalysisSkill(
     BaseSkill
 ):
-
-
-    # Skill名称
+    """GitHub Repository 分析 Skill。"""
 
     name = "repository_analysis"
-
-
 
     description = (
         "Analyze github repository information"
     )
 
-
-
     async def execute(
         self,
         context,
-        input_data
+        input_data,
     ):
         """
         执行仓库分析。
 
-
-        input_data:
+        input_data 至少需要：
 
         {
-            "owner":"xxx",
-            "repo":"xxx"
+            "owner": "xxx",
+            "repo": "xxx"
         }
 
+        可选：
+
+        {
+            "project_path": "..."
+        }
         """
 
+        # 从 Context 获取工具
+        github_tool = context.tools.get(
+            "github_repository"
+        )
+
+        if github_tool is None:
+            raise RuntimeError(
+                "Tool not found: github_repository"
+            )
+
+        file_reader = context.tools.get(
+            "file_reader"
+        )
+
+        if file_reader is None:
+            raise RuntimeError(
+                "Tool not found: file_reader"
+            )
+
+        dependency_tool = context.tools.get(
+            "dependency_analyzer"
+        )
+
+        if dependency_tool is None:
+            raise RuntimeError(
+                "Tool not found: dependency_analyzer"
+            )
+
+        owner = input_data.get(
+            "owner"
+        )
+
+        repo = input_data.get(
+            "repo"
+        )
+
+        if not owner or not repo:
+            raise ValueError(
+                "Repository analysis requires "
+                "'owner' and 'repo'."
+            )
+
+        project_path = input_data.get(
+            "project_path"
+        )
 
         result = {}
 
-
-
-        # 从Context中获取工具
-
-        github_tool = (
-            context.tools[
-                "github_repository"
-            ]
-        )
-
-
-        file_reader = (
-            context.tools[
-                "file_reader"
-            ]
-        )
-
-
-        dependency_tool = (
-            context.tools[
-                "dependency_analyzer"
-            ]
-        )
-
-
-
         # 获取仓库基本信息
-
         result["repository"] = (
             await github_tool.execute(
-                **input_data
+                owner=owner,
+                name=repo,
             )
         )
 
-
-
-        # 获取README内容
-
+        # 获取 README
         result["readme"] = (
             await file_reader.execute(
-
-                **input_data,
-
-                path="README.md"
-
+                owner=owner,
+                name=repo,
+                file_path="README.md",
+                branch=input_data.get(
+                    "branch",
+                    "main",
+                ),
             )
         )
 
-
-
-        # 分析项目依赖
-
-        result["dependencies"] = (
-            await dependency_tool.execute(
-                **input_data
+        # 有本地项目目录时才执行依赖分析
+        if project_path:
+            result["dependencies"] = (
+                await dependency_tool.execute(
+                    project_path=project_path,
+                )
             )
-        )
-
-
+        else:
+            # GitHub 远程仓库尚未提供本地目录
+            result["dependencies"] = {}
 
         return result
 ```
@@ -5561,111 +6543,124 @@ class RepositoryAnalysisSkill(
 
 ```python
 """
-Architecture Analysis Skill
+Architecture Analysis Skill。
 
+负责：
 
-负责分析项目代码结构。
-
-
-主要分析:
-
-- 文件结构
-- 模块关系
-- 核心代码
-
-
-依赖:
-
-Code Search Tool
-
-File Reader Tool
-
+    GitHub Code Search
+        ↓
+    File Reader
+        ↓
+    Architecture information
 """
 
-
 from app.skills.base import BaseSkill
-
-
 
 
 class ArchitectureAnalysisSkill(
     BaseSkill
 ):
-
+    """
+    分析 Repository 架构。
+    """
 
     name = "architecture_analysis"
-
-
 
     description = (
         "Analyze repository architecture"
     )
 
-
-
     async def execute(
         self,
         context,
-        input_data
+        input_data,
     ):
-
-
-        # 获取代码搜索工具
-
-        code_search = (
-            context.tools[
-                "github_code_search"
-            ]
+        code_search = context.tools.get(
+            "github_code_search"
         )
 
-
-        file_reader = (
-            context.tools[
-                "file_reader"
-            ]
-        )
-
-
-
-        # 搜索项目文件
-
-        files = await code_search.execute(
-            **input_data
-        )
-
-
-
-        architecture = {
-
-            "files": files,
-
-            "modules":[]
-
-        }
-
-
-
-        # 读取代码内容
-
-        for file in files:
-
-
-            content = await file_reader.execute(
-
-                **input_data,
-
-                path=file
-
+        if code_search is None:
+            raise RuntimeError(
+                "Tool not found: github_code_search"
             )
 
+        file_reader = context.tools.get(
+            "file_reader"
+        )
+
+        if file_reader is None:
+            raise RuntimeError(
+                "Tool not found: file_reader"
+            )
+
+        owner = input_data.get(
+            "owner"
+        )
+
+        repo = input_data.get(
+            "repo"
+        )
+
+        if not owner or not repo:
+            raise ValueError(
+                "Architecture analysis requires "
+                "'owner' and 'repo'."
+            )
+
+        repository = (
+            f"{owner}/{repo}"
+        )
+
+        keyword = input_data.get(
+            "keyword",
+            "class",
+        )
+
+        files = await code_search.execute(
+            keyword=keyword,
+            repo=repository,
+        )
+
+        architecture = {
+            "files": files,
+            "modules": [],
+        }
+
+        branch = input_data.get(
+            "branch",
+            "main",
+        )
+
+        for item in files:
+
+            if isinstance(
+                item,
+                dict,
+            ):
+                file_path = item.get(
+                    "path"
+                )
+            else:
+                file_path = str(item)
+
+            if not file_path:
+                continue
+
+            content = await file_reader.execute(
+                owner=owner,
+                name=repo,
+                file_path=file_path,
+                branch=branch,
+            )
 
             architecture[
                 "modules"
             ].append(
-                content
+                {
+                    "file_path": file_path,
+                    "content": content,
+                }
             )
-
-
 
         return architecture
 ```
@@ -5676,74 +6671,185 @@ class ArchitectureAnalysisSkill(
 
 ```python
 """
-Technology Analysis Skill
+Technology Analysis Skill。
 
+支持：
 
-分析项目技术栈。
-
-
-例如:
-
-- Python
-- FastAPI
-- LangChain
-- Vector DB
-- Docker
-
-
+1. 本地项目目录分析
+2. GitHub Repository 远程文件分析
 """
 
-
 from app.skills.base import BaseSkill
-
-
 
 
 class TechnologyAnalysisSkill(
     BaseSkill
 ):
-
+    """项目技术栈分析 Skill。"""
 
     name = "technology_analysis"
 
-
-
     description = (
-        "Analyze technology stack"
+        "Analyze GitHub project technology stack"
     )
-
-
 
     async def execute(
         self,
         context,
-        input_data
+        input_data,
     ):
-
-
-        # 获取依赖分析工具
-
-        dependency_tool = (
-            context.tools[
-                "dependency_analyzer"
-            ]
+        project_path = input_data.get(
+            "project_path"
         )
 
+        # 本地项目：复用现有 DependencyAnalyzerTool。
+        if project_path:
 
+            dependency_tool = (
+                context.tools.get(
+                    "dependency_analyzer"
+                )
+            )
 
-        dependencies = await dependency_tool.execute(
-            **input_data
+            if dependency_tool is None:
+                raise RuntimeError(
+                    "Tool not found: dependency_analyzer"
+                )
+
+            dependencies = (
+                await dependency_tool.execute(
+                    project_path=project_path,
+                )
+            )
+
+            return {
+                "technology_stack": dependencies
+            }
+
+        # GitHub 远程项目。
+        return await self._analyze_remote(
+            context,
+            input_data,
         )
 
+    async def _analyze_remote(
+        self,
+        context,
+        input_data,
+    ):
+        file_reader = context.tools.get(
+            "file_reader"
+        )
 
+        if file_reader is None:
+            raise RuntimeError(
+                "Tool not found: file_reader"
+            )
+
+        owner = input_data.get(
+            "owner"
+        )
+
+        repo = input_data.get(
+            "repo"
+        )
+
+        if not owner or not repo:
+            raise ValueError(
+                "Technology analysis requires "
+                "'owner' and 'repo'."
+            )
+
+        branch = input_data.get(
+            "branch",
+            "main",
+        )
+
+        target_files = [
+            "requirements.txt",
+            "pyproject.toml",
+            "package.json",
+            "Dockerfile",
+            "docker-compose.yml",
+        ]
+
+        contents = {}
+
+        for file_path in target_files:
+
+            content = await file_reader.execute(
+                owner=owner,
+                name=repo,
+                file_path=file_path,
+                branch=branch,
+            )
+
+            if content:
+                contents[file_path] = content
+
+        all_content = "\n".join(
+            contents.values()
+        ).lower()
+
+        frameworks = []
+        databases = []
+        llms = []
+        embeddings = []
+        deployment = []
+
+        if "fastapi" in all_content:
+            frameworks.append("FastAPI")
+
+        if "django" in all_content:
+            frameworks.append("Django")
+
+        if "flask" in all_content:
+            frameworks.append("Flask")
+
+        if "langchain" in all_content:
+            frameworks.append("LangChain")
+
+        if "langgraph" in all_content:
+            frameworks.append("LangGraph")
+
+        if "sqlalchemy" in all_content:
+            databases.append("SQLAlchemy")
+
+        if "mysql" in all_content:
+            databases.append("MySQL")
+
+        if "postgres" in all_content:
+            databases.append("PostgreSQL")
+
+        if "qdrant" in all_content:
+            embeddings.append("Qdrant")
+
+        if "chromadb" in all_content:
+            embeddings.append("ChromaDB")
+
+        if "deepseek" in all_content:
+            llms.append("DeepSeek")
+
+        if "openai" in all_content:
+            llms.append("OpenAI")
+
+        if "ollama" in all_content:
+            llms.append("Ollama")
+
+        if "docker" in all_content:
+            deployment.append("Docker")
 
         return {
-
-
-            "technology_stack":
-
-                dependencies
-
+            "technology_stack": {
+                "frameworks": frameworks,
+                "database": databases,
+                "llm": llms,
+                "embedding": embeddings,
+                "deployment": deployment,
+                "source_files": list(
+                    contents.keys()
+                ),
+            }
         }
 ```
 
@@ -5755,34 +6861,29 @@ class TechnologyAnalysisSkill(
 """
 Evidence Analysis Skill。
 
-Phase 9：
+支持：
 
-Qdrant Retrieval
-        ↓
-Evidence Normalization
-        ↓
-Evidence Store
-
-负责：
-
-- 检索候选证据
-- 标准化 Evidence
-- 保存 Evidence
-- 保留 Source / File / Line 信息
+1. Qdrant 语义检索结果
+2. Repository / Architecture Agent 输出
+3. Evidence MySQL 持久化
 """
 
 from app.skills.base import BaseSkill
+from app.services.evidence_service import (
+    EvidenceService,
+)
 
 
 class EvidenceAnalysisSkill(
     BaseSkill
 ):
+    """生成可追溯 Evidence。"""
 
     name = "evidence_analysis"
 
     description = (
-        "Extract traceable evidence "
-        "from repository search results"
+        "Extract traceable evidence from "
+        "repository analysis results."
     )
 
     async def execute(
@@ -5790,178 +6891,527 @@ class EvidenceAnalysisSkill(
         context,
         input_data,
     ):
+        evidence = []
 
-        # 获取 Qdrant 检索工具
-        qdrant_tool = context.tools[
+        query_vector = input_data.get(
+            "query_vector"
+        )
+
+        # 如果已经提供向量，则继续使用 Qdrant。
+        if query_vector is not None:
+
+            evidence.extend(
+                await self._from_qdrant(
+                    context,
+                    query_vector,
+                    input_data.get(
+                        "limit",
+                        5,
+                    ),
+                )
+            )
+
+        # 没有 query_vector 时，
+        # 从 Architecture / Repository 结果生成源码证据。
+        if not evidence:
+
+            evidence.extend(
+                self._from_analysis_results(
+                    input_data
+                )
+            )
+
+        # 去重。
+        unique = []
+
+        seen = set()
+
+        for item in evidence:
+
+            key = (
+                item.get("file_path"),
+                item.get("line_start"),
+                item.get("line_end"),
+                item.get("content"),
+            )
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+            unique.append(item)
+
+        # Phase 9 Evidence 持久化。
+        config = getattr(context, "config", {}) or {}
+        session = config.get("session")
+
+        repository_id = config.get(
+            "repository_id"
+
+        )
+
+        if (
+            session is not None
+            and repository_id is not None
+        ):
+            service = EvidenceService(
+                session
+            )
+
+            persisted = []
+
+            for item in unique:
+
+                record = (
+                    await service.create_evidence(
+                        repository_id=repository_id,
+                        source_type=item[
+                            "source_type"
+                        ],
+                        source_url=item.get(
+                            "source_url"
+                        ),
+                        file_path=item.get(
+                            "file_path"
+                        ),
+                        line_start=item.get(
+                            "line_start"
+                        ),
+                        line_end=item.get(
+                            "line_end"
+                        ),
+                        content=item[
+                            "content"
+                        ],
+                        verification_status=(
+                            "UNVERIFIED"
+                        ),
+                    )
+                )
+
+                item = dict(item)
+
+                item["evidence_id"] = (
+                    record.id
+                )
+
+                persisted.append(item)
+
+            unique = persisted
+
+        return {
+            "evidence": unique,
+            "count": len(unique),
+        }
+
+    async def _from_qdrant(
+        self,
+        context,
+        query_vector,
+        limit,
+    ):
+        qdrant_tool = context.tools.get(
             "qdrant_search"
-        ]
+        )
 
-        # 执行语义检索
+        if qdrant_tool is None:
+            raise RuntimeError(
+                "Tool not found: qdrant_search"
+            )
+
         results = await qdrant_tool.execute(
-            **input_data
+            query_vector=query_vector,
+            limit=limit,
         )
 
         evidence = []
 
         for item in results:
 
-            # 当前 Qdrant payload 中：
-            #
-            # text
-            # source
-            # document_id
-            # chunk_index
-            #
-            # 可能存在，但不能假设一定存在。
-
-            normalized = {
-                "source_type": item.get(
-                    "source_type",
-                    "repository",
-                ),
-                "source_url": item.get(
-                    "source_url"
-                ),
-                "file_path": item.get(
-                    "file_path"
-                ),
-                "line_start": item.get(
-                    "line_start"
-                ),
-                "line_end": item.get(
-                    "line_end"
-                ),
-                "content": item.get(
-                    "text",
-                    ""
-                ),
-                "metadata": item,
-            }
-
-            # 不伪造源码行号。
-            #
-            # 当前索引器没有可靠保存
-            # line_start / line_end，
-            # 所以没有数据时保持 None。
-
             evidence.append(
-                normalized
+                {
+                    "source_type": item.get(
+                        "source_type",
+                        "repository",
+                    ),
+                    "source_url": item.get(
+                        "source_url"
+                    ),
+                    "file_path": item.get(
+                        "file_path"
+                    ) or item.get(
+                        "source"
+                    ),
+                    "line_start": item.get(
+                        "line_start"
+                    ),
+                    "line_end": item.get(
+                        "line_end"
+                    ),
+                    "content": item.get(
+                        "text",
+                        "",
+                    ),
+                    "metadata": item,
+                }
             )
 
-        return {
-            "evidence": evidence,
-            "count": len(evidence),
-        }
+        return evidence
+
+    @staticmethod
+    def _from_analysis_results(
+        input_data,
+    ):
+        evidence = []
+
+        repo_url = input_data.get(
+            "repo_url"
+        )
+
+        readme = input_data.get(
+            "readme"
+        )
+
+        if isinstance(
+            readme,
+            str,
+        ) and readme.strip():
+
+            evidence.append(
+                {
+                    "source_type": "github",
+                    "source_url": repo_url,
+                    "file_path": "README.md",
+                    "line_start": 1,
+                    "line_end": len(
+                        readme.splitlines()
+                    ),
+                    "content": readme,
+                    "metadata": {},
+                }
+            )
+
+        architecture = input_data.get(
+            "architecture"
+        )
+
+        if isinstance(
+            architecture,
+            dict,
+        ):
+
+            modules = architecture.get(
+                "modules",
+                [],
+            )
+
+            for module in modules:
+
+                if not isinstance(
+                    module,
+                    dict,
+                ):
+                    continue
+
+                file_path = module.get(
+                    "file_path"
+                )
+
+                content = module.get(
+                    "content"
+                )
+
+                if isinstance(
+                    content,
+                    dict,
+                ):
+                    content = content.get(
+                        "content",
+                        "",
+                    )
+
+                if not content:
+                    continue
+
+                evidence.append(
+                    {
+                        "source_type": "github",
+                        "source_url": repo_url,
+                        "file_path": file_path,
+                        "line_start": 1,
+                        "line_end": len(
+                            str(content).splitlines()
+                        ),
+                        "content": str(content),
+                        "metadata": {},
+                    }
+                )
+
+        return evidence
 ```
 
 ### 📄 `app/skills/report_generation_skill.py`
 
 **层级**：Skill 层（Skills） · **职责**：报告生成能力 `ReportGenerationSkill`（name=`report_generation`），聚合各 Skill 结果并交给 `report_export` Tool 导出；Tool 缺失时直接返回结构化结果
 
-```python
+````python
 """
-Report Generation Skill
+Report Generation Skill。
 
-
-负责生成最终分析报告。
-
-
-输入:
-
-多个Skill / Agent分析结果
-
-
-输出:
-
-报告内容
-
-
+负责生成第一版 Project Intelligence Report。
 """
 
+import json
 
 from app.skills.base import BaseSkill
-
-
 
 
 class ReportGenerationSkill(
     BaseSkill
 ):
-    """
-    报告生成能力。
-    """
-
-
+    """项目智能分析报告生成能力。"""
 
     name = "report_generation"
 
-
-
     description = (
-        "Generate final repository analysis report"
+        "Generate final GitHub project "
+        "intelligence report."
     )
-
-
 
     async def execute(
         self,
         context,
-        input_data: dict
+        input_data: dict,
     ):
-        """
-        执行报告生成。
-
-
-        input_data:
-
-        {
-            "repository": {},
-            "architecture": {},
-            "technology": {}
-        }
-
-        """
-
-
-        # 获取报告导出工具
-
-        exporter = (
-            context.tools.get(
-                "report_export"
-            )
+        exporter = context.tools.get(
+            "report_export"
         )
 
+        title = input_data.get(
+            "title",
+            "Repository Analysis Report",
+        )
 
-        # 如果还没有接入真实导出工具
+        filename = input_data.get(
+            "filename",
+            "repository_analysis.md",
+        )
 
-        # 返回结构化结果
+        content = self._build_report(
+            input_data
+        )
 
         if exporter is None:
-
             return {
-
-
-                "report":
-
-                    input_data
-
-
+                "report": {
+                    "format": "markdown",
+                    "content": content,
+                }
             }
 
         report = await exporter.execute(
-
-            data=input_data
-
+            title=title,
+            content=content,
+            filename=filename,
         )
+
         return {
-
-
-            "report":
-
-                report
-
+            "report": report,
+            "content": content,
         }
-```
+
+    @staticmethod
+    def _build_report(
+        data: dict,
+    ) -> str:
+        """生成第一版结构化项目报告。"""
+
+        sections = []
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "01 项目概览",
+                data.get(
+                    "repository"
+                ),
+            )
+        )
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "02 技术栈",
+                data.get(
+                    "technology_stack"
+                )
+                or data.get(
+                    "technology_analysis_agent"
+                ),
+            )
+        )
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "03 目录与源码结构",
+                data.get(
+                    "architecture"
+                )
+                or data.get(
+                    "architecture_analysis_agent"
+                ),
+            )
+        )
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "04 Agent 架构",
+                data.get(
+                    "executed_tasks"
+                ),
+            )
+        )
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "05 Workflow",
+                {
+                    "executed_tasks": data.get(
+                        "executed_tasks",
+                        [],
+                    ),
+                    "research_plan": data.get(
+                        "research_plan"
+                    ),
+                },
+            )
+        )
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "06 Skill",
+                {
+                    "repository_analysis": data.get(
+                        "repository"
+                    ),
+                    "architecture_analysis": data.get(
+                        "architecture"
+                    ),
+                    "technology_analysis": data.get(
+                        "technology_stack"
+                    ),
+                },
+            )
+        )
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "07 Tool",
+                {
+                    "github_repository": (
+                        "GitHub Repository Tool"
+                    ),
+                    "github_code_search": (
+                        "GitHub Code Search Tool"
+                    ),
+                    "file_reader": (
+                        "File Reader Tool"
+                    ),
+                    "dependency_analyzer": (
+                        "Dependency Analyzer Tool"
+                    ),
+                    "qdrant_search": (
+                        "Qdrant Search Tool"
+                    ),
+                    "report_export": (
+                        "Report Export Tool"
+                    ),
+                },
+            )
+        )
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "08 RAG / Evidence",
+                data.get(
+                    "evidence"
+                ),
+            )
+        )
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "09 Memory / Context",
+                {
+                    "context_enabled": True,
+                    "memory_enabled": True,
+                },
+            )
+        )
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "10 数据库",
+                {
+                    "database": (
+                        data.get(
+                            "technology_stack",
+                            {},
+                        ).get(
+                            "database",
+                            []
+                        )
+                        if isinstance(
+                            data.get(
+                                "technology_stack"
+                            ),
+                            dict,
+                        )
+                        else []
+                    )
+                },
+            )
+        )
+
+        sections.append(
+            ReportGenerationSkill._section(
+                "11 Evidence",
+                data.get(
+                    "evidence"
+                ),
+            )
+        )
+
+        return "\n\n".join(
+            sections
+        )
+
+    @staticmethod
+    def _section(
+        title: str,
+        value,
+    ) -> str:
+        if value is None:
+            value = "暂无数据"
+
+        if isinstance(
+            value,
+            str,
+        ):
+            content = value
+        else:
+            content = json.dumps(
+                value,
+                ensure_ascii=False,
+                indent=2,
+                default=str,
+            )
+
+        return (
+            f"## {title}\n\n"
+            f"```text\n"
+            f"{content}\n"
+            f"```"
+        )
+````
 
 ### 📄 `app/skills/registry.py`
 
@@ -8482,7 +9932,7 @@ async def test_agent_runtime():
 **层级**：测试层 · **职责**：API 端到端测试（健康检查、创建任务、查询任务、参数校验、404 场景）
 
 ```python
-"""Analysis API 测试，验证任务创建、查询和参数校验。"""
+"""Analysis API 测试。"""
 
 from fastapi.testclient import TestClient
 
@@ -8493,9 +9943,10 @@ client = TestClient(app)
 
 
 def test_health_check():
-    """测试健康检查接口。"""
 
-    response = client.get("/health")
+    response = client.get(
+        "/health"
+    )
 
     assert response.status_code == 200
 
@@ -8505,12 +9956,14 @@ def test_health_check():
 
 
 def test_create_analysis():
-    """测试创建 GitHub 项目分析任务。"""
 
     response = client.post(
         "/api/v1/analysis",
         json={
-            "repo_url": "https://github.com/openai/openai-python"
+            "repo_url":
+                "https://github.com/openai/openai-python",
+            "question":
+                "分析这个项目的 Agent 和 Workflow",
         },
     )
 
@@ -8519,7 +9972,22 @@ def test_create_analysis():
     data = response.json()
 
     assert "run_id" in data
-    assert data["status"] == "pending"
+
+    assert (
+        data["status"]
+        == "WAITING_DESIGN"
+    )
+
+    assert (
+        data["current_node"]
+        == "design_gate"
+    )
+
+    assert (
+        data["progress"]
+        == 20
+    )
+
     assert (
         data["repo_url"]
         == "https://github.com/openai/openai-python"
@@ -8527,18 +9995,26 @@ def test_create_analysis():
 
 
 def test_get_analysis():
-    """测试根据 run_id 查询分析任务。"""
 
-    # 先创建任务，再使用返回的 run_id 查询。
-    # 这样可以验证创建和查询两个接口之间的数据链路。
     create_response = client.post(
         "/api/v1/analysis",
         json={
-            "repo_url": "https://github.com/openai/openai-python"
+            "repo_url":
+                "https://github.com/openai/openai-python",
+            "question":
+                "分析项目架构",
         },
     )
 
-    run_id = create_response.json()["run_id"]
+    assert (
+        create_response.status_code
+        == 200
+    )
+
+    run_id = (
+        create_response
+        .json()["run_id"]
+    )
 
     response = client.get(
         f"/api/v1/analysis/{run_id}"
@@ -8548,17 +10024,29 @@ def test_get_analysis():
 
     data = response.json()
 
-    assert data["run_id"] == run_id
-    assert data["status"] == "pending"
+    assert (
+        data["run_id"]
+        == run_id
+    )
+
+    assert (
+        data["status"]
+        == "WAITING_DESIGN"
+    )
+
+    assert (
+        data["current_node"]
+        == "design_gate"
+    )
 
 
 def test_invalid_repository_url():
-    """测试非法 Repository URL。"""
 
     response = client.post(
         "/api/v1/analysis",
         json={
-            "repo_url": "https://example.com/test"
+            "repo_url":
+                "https://example.com/test"
         },
     )
 
@@ -8567,11 +10055,14 @@ def test_invalid_repository_url():
     data = response.json()
 
     assert data["success"] is False
-    assert data["error"]["code"] == "VALIDATION_ERROR"
+
+    assert (
+        data["error"]["code"]
+        == "VALIDATION_ERROR"
+    )
 
 
 def test_analysis_not_found():
-    """测试查询不存在的分析任务。"""
 
     response = client.get(
         "/api/v1/analysis/not-exist-run-id"
@@ -8582,7 +10073,11 @@ def test_analysis_not_found():
     data = response.json()
 
     assert data["success"] is False
-    assert data["error"]["code"] == "VALIDATION_ERROR"
+
+    assert (
+        data["error"]["code"]
+        == "VALIDATION_ERROR"
+    )
 ```
 
 ### 📄 `tests/test_chunker.py`
@@ -10478,6 +11973,952 @@ async def test_non_retryable_error():
     assert result.retry_count == 0
 ```
 
+### 📄 `tests/test_phase12.py`
+
+**层级**：测试层 · **职责**：Phase 12：单项目完整业务闭环测试。
+
+```python
+"""Phase 12：单项目完整业务闭环测试。"""
+
+import pytest
+
+from app.workflow.analysis_workflow import (
+    build_analysis_workflow,
+)
+from app.workflow.checkpoint import (
+    CheckpointManager,
+)
+from app.workflow.context import (
+    WorkflowContext,
+)
+from app.workflow.engine import (
+    WorkflowEngine,
+)
+from app.workflow.state import (
+    WorkflowState,
+    WorkflowStatus,
+)
+
+
+class FakeAgent:
+
+    def __init__(
+        self,
+        name,
+        result,
+    ):
+        self.name = name
+        self.result = result
+        self.calls = []
+
+    async def execute(
+        self,
+        context,
+        input_data,
+    ):
+        self.calls.append(
+            dict(input_data)
+        )
+
+        return self.result
+
+
+class FakeReportSkill:
+
+    name = "report_generation"
+
+    async def execute(
+        self,
+        context,
+        input_data,
+    ):
+        return {
+            "report": {
+                "format": "markdown",
+                "content": (
+                    "# Project Intelligence Report"
+                ),
+            }
+        }
+
+
+def build_context():
+
+    agents = {
+        "planner_agent": FakeAgent(
+            "planner_agent",
+            {
+                "tasks": [
+                    "repository_analysis_agent",
+                    "architecture_analysis_agent",
+                    "technology_analysis_agent",
+                    "evidence_analysis_agent",
+                    "critic_agent",
+                ],
+                "research_plan": {
+                    "plan_version": 1,
+                    "tasks": [
+                        "repository_analysis_agent",
+                        "architecture_analysis_agent",
+                        "technology_analysis_agent",
+                        "evidence_analysis_agent",
+                        "critic_agent",
+                    ],
+                },
+            },
+        ),
+
+        "repository_analysis_agent": FakeAgent(
+            "repository_analysis_agent",
+            {
+                "repository": {
+                    "name": "demo",
+                },
+                "readme": "# Demo",
+            },
+        ),
+
+        "architecture_analysis_agent": FakeAgent(
+            "architecture_analysis_agent",
+            {
+                "architecture": {
+                    "modules": [
+                        {
+                            "file_path":
+                                "app/main.py",
+                            "content":
+                                "print('demo')",
+                        }
+                    ]
+                }
+            },
+        ),
+
+        "technology_analysis_agent": FakeAgent(
+            "technology_analysis_agent",
+            {
+                "technology_stack": {
+                    "frameworks": [
+                        "FastAPI"
+                    ]
+                }
+            },
+        ),
+
+        "evidence_analysis_agent": FakeAgent(
+            "evidence_analysis_agent",
+            {
+                "evidence": [
+                    {
+                        "file_path":
+                            "app/main.py",
+                        "line_start": 1,
+                        "line_end": 1,
+                        "content":
+                            "print('demo')",
+                    }
+                ]
+            },
+        ),
+
+        "critic_agent": FakeAgent(
+            "critic_agent",
+            {
+                "passed": True,
+                "errors": [],
+            },
+        ),
+    }
+
+    return WorkflowContext(
+        agents=agents,
+        tools={},
+        skills={
+            "report_generation":
+                FakeReportSkill(),
+        },
+        config={},
+    )
+
+
+@pytest.mark.asyncio
+async def test_phase12_full_business_loop():
+
+    context = build_context()
+
+    workflow = build_analysis_workflow(
+        context
+    )
+
+    checkpoint = CheckpointManager()
+
+    engine = WorkflowEngine(
+        checkpoint=checkpoint
+    )
+
+    state = WorkflowState(
+        run_id="phase12-full-loop"
+    )
+
+    state.data = {
+        "repository_id": 1,
+        "owner": "demo",
+        "repo": "demo-project",
+        "repo_url":
+            "https://github.com/demo/demo-project",
+        "question":
+            "分析 Multi-Agent Workflow",
+    }
+
+    # -------------------------------------------------
+    # 1. Start -> Planner -> Design Gate
+    # -------------------------------------------------
+
+    result = await engine.run(
+        workflow,
+        state,
+        context,
+    )
+
+    assert (
+        result.status
+        == WorkflowStatus.WAITING_DESIGN
+    )
+
+    assert (
+        result.current_node
+        == "design_gate"
+    )
+
+    assert (
+        "research_plan"
+        in result.data
+    )
+
+    # -------------------------------------------------
+    # 2. Human Approve -> Multi-Agent
+    # -------------------------------------------------
+
+    result.approve()
+
+    await checkpoint.save(
+        result
+    )
+
+    result = await engine.resume(
+        workflow,
+        context,
+        result.run_id,
+    )
+
+    assert (
+        result.status
+        == WorkflowStatus.WAITING_HUMAN
+    )
+
+    assert (
+        result.current_node
+        == "human_review"
+    )
+
+    assert (
+        result.data[
+            "executed_tasks"
+        ]
+        == [
+            "repository_analysis_agent",
+            "architecture_analysis_agent",
+            "technology_analysis_agent",
+            "evidence_analysis_agent",
+            "critic_agent",
+        ]
+    )
+
+    assert (
+        result.data[
+            "critic_agent"
+        ]["passed"]
+        is True
+    )
+
+    # -------------------------------------------------
+    # 3. Human Review Approve -> Finalizer
+    # -------------------------------------------------
+
+    result.approve()
+
+    await checkpoint.save(
+        result
+    )
+
+    result = await engine.resume(
+        workflow,
+        context,
+        result.run_id,
+    )
+
+    assert (
+        result.status
+        == WorkflowStatus.COMPLETED
+    )
+
+    assert (
+        result.current_node
+        == "end"
+    )
+
+    assert (
+        "final_report"
+        in result.data
+    )
+
+    assert (
+        result.data[
+            "final_report"
+        ]["report"]["format"]
+        == "markdown"
+    )
+
+
+@pytest.mark.asyncio
+async def test_phase12_checkpoint_survives_design_gate():
+
+    context = build_context()
+
+    workflow = build_analysis_workflow(
+        context
+    )
+
+    checkpoint = CheckpointManager()
+
+    engine = WorkflowEngine(
+        checkpoint=checkpoint
+    )
+
+    state = WorkflowState(
+        run_id="phase12-checkpoint"
+    )
+
+    state.data = {
+        "repository_id": 1,
+        "owner": "demo",
+        "repo": "demo",
+        "question": "test",
+    }
+
+    result = await engine.run(
+        workflow,
+        state,
+        context,
+    )
+
+    assert (
+        result.status
+        == WorkflowStatus.WAITING_DESIGN
+    )
+
+    restored = await checkpoint.load(
+        "phase12-checkpoint"
+    )
+
+    assert restored is not None
+
+    assert (
+        restored.current_node
+        == "design_gate"
+    )
+
+    assert (
+        restored.data[
+            "research_plan"
+        ]["plan_version"]
+        == 1
+    )
+```
+
+### 📄 `tests/test_pre_phase12_integration.py`
+
+**层级**：测试层 · **职责**：Phase 12 前置集成测试。
+
+```python
+"""
+Phase 12 前置集成测试。
+
+验证：
+
+1. AgentNode 使用新的 Agent.execute() 接口
+2. Skill -> Tool 参数契约一致
+3. Planner -> PlanExecutor -> Multi-Agent 可以真正串起来
+4. Critic 可以读取前置 Agent 结果
+"""
+
+import pytest
+
+from app.agents.critic_agent import CriticAgent
+from app.agents.planner_agent import PlannerAgent
+from app.workflow.context import WorkflowContext
+from app.workflow.engine import WorkflowEngine
+from app.workflow.nodes.agent_node import AgentNode
+from app.workflow.nodes.base import BaseNode
+from app.workflow.nodes.plan_executor_node import (
+    PlanExecutorNode,
+)
+from app.workflow.state import WorkflowState
+from app.workflow.transition import Transition
+from app.workflow.workflow import Workflow
+
+from app.skills.repository_analysis_skill import (
+    RepositoryAnalysisSkill,
+)
+from app.skills.architecture_analysis_skill import (
+    ArchitectureAnalysisSkill,
+)
+from app.skills.technology_analysis_skill import (
+    TechnologyAnalysisSkill,
+)
+from app.skills.report_generation_skill import (
+    ReportGenerationSkill,
+)
+
+
+class FakeGithubRepositoryTool:
+
+    async def execute(
+        self,
+        *,
+        owner,
+        name,
+    ):
+        assert owner == "demo"
+        assert name == "test-project"
+
+        return {
+            "owner": owner,
+            "name": name,
+        }
+
+
+class FakeFileReaderTool:
+
+    async def execute(
+        self,
+        *,
+        owner,
+        name,
+        file_path,
+        branch,
+    ):
+        assert owner == "demo"
+        assert name == "test-project"
+
+        assert file_path in {
+            "README.md",
+            "app/main.py",
+        }
+
+        if file_path == "README.md":
+            return {
+                "content": "# Demo Repository"
+            }
+
+        return {
+            "content": (
+                "class DemoApp:\n"
+                "    pass\n"
+            )
+        }
+
+class FakeDependencyAnalyzerTool:
+
+    async def execute(
+        self,
+        *,
+        project_path,
+    ):
+        assert project_path == (
+            "D:/workspace/test-project"
+        )
+
+        return {
+            "dependencies": [
+                "fastapi",
+                "sqlalchemy",
+            ]
+        }
+
+
+class FakeCodeSearchTool:
+
+    async def execute(
+        self,
+        *,
+        keyword,
+        repo,
+    ):
+        assert keyword == "class"
+        assert repo == (
+            "demo/test-project"
+        )
+
+        return [
+            {
+                "path": "app/main.py"
+            }
+        ]
+
+
+class FakeReportExportTool:
+
+    async def execute(
+        self,
+        *,
+        title,
+        content,
+        filename,
+    ):
+        assert title == (
+            "Repository Analysis Report"
+        )
+
+        assert filename == (
+            "repository_analysis.md"
+        )
+
+        assert content
+
+        return {
+            "path": filename,
+            "format": "markdown",
+        }
+
+
+class FakeSkillRegistry:
+
+    def __init__(self):
+        self.skills = {
+            "repository_analysis":
+                RepositoryAnalysisSkill(),
+            "architecture_analysis":
+                ArchitectureAnalysisSkill(),
+            "technology_analysis":
+                TechnologyAnalysisSkill(),
+            "report_generation":
+                ReportGenerationSkill(),
+        }
+
+    def get(self, name):
+        return self.skills[name]
+
+
+class FakeAgent:
+
+    def __init__(
+        self,
+        name,
+        result,
+    ):
+        self.name = name
+        self.result = result
+        self.calls = []
+
+    async def execute(
+        self,
+        context,
+        input_data,
+    ):
+        self.calls.append(
+            dict(input_data)
+        )
+
+        return self.result
+
+
+class StartNode(BaseNode):
+
+    name = "start"
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+        return state
+
+
+class EndNode(BaseNode):
+
+    name = "end"
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+        return state
+
+
+@pytest.mark.asyncio
+async def test_agent_node_uses_new_execute_api():
+
+    class NewApiAgent:
+
+        async def execute(
+            self,
+            context,
+            input_data,
+        ):
+            assert input_data[
+                "question"
+            ] == "test"
+
+            return {
+                "result": "ok"
+            }
+
+    state = WorkflowState(
+        run_id="agent-node-test"
+    )
+
+    state.data = {
+        "question": "test"
+    }
+
+    context = WorkflowContext(
+        agents={},
+        tools={},
+        skills={},
+        config={},
+    )
+
+    node = AgentNode(
+        name="test_agent",
+        agent=NewApiAgent(),
+    )
+
+    result = await node.execute(
+        state,
+        context,
+    )
+
+    assert result.data[
+        "test_agent"
+    ] == {
+        "result": "ok"
+    }
+
+
+@pytest.mark.asyncio
+async def test_skill_tool_contracts():
+
+    context = WorkflowContext(
+        agents={},
+        tools={
+            "github_repository":
+                FakeGithubRepositoryTool(),
+            "file_reader":
+                FakeFileReaderTool(),
+            "dependency_analyzer":
+                FakeDependencyAnalyzerTool(),
+            "github_code_search":
+                FakeCodeSearchTool(),
+            "report_export":
+                FakeReportExportTool(),
+        },
+        skills={},
+        config={},
+    )
+
+    input_data = {
+        "owner": "demo",
+        "repo": "test-project",
+        "project_path":
+            "D:/workspace/test-project",
+    }
+
+    repository_result = (
+        await RepositoryAnalysisSkill().execute(
+            context,
+            input_data,
+        )
+    )
+
+    assert (
+        repository_result[
+            "repository"
+        ]["name"]
+        == "test-project"
+    )
+
+    architecture_result = (
+        await ArchitectureAnalysisSkill().execute(
+            context,
+            input_data,
+        )
+    )
+
+    assert architecture_result[
+        "modules"
+    ][0]["file_path"] == "app/main.py"
+
+    technology_result = (
+        await TechnologyAnalysisSkill().execute(
+            context,
+            input_data,
+        )
+    )
+
+    assert technology_result[
+        "technology_stack"
+    ]["dependencies"] == [
+        "fastapi",
+        "sqlalchemy",
+    ]
+
+    report_result = (
+        await ReportGenerationSkill().execute(
+            context,
+            {
+                "repository":
+                    repository_result,
+                "architecture":
+                    architecture_result,
+                "technology":
+                    technology_result,
+            },
+        )
+    )
+
+    assert report_result[
+        "report"
+    ]["format"] == "markdown"
+
+
+@pytest.mark.asyncio
+async def test_planner_tasks_are_consumed_by_workflow():
+
+    planner = PlannerAgent(
+        FakeSkillRegistry()
+    )
+
+    planner_context = WorkflowContext(
+        agents={},
+        tools={},
+        skills={},
+        config={},
+    )
+
+    plan = await planner.execute(
+        planner_context,
+        {},
+    )
+
+    assert plan["tasks"] == [
+        "repository_analysis_agent",
+        "architecture_analysis_agent",
+        "technology_analysis_agent",
+        "evidence_analysis_agent",
+        "critic_agent",
+    ]
+
+    repository_agent = FakeAgent(
+        "repository_analysis_agent",
+        {
+            "repository": {
+                "name": "demo"
+            }
+        },
+    )
+
+    architecture_agent = FakeAgent(
+        "architecture_analysis_agent",
+        {
+            "architecture": {
+                "modules": []
+            }
+        },
+    )
+
+    technology_agent = FakeAgent(
+        "technology_analysis_agent",
+        {
+            "technology": {
+                "stack": ["FastAPI"]
+            }
+        },
+    )
+
+    evidence_agent = FakeAgent(
+        "evidence_analysis_agent",
+        {
+            "evidence": [
+                {
+                    "content":
+                        "FastAPI application"
+                }
+            ]
+        },
+    )
+
+    critic_agent = FakeAgent(
+        "critic_agent",
+        {
+            "passed": True,
+            "errors": [],
+        },
+    )
+
+    context = WorkflowContext(
+        agents={
+            "repository_analysis_agent":
+                repository_agent,
+            "architecture_analysis_agent":
+                architecture_agent,
+            "technology_analysis_agent":
+                technology_agent,
+            "evidence_analysis_agent":
+                evidence_agent,
+            "critic_agent":
+                critic_agent,
+        },
+        tools={},
+        skills={},
+        config={},
+    )
+
+    workflow = Workflow()
+
+    workflow.add_node(
+        StartNode()
+    )
+
+    workflow.add_node(
+        AgentNode(
+            name="planner_agent",
+            agent=planner,
+        )
+    )
+
+    workflow.add_node(
+        PlanExecutorNode()
+    )
+
+    workflow.add_node(
+        EndNode()
+    )
+
+    workflow.add_transition(
+        Transition(
+            "start",
+            "planner_agent",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "planner_agent",
+            "plan_executor",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "plan_executor",
+            "end",
+        )
+    )
+
+    state = WorkflowState(
+        run_id="planner-integration"
+    )
+
+    state.data = {
+        "owner": "demo",
+        "repo": "test-project",
+        "project_path":
+            "D:/workspace/test-project",
+    }
+
+    result = await WorkflowEngine().run(
+        workflow,
+        state,
+        context,
+    )
+
+    assert result.status == "COMPLETED"
+
+    assert result.data[
+        "executed_tasks"
+    ] == [
+        "repository_analysis_agent",
+        "architecture_analysis_agent",
+        "technology_analysis_agent",
+        "evidence_analysis_agent",
+        "critic_agent",
+    ]
+
+    assert "repository" in result.data
+    assert "architecture" in result.data
+    assert "technology" in result.data
+    assert "evidence" in result.data
+
+    assert result.data[
+        "critic_agent"
+    ]["passed"] is True
+
+    assert len(
+        repository_agent.calls
+    ) == 1
+
+    assert len(
+        architecture_agent.calls
+    ) == 1
+
+    assert len(
+        technology_agent.calls
+    ) == 1
+
+    assert len(
+        evidence_agent.calls
+    ) == 1
+
+    assert len(
+        critic_agent.calls
+    ) == 1
+
+
+@pytest.mark.asyncio
+async def test_critic_accepts_agent_output_keys():
+
+    critic = CriticAgent(
+        FakeSkillRegistry()
+    )
+
+    context = WorkflowContext(
+        agents={},
+        tools={},
+        skills={},
+        config={},
+    )
+
+    result = await critic.execute(
+        context,
+        {
+            "repository_analysis_agent": {
+                "repository": {}
+            },
+            "architecture_analysis_agent": {
+                "architecture": {}
+            },
+            "technology_analysis_agent": {
+                "technology": {}
+            },
+        },
+    )
+
+    assert result["passed"] is True
+    assert result["errors"] == []
+```
+
 ### 📄 `tests/test_pre_phase12_structure.py`
 
 **层级**：测试层 · **职责**：Phase 12 前置结构修复回归测试。
@@ -10879,9 +13320,9 @@ class FakeGithubRepositoryTool:
     ):
 
         return {
-            "repo": kwargs["repo"],
+            "repo": kwargs["name"],
             "owner": kwargs["owner"],
-            "name": kwargs["repo"],
+            "name": kwargs["name"],
         }
 
 
@@ -11025,7 +13466,8 @@ async def test_repository_analysis_skill_workflow():
 
     state.data = {
         "owner": "demo",
-        "repo": "test-project"
+        "repo": "test-project",
+        "project_path": "."
     }
 
     context = build_context()
@@ -11259,18 +13701,12 @@ from app.skills.repository_analysis_skill import (
 
 class FakeGithubTool:
 
-
     async def execute(
         self,
         **kwargs
     ):
-
-
         return {
-
-            "name":
-            kwargs["repo"]
-
+            "name": kwargs["name"]
         }
 
 
@@ -11664,18 +14100,14 @@ class EndNode(BaseNode):
 
 class GithubTool:
 
-
     async def execute(
         self,
         **kwargs
     ):
 
-
         return {
-
             "repo":
-            kwargs["repo"]
-
+            kwargs["name"]
         }
 
 
@@ -15481,22 +17913,12 @@ class RunMemory:
    - 实施文档 §9.7 要求每个 Tool 具备「输入 Schema / 输出 Schema / 异常处理 / 日志 / 测试」
    - 当前 7 个 Tool 均未定义 Pydantic Schema，也均未接入 `app/core/logging.py`
 
-7. **Agent 接口已换代，`AgentNode` 未同步**
-   - `BaseAgent` 已从 `run(state, context)` 改为 `execute(context, input_data)`，并改为持有 `skill_registry`
-   - 全部 6 个领域 Agent 都已按新接口实现，`AgentRuntime.execute(agent_name, context, input_data)` 也已适配
-   - 但 `app/workflow/nodes/agent_node.py` 仍在调用 `self.agent.run(state, context)`，属于旧接口残留
-
-8. **Skill 内硬编码 Tool 名与实参不匹配**
-   - 各 Skill 直接以 `context.tools["github_repository"]` 之类取工具，键名写死，缺键即 `KeyError`，没有降级或报错提示
-   - `ArchitectureAnalysisSkill` 调用 `file_reader.execute(**input_data, path=file)`，但 `FileReaderTool.execute` 的形参是 `file_path`；且 `github_code_search` 需要 `keyword` / `repo`，与 `input_data` 不一定对得上
-   - `ReportGenerationSkill` 调用 `exporter.execute(data=input_data)`，而 `ReportExportTool.execute` 的形参是 `title` / `content` / `filename`
-
-9. **Skill 输出键名与 `CriticAgent` 校验字段不一致**
+7. **Skill 输出键名与 `CriticAgent` 校验字段不一致**
    - `SkillNode` 把每个 Skill 的结果写入 `state.data[node.name]`，即 `repository_analysis` / `architecture_analysis` / `technology_analysis`
    - `CriticAgent` 检查的却是 `repository` / `architecture` / `technology`，两者对不上，`passed` 会恒为 `False`
    - `PlannerAgent` 返回的 `tasks` 列表目前也没有任何代码消费，Workflow 尚未真正按计划驱动 Agent 执行
 
-10. **证据链能力尚未对外暴露**
+8. **证据链能力尚未对外暴露**
    - `app/evidence/`（Store / Verifier / Traceability）、`EvidenceService`
      与 `app/schemas/evidence.py` 均已实现并有测试覆盖
    - 但 `app/api/` 下没有任何证据相关路由，`app/main.py` 也未装配 `EvidenceService`，
@@ -15504,4 +17926,4 @@ class RunMemory:
 
 ---
 
-*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **143 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*
+*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **150 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*

@@ -35,9 +35,9 @@ class FakeGithubRepositoryTool:
     ):
 
         return {
-            "repo": kwargs["repo"],
+            "repo": kwargs["name"],
             "owner": kwargs["owner"],
-            "name": kwargs["repo"],
+            "name": kwargs["name"],
         }
 
 
@@ -181,7 +181,8 @@ async def test_repository_analysis_skill_workflow():
 
     state.data = {
         "owner": "demo",
-        "repo": "test-project"
+        "repo": "test-project",
+        "project_path": "."
     }
 
     context = build_context()

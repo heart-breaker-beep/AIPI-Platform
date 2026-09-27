@@ -1,20 +1,13 @@
 """
 Evidence Analysis Skill。
 
-Phase 9：
-
-Qdrant Retrieval
-        ↓
-Evidence Normalization
-        ↓
-Evidence Store
-
 负责：
 
-- 检索候选证据
-- 标准化 Evidence
-- 保存 Evidence
-- 保留 Source / File / Line 信息
+    Query Vector
+        ↓
+    Qdrant Search
+        ↓
+    Evidence Normalization
 """
 
 from app.skills.base import BaseSkill
@@ -23,6 +16,9 @@ from app.skills.base import BaseSkill
 class EvidenceAnalysisSkill(
     BaseSkill
 ):
+    """
+    从 Qdrant 检索结果中提取可追踪 Evidence。
+    """
 
     name = "evidence_analysis"
 
@@ -36,29 +32,38 @@ class EvidenceAnalysisSkill(
         context,
         input_data,
     ):
-
-        # 获取 Qdrant 检索工具
-        qdrant_tool = context.tools[
+        qdrant_tool = context.tools.get(
             "qdrant_search"
-        ]
+        )
 
-        # 执行语义检索
+        if qdrant_tool is None:
+            raise RuntimeError(
+                "Tool not found: qdrant_search"
+            )
+
+        query_vector = input_data.get(
+            "query_vector"
+        )
+
+        if query_vector is None:
+            raise ValueError(
+                "Evidence analysis requires "
+                "'query_vector'."
+            )
+
+        limit = input_data.get(
+            "limit",
+            5,
+        )
+
         results = await qdrant_tool.execute(
-            **input_data
+            query_vector=query_vector,
+            limit=limit,
         )
 
         evidence = []
 
         for item in results:
-
-            # 当前 Qdrant payload 中：
-            #
-            # text
-            # source
-            # document_id
-            # chunk_index
-            #
-            # 可能存在，但不能假设一定存在。
 
             normalized = {
                 "source_type": item.get(
@@ -79,16 +84,10 @@ class EvidenceAnalysisSkill(
                 ),
                 "content": item.get(
                     "text",
-                    ""
+                    "",
                 ),
                 "metadata": item,
             }
-
-            # 不伪造源码行号。
-            #
-            # 当前索引器没有可靠保存
-            # line_start / line_end，
-            # 所以没有数据时保持 None。
 
             evidence.append(
                 normalized

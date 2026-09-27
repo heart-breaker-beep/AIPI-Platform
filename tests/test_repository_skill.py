@@ -9,18 +9,12 @@ from app.skills.repository_analysis_skill import (
 
 class FakeGithubTool:
 
-
     async def execute(
         self,
         **kwargs
     ):
-
-
         return {
-
-            "name":
-            kwargs["repo"]
-
+            "name": kwargs["name"]
         }
 
 

@@ -1,108 +1,121 @@
 """
-Architecture Analysis Skill
+Architecture Analysis Skill。
 
+负责：
 
-负责分析项目代码结构。
-
-
-主要分析:
-
-- 文件结构
-- 模块关系
-- 核心代码
-
-
-依赖:
-
-Code Search Tool
-
-File Reader Tool
-
+    GitHub Code Search
+        ↓
+    File Reader
+        ↓
+    Architecture information
 """
 
-
 from app.skills.base import BaseSkill
-
-
 
 
 class ArchitectureAnalysisSkill(
     BaseSkill
 ):
-
+    """
+    分析 Repository 架构。
+    """
 
     name = "architecture_analysis"
-
-
 
     description = (
         "Analyze repository architecture"
     )
 
-
-
     async def execute(
         self,
         context,
-        input_data
+        input_data,
     ):
-
-
-        # 获取代码搜索工具
-
-        code_search = (
-            context.tools[
-                "github_code_search"
-            ]
+        code_search = context.tools.get(
+            "github_code_search"
         )
 
-
-        file_reader = (
-            context.tools[
-                "file_reader"
-            ]
-        )
-
-
-
-        # 搜索项目文件
-
-        files = await code_search.execute(
-            **input_data
-        )
-
-
-
-        architecture = {
-
-            "files": files,
-
-            "modules":[]
-
-        }
-
-
-
-        # 读取代码内容
-
-        for file in files:
-
-
-            content = await file_reader.execute(
-
-                **input_data,
-
-                path=file
-
+        if code_search is None:
+            raise RuntimeError(
+                "Tool not found: github_code_search"
             )
 
+        file_reader = context.tools.get(
+            "file_reader"
+        )
+
+        if file_reader is None:
+            raise RuntimeError(
+                "Tool not found: file_reader"
+            )
+
+        owner = input_data.get(
+            "owner"
+        )
+
+        repo = input_data.get(
+            "repo"
+        )
+
+        if not owner or not repo:
+            raise ValueError(
+                "Architecture analysis requires "
+                "'owner' and 'repo'."
+            )
+
+        repository = (
+            f"{owner}/{repo}"
+        )
+
+        keyword = input_data.get(
+            "keyword",
+            "class",
+        )
+
+        files = await code_search.execute(
+            keyword=keyword,
+            repo=repository,
+        )
+
+        architecture = {
+            "files": files,
+            "modules": [],
+        }
+
+        branch = input_data.get(
+            "branch",
+            "main",
+        )
+
+        for item in files:
+
+            if isinstance(
+                item,
+                dict,
+            ):
+                file_path = item.get(
+                    "path"
+                )
+            else:
+                file_path = str(item)
+
+            if not file_path:
+                continue
+
+            content = await file_reader.execute(
+                owner=owner,
+                name=repo,
+                file_path=file_path,
+                branch=branch,
+            )
 
             architecture[
                 "modules"
             ].append(
-                content
+                {
+                    "file_path": file_path,
+                    "content": content,
+                }
             )
-
-
 
         return architecture

@@ -14,9 +14,11 @@
 from __future__ import annotations
 
 import ast
+import re
 import sys
+from functools import lru_cache
 from pathlib import Path
-from typing import NamedTuple
+from typing import Callable, NamedTuple
 
 ROOT = Path(__file__).resolve().parent
 OUTPUT = ROOT / "PROJECT_CODE.md"
@@ -848,72 +850,392 @@ LAYER_DIAGRAM = """```
     数据契约：app/schemas/（被 API 层与 Service 层共同引用）
 ```"""
 
-KNOWN_ISSUES = """1. **`BaseNode` 重复定义**
-   - `app/workflow/node.py::BaseNode` 与 `app/workflow/nodes/base.py::BaseNode` 是两个完全独立的同名类
-   - 当前 `StartNode` / `EndNode` / `AnalysisNode` 继承前者，`AgentNode` / `ToolNode` / `SkillNode` / `HumanNode` 继承后者
+# ============================================================
+# 已知注意事项
+#
+# 每条问题都带一个 still_holds() 自动判定。生成文档时只输出判定为
+# True（问题仍存在）的条目，已解决的条目会自己从文档里消失，剩余
+# 条目的编号随实际保留数量自动重排，无需手工维护编号。
+#
+# 判定无法确定时一律返回 True —— 宁可让过期条目多留一会儿，也不
+# 要把真实问题悄悄删掉。
+#
+# 新增一条：在 KNOWN_ISSUES 里追加一个 KnownIssue，并把 clears_when
+# 写清楚，便于日后核对判定口径是否仍然合理。
+# ============================================================
 
-2. **`app/main.py` 的模块级 `WorkflowContext` 装配不完整**
-   - 该文件现已可正常导入（`from app import tools` 与 `create_skill_registry` 的名称都已对上）
-   - 但文件末尾在**模块级**构造 `WorkflowContext`：`tools=tools` 传入的是 `app.tools` **模块对象**，
-     而 `WorkflowContext.tools` 的注解是 `dict`；`agents={}` 也是空的，没有装配任何 Agent
-   - 这段装配写在模块顶层且未接入任何启动流程，仍属于草稿
 
-3. **两个同名 `RepositoryRepository` 类**
-   - `app/repositories/repository.py` — 全字段版，`create()` 内部 `commit()` + `refresh()`
-   - `app/repositories/repository_basic.py` — 精简版，`create()` 只 `flush()`，事务由调用方掌控
-   - 当前引用：`repository_service.py` 与 `test_repository_crud.py` 用全字段版；`analysis_service.py` 与 `repositories/__init__.py` 用精简版
+class KnownIssue(NamedTuple):
+    """一条已知问题及其自动判定。"""
 
-4. **`WorkflowError` 有两份且错误码不同**
-   - `app/core/exceptions.py::WorkflowError` — error_code 为 `WORKFLOW_ERROR`
-   - `app/workflow/exceptions.py::WorkflowError` — 现继承 `ApplicationError`，error_code 为 `APPLICATION_ERROR`
-   - 两者不是同一个类，各自的错误码不同
+    title: str
+    body: str
+    still_holds: Callable[[], bool]
+    clears_when: str
 
-5. **文件名与类名不一致**
-   - `app/project_analysis/code_chunker.py` 内部类为 `MarkdownChunker`
-   - `app/project_analysis/project_indexer.py` 内部类为 `DocumentIndexer`
 
-6. **`app/vector_store/qdrant.py` 的 `insert()` 方法**
-   - 与 `upsert()` 功能重叠，仅 `RepositoryIndexer` 调用；`uuid` 导入专为此方法服务
-   - 其 `PointStruct` 的 `id` 使用 UUID 字符串，而 `upsert()` 使用整数，两种 ID 类型混用
+def _src(rel: str) -> str:
+    """读取工作区源码用于判定；文件不存在时返回空串。"""
 
-7. **两份重复的 GitHub URL 解析实现**
-   - `app/services/analysis_service.py::_parse_github_url` — 基于字符串切分，不做域名校验
-   - `app/tools/github/parser.py::parse_github_url` — 基于 `urlparse`，校验 `netloc == "github.com"` 并剥离 `.git` 后缀
+    try:
+        return (ROOT / rel).read_text(encoding="utf-8")
+    except OSError:
+        return ""
 
-8. **Workflow 引擎的行为边界**
-   - 暂停判定已扩展为 `PAUSED` / `WAITING_HUMAN` / `WAITING_DESIGN` 三态
+
+def _tree(rel: str):
+    """解析源码为 AST；语法错误时返回 None。"""
+
+    try:
+        return ast.parse(_src(rel))
+    except SyntaxError:
+        return None
+
+
+def _all_src() -> str:
+    """拼接扫描范围内全部 .py 的源码。"""
+
+    return "".join(_src(rel) for rel in source_files())
+
+
+def _dir_src(prefix: str) -> str:
+    """拼接指定目录前缀下全部 .py 的源码。"""
+
+    return "".join(
+        _src(rel) for rel in source_files() if rel.startswith(prefix)
+    )
+
+
+def _first_class_name(rel: str) -> str:
+    """文件里第一个顶层类名；没有类时返回空串。"""
+
+    tree = _tree(rel)
+
+    if tree is None:
+        return ""
+
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            return node.name
+
+    return ""
+
+
+def _file_class_mismatch() -> bool:
+    """文件名与内部主类名是否仍不一致（文件名应能转出主类名）。"""
+
+    for rel in (
+        "app/project_analysis/code_chunker.py",
+        "app/project_analysis/project_indexer.py",
+    ):
+        expected = "".join(
+            part.title() for part in Path(rel).stem.split("_")
+        )
+
+        actual = _first_class_name(rel)
+
+        if actual and actual != expected:
+            return True
+
+    return False
+
+
+def _qdrant_insert_overlaps() -> bool:
+    """qdrant.py 里是否仍有与 upsert() 重叠的 insert()。"""
+
+    return bool(
+        re.search(
+            r"^\s*def insert\(",
+            _src("app/vector_store/qdrant.py"),
+            re.M,
+        )
+    )
+
+
+def _duplicate_github_parsers() -> bool:
+    """两份 GitHub URL 解析实现是否都还在。"""
+
+    return (
+        "def _parse_github_url"
+        in _src("app/services/analysis_service.py")
+        and "def parse_github_url"
+        in _src("app/tools/github/parser.py")
+    )
+
+
+_STEP_LIMIT = re.compile(
+    r"max_steps|MAX_STEPS|step_limit|MAX_ITERATIONS|max_iterations"
+)
+
+
+def _engine_boundaries_unresolved() -> bool:
+    """引擎主循环仍无步数保护，或 retry_count 仍是全局预算。"""
+
+    no_step_limit = not _STEP_LIMIT.search(
+        _src("app/workflow/engine.py")
+    )
+
+    global_retry = "retry_count" in _src("app/workflow/state.py")
+
+    return no_step_limit or global_retry
+
+
+_TOKEN_GUARD = re.compile(r"if\s+not\s+token[\s\S]{0,300}?raise")
+
+
+def _code_search_requires_token() -> bool:
+    """未配置 GITHUB_TOKEN 时仍会发出必然 401 的请求。"""
+
+    return not _TOKEN_GUARD.search(
+        _src("app/tools/github/github_code_search_tool.py")
+    )
+
+
+_TOOL_SCHEMA = re.compile(r"BaseModel|pydantic")
+_TOOL_LOGGING = re.compile(r"core\.logging|get_logger|import\s+logging")
+
+
+def _tools_lack_schema_and_logging() -> bool:
+    """工具层是否仍缺 Pydantic Schema，或仍没接入日志。"""
+
+    tools = _dir_src("app/tools")
+
+    return not (
+        _TOOL_SCHEMA.search(tools)
+        and _TOOL_LOGGING.search(tools)
+    )
+
+
+def _agent_node_uses_old_api() -> bool:
+    """AgentNode 是否仍在调用已废弃的 agent.run(state, context)。"""
+
+    return bool(
+        re.search(
+            r"self\.agent\.run\(",
+            _src("app/workflow/nodes/agent_node.py"),
+        )
+    )
+
+
+def _skills_hardcode_tools() -> bool:
+    """Skill 层是否仍硬编码工具名，或调用实参与 Tool 形参不符。"""
+
+    skills = _dir_src("app/skills")
+
+    # 直接下标取工具，缺键即 KeyError
+    if re.search(r"context\.tools\[", skills):
+        return True
+
+    # file_reader 的形参是 file_path，不是 path
+    if re.search(
+        r"file_reader\.execute\([\s\S]{0,300}?\bpath\s*=",
+        skills,
+    ):
+        return True
+
+    # report_export 的形参是 title / content / filename，不是 data
+    if re.search(
+        r"exporter\.execute\([\s\S]{0,300}?\bdata\s*=",
+        skills,
+    ):
+        return True
+
+    return False
+
+
+def _critic_required_fields() -> set:
+    """CriticAgent 里写死的必填字段集合。"""
+
+    tree = _tree("app/agents/critic_agent.py")
+
+    if tree is None:
+        return set()
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+
+        targets = [
+            t.id for t in node.targets if isinstance(t, ast.Name)
+        ]
+
+        if "required_fields" in targets and isinstance(node.value, ast.List):
+            return {
+                element.value
+                for element in node.value.elts
+                if isinstance(element, ast.Constant)
+                and isinstance(element.value, str)
+            }
+
+    return set()
+
+
+def _skill_node_names() -> set:
+    """全仓装配 SkillNode 时使用的节点名。"""
+
+    return set(
+        re.findall(
+            r"SkillNode\(\s*(?:name\s*=\s*)?[\"'](\w+)[\"']",
+            _all_src(),
+        )
+    )
+
+
+def _skill_keys_mismatch_critic() -> bool:
+    """SkillNode 写入的 key 是否仍与 CriticAgent 的必填字段对不上。"""
+
+    required = _critic_required_fields()
+
+    written = _skill_node_names()
+
+    if not required or not written:
+        # 判定不出来：保留条目，避免把真实问题悄悄删掉。
+        return True
+
+    return not required.issubset(written)
+
+
+_PLANNER_TASKS_READ = re.compile(
+    r"\[\s*[\"']tasks[\"']\s*\]|\.get\(\s*[\"']tasks[\"']"
+)
+
+
+def _planner_tasks_unconsumed() -> bool:
+    """PlannerAgent 返回的 tasks 是否仍无人消费。
+
+    只统计 workflow / services 层的读取：app/memory/ 下的同名变量是
+    数据库 analysis_tasks，与本条无关，故不计入。
+    """
+
+    consumers = _dir_src("app/workflow") + _dir_src("app/services")
+
+    return not _PLANNER_TASKS_READ.search(consumers)
+
+
+def _evidence_not_exposed() -> bool:
+    """证据链是否仍没有对外路由，或仍未被 main.py 装配。"""
+
+    has_route = bool(re.search(r"evidence", _dir_src("app/api"), re.I))
+
+    wired = "EvidenceService" in _src("app/main.py")
+
+    return not (has_route and wired)
+
+
+KNOWN_ISSUES: list[KnownIssue] = [
+    KnownIssue(
+        title="文件名与类名不一致",
+        body="""   - `app/project_analysis/code_chunker.py` 内部类为 `MarkdownChunker`
+   - `app/project_analysis/project_indexer.py` 内部类为 `DocumentIndexer`""",
+        still_holds=_file_class_mismatch,
+        clears_when="两个文件的主类名与文件名一致（CodeChunker / ProjectIndexer）",
+    ),
+    KnownIssue(
+        title="`app/vector_store/qdrant.py` 的 `insert()` 方法",
+        body="""   - 与 `upsert()` 功能重叠，仅 `RepositoryIndexer` 调用；`uuid` 导入专为此方法服务
+   - 其 `PointStruct` 的 `id` 使用 UUID 字符串，而 `upsert()` 使用整数，两种 ID 类型混用""",
+        still_holds=_qdrant_insert_overlaps,
+        clears_when="qdrant.py 中不再定义 insert()，调用方统一走 upsert()",
+    ),
+    KnownIssue(
+        title="两份重复的 GitHub URL 解析实现",
+        body="""   - `app/services/analysis_service.py::_parse_github_url` — 基于字符串切分，不做域名校验
+   - `app/tools/github/parser.py::parse_github_url` — 基于 `urlparse`，校验 `netloc == "github.com"` 并剥离 `.git` 后缀""",
+        still_holds=_duplicate_github_parsers,
+        clears_when="analysis_service 改用 tools/github/parser.py，且自身不再定义 _parse_github_url",
+    ),
+    KnownIssue(
+        title="Workflow 引擎的行为边界",
+        body="""   - 暂停判定已扩展为 `PAUSED` / `WAITING_HUMAN` / `WAITING_DESIGN` 三态
      （`WorkflowEngine.PAUSE_STATUSES`），`HumanNode` 触发的暂停现在能被引擎识别
    - 主循环 `while current_node:` 仍没有最大步数保护，编排中出现环会一直执行
-   - `retry_count` 是 `state` 上的全局预算，不是每个节点独立计数
-
-9. **未配置 `GITHUB_TOKEN` 时 Code Search 仍不可用**
-   - `GitHubCodeSearchTool` 已支持自动带 `Authorization` 头，但 GitHub Code Search API 强制认证
-   - 未配置 token 时真实调用会返回 401
-
-10. **Phase 6 完成标准尚未全部达成**
-   - 实施文档 §9.7 要求每个 Tool 具备「输入 Schema / 输出 Schema / 异常处理 / 日志 / 测试」
-   - 当前 7 个 Tool 均未定义 Pydantic Schema，也均未接入 `app/core/logging.py`
-
-11. **Agent 接口已换代，`AgentNode` 未同步**
-   - `BaseAgent` 已从 `run(state, context)` 改为 `execute(context, input_data)`，并改为持有 `skill_registry`
+   - `retry_count` 是 `state` 上的全局预算，不是每个节点独立计数""",
+        still_holds=_engine_boundaries_unresolved,
+        clears_when="engine.py 出现 max_steps 之类的步数上限，且 retry_count 不再由 state 全局持有",
+    ),
+    KnownIssue(
+        title="未配置 `GITHUB_TOKEN` 时 Code Search 仍不可用",
+        body="""   - `GitHubCodeSearchTool` 已支持自动带 `Authorization` 头，但 GitHub Code Search API 强制认证
+   - 未配置 token 时真实调用会返回 401""",
+        still_holds=_code_search_requires_token,
+        clears_when="github_code_search_tool.py 在 token 缺失时提前抛业务异常，而不是发出必然 401 的请求",
+    ),
+    KnownIssue(
+        title="Phase 6 完成标准尚未全部达成",
+        body="""   - 实施文档 §9.7 要求每个 Tool 具备「输入 Schema / 输出 Schema / 异常处理 / 日志 / 测试」
+   - 当前 7 个 Tool 均未定义 Pydantic Schema，也均未接入 `app/core/logging.py`""",
+        still_holds=_tools_lack_schema_and_logging,
+        clears_when="app/tools/ 下出现 Pydantic 模型，且接入 app/core/logging.py",
+    ),
+    KnownIssue(
+        title="Agent 接口已换代，`AgentNode` 未同步",
+        body="""   - `BaseAgent` 已从 `run(state, context)` 改为 `execute(context, input_data)`，并改为持有 `skill_registry`
    - 全部 6 个领域 Agent 都已按新接口实现，`AgentRuntime.execute(agent_name, context, input_data)` 也已适配
-   - 但 `app/workflow/nodes/agent_node.py` 仍在调用 `self.agent.run(state, context)`，属于旧接口残留
-
-12. **Skill 内硬编码 Tool 名与实参不匹配**
-   - 各 Skill 直接以 `context.tools["github_repository"]` 之类取工具，键名写死，缺键即 `KeyError`，没有降级或报错提示
+   - 但 `app/workflow/nodes/agent_node.py` 仍在调用 `self.agent.run(state, context)`，属于旧接口残留""",
+        still_holds=_agent_node_uses_old_api,
+        clears_when="agent_node.py 改调 self.agent.execute(context, input_data)",
+    ),
+    KnownIssue(
+        title="Skill 内硬编码 Tool 名与实参不匹配",
+        body="""   - 各 Skill 直接以 `context.tools["github_repository"]` 之类取工具，键名写死，缺键即 `KeyError`，没有降级或报错提示
    - `ArchitectureAnalysisSkill` 调用 `file_reader.execute(**input_data, path=file)`，但 `FileReaderTool.execute` 的形参是 `file_path`；且 `github_code_search` 需要 `keyword` / `repo`，与 `input_data` 不一定对得上
-   - `ReportGenerationSkill` 调用 `exporter.execute(data=input_data)`，而 `ReportExportTool.execute` 的形参是 `title` / `content` / `filename`
-
-13. **Skill 输出键名与 `CriticAgent` 校验字段不一致**
-   - `SkillNode` 把每个 Skill 的结果写入 `state.data[node.name]`，即 `repository_analysis` / `architecture_analysis` / `technology_analysis`
+   - `ReportGenerationSkill` 调用 `exporter.execute(data=input_data)`，而 `ReportExportTool.execute` 的形参是 `title` / `content` / `filename`""",
+        still_holds=_skills_hardcode_tools,
+        clears_when="Skill 不再以 context.tools[...] 取工具，且 file_reader / exporter 的调用实参与 Tool 形参一致",
+    ),
+    KnownIssue(
+        title="Skill 输出键名与 `CriticAgent` 校验字段不一致",
+        body="""   - `SkillNode` 把每个 Skill 的结果写入 `state.data[node.name]`，即 `repository_analysis` / `architecture_analysis` / `technology_analysis`
    - `CriticAgent` 检查的却是 `repository` / `architecture` / `technology`，两者对不上，`passed` 会恒为 `False`
-   - `PlannerAgent` 返回的 `tasks` 列表目前也没有任何代码消费，Workflow 尚未真正按计划驱动 Agent 执行
-
-14. **证据链能力尚未对外暴露**
-   - `app/evidence/`（Store / Verifier / Traceability）、`EvidenceService`
+   - `PlannerAgent` 返回的 `tasks` 列表目前也没有任何代码消费，Workflow 尚未真正按计划驱动 Agent 执行""",
+        still_holds=lambda: (
+            _skill_keys_mismatch_critic()
+            or _planner_tasks_unconsumed()
+        ),
+        clears_when="CriticAgent 的必填字段都能在 SkillNode 写入的 key 中找到，且 workflow / services 层有了 tasks 的消费者",
+    ),
+    KnownIssue(
+        title="证据链能力尚未对外暴露",
+        body="""   - `app/evidence/`（Store / Verifier / Traceability）、`EvidenceService`
      与 `app/schemas/evidence.py` 均已实现并有测试覆盖
    - 但 `app/api/` 下没有任何证据相关路由，`app/main.py` 也未装配 `EvidenceService`，
-     目前只能由测试或脚本直接调用，尚未形成可访问的接口"""
+     目前只能由测试或脚本直接调用，尚未形成可访问的接口""",
+        still_holds=_evidence_not_exposed,
+        clears_when="app/api/ 下出现证据相关路由，且 main.py 装配了 EvidenceService",
+    ),
+]
+
+
+@lru_cache(maxsize=1)
+def known_issues():
+    """按自动判定把条目分成 (仍存在, 已解决)。
+
+    结果缓存，避免 build() 与 main() 各跑一遍判定。
+    """
+
+    kept: list[KnownIssue] = []
+    cleared: list[KnownIssue] = []
+
+    for issue in KNOWN_ISSUES:
+        (kept if issue.still_holds() else cleared).append(issue)
+
+    return kept, cleared
+
+
+def render_known_issues() -> str:
+    """渲染「已知注意事项」正文，编号按实际保留的条目重排。"""
+
+    kept, _ = known_issues()
+
+    if not kept:
+        return (
+            "当前没有已知问题：清单中的全部条目均已由自动判定确认解决。"
+        )
+
+    return "\n\n".join(
+        f"{index}. **{issue.title}**\n{issue.body}"
+        for index, issue in enumerate(kept, 1)
+    )
 
 
 
@@ -1181,7 +1503,7 @@ def build() -> str:
         "",
         "### 已知注意事项",
         "",
-        KNOWN_ISSUES,
+        render_known_issues(),
         "",
         "---",
         "",
@@ -1229,6 +1551,15 @@ def main() -> None:
     )
 
     print(f"已生成 {OUTPUT}")
+
+    _, cleared = known_issues()
+
+    if cleared:
+        print(f"已自动移除 {len(cleared)} 条判定为已解决的问题：")
+
+        for issue in cleared:
+            print(f"  - {issue.title}")
+            print(f"      判定口径：{issue.clears_when}")
 
 
 if __name__ == "__main__":

@@ -1,26 +1,12 @@
 """
-Report Generation Skill
-
+Report Generation Skill。
 
 负责生成最终分析报告。
-
-
-输入:
-
-多个Skill / Agent分析结果
-
-
-输出:
-
-报告内容
-
-
 """
 
+import json
 
 from app.skills.base import BaseSkill
-
-
 
 
 class ReportGenerationSkill(
@@ -30,73 +16,69 @@ class ReportGenerationSkill(
     报告生成能力。
     """
 
-
-
     name = "report_generation"
-
-
 
     description = (
         "Generate final repository analysis report"
     )
 
-
-
     async def execute(
         self,
         context,
-        input_data: dict
+        input_data: dict,
     ):
         """
-        执行报告生成。
-
-
-        input_data:
+        input_data：
 
         {
             "repository": {},
             "architecture": {},
             "technology": {}
         }
-
         """
 
-
-        # 获取报告导出工具
-
-        exporter = (
-            context.tools.get(
-                "report_export"
-            )
+        exporter = context.tools.get(
+            "report_export"
         )
 
-
-        # 如果还没有接入真实导出工具
-
-        # 返回结构化结果
-
+        # 没有导出工具时，
+        # 仍返回结构化报告数据。
         if exporter is None:
-
             return {
-
-
-                "report":
-
-                    input_data
-
-
+                "report": input_data
             }
 
-        report = await exporter.execute(
-
-            data=input_data
-
+        title = input_data.get(
+            "title",
+            "Repository Analysis Report",
         )
+
+        filename = input_data.get(
+            "filename",
+            "repository_analysis.md",
+        )
+
+        content = input_data.get(
+            "content"
+        )
+
+        if not isinstance(
+            content,
+            str,
+        ):
+            content = json.dumps(
+                input_data,
+                ensure_ascii=False,
+                indent=2,
+                default=str,
+            )
+
+        report = await exporter.execute(
+            title=title,
+            content=content,
+            filename=filename,
+        )
+
         return {
-
-
-            "report":
-
-                report
-
+            "report": report
         }

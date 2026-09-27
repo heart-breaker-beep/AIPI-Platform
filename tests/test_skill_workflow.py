@@ -66,18 +66,14 @@ class EndNode(BaseNode):
 
 class GithubTool:
 
-
     async def execute(
         self,
         **kwargs
     ):
 
-
         return {
-
             "repo":
-            kwargs["repo"]
-
+            kwargs["name"]
         }
 
 

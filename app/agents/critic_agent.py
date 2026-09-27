@@ -1,84 +1,63 @@
 """
 Critic Agent。
 
-
-负责：
-
-检查其他 Agent 输出质量。
-
-
-例如：
-
-- 是否缺少关键结果
-- 是否分析失败
-- 是否需要重新执行
-
-
-后续 Phase 会扩展：
-
-Retry
-
-Human Review
-
-Validation
-
-
+负责检查分析结果是否完整。
 """
 
-
 from app.agents.base import BaseAgent
-
-
 
 
 class CriticAgent(
     BaseAgent
 ):
+    """
+    分析结果检查 Agent。
+    """
 
+    name = "critic_agent"
 
-    name = (
-        "critic_agent"
+    description = (
+        "Validate repository analysis results"
     )
+
     async def execute(
         self,
         context,
-        input_data
+        input_data,
     ):
         errors = []
-        # 必须存在的分析结果
 
-        required_fields = [
+        required_fields = {
+            "repository": [
+                "repository",
+                "repository_analysis",
+                "repository_analysis_agent",
+            ],
+            "architecture": [
+                "architecture",
+                "architecture_analysis",
+                "architecture_analysis_agent",
+            ],
+            "technology": [
+                "technology",
+                "technology_analysis",
+                "technology_analysis_agent",
+                "technology_stack",
+            ],
+        }
 
-            "repository",
-
-            "architecture",
-
-            "technology"
-
-        ]
-        for field in required_fields:
-
-
-            if field not in input_data:
-
-
+        for logical_name, aliases in (
+            required_fields.items()
+        ):
+            if not any(
+                alias in input_data
+                for alias in aliases
+            ):
                 errors.append(
-
-                    f"{field} missing"
-
+                    f"{logical_name} missing"
                 )
 
         return {
-
-            # 是否通过检查
-
-            "passed":
-
-                len(errors) == 0,
-            # 错误列表
-
-            "errors":
-
-                errors
-
+            "passed": not errors,
+            "errors": errors,
         }

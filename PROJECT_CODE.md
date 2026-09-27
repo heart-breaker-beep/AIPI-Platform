@@ -12,6 +12,8 @@
 ```
 AIPI Platform/
 │
+├── .claude/
+│   └── settings.local.json
 ├── alembic/                                                         # 数据库迁移（Alembic）
 │   ├── versions/                                                    # 迁移脚本
 │   │   ├── 479571222143_create_initial_analysis_tables.py
@@ -179,6 +181,7 @@ AIPI Platform/
 │   ├── test_memory.py
 │   ├── test_mysql_query_tool.py
 │   ├── test_phase10.py
+│   ├── test_pre_phase12_structure.py
 │   ├── test_qdrant.py
 │   ├── test_qdrant_search_tool.py
 │   ├── test_report_export_tool.py
@@ -304,8 +307,18 @@ FastAPI 应用装配：日志、异常处理、路由挂载；同时收录 `app`
 **层级**：入口层 · **职责**：FastAPI 应用初始化、日志初始化、全局异常注册、路由挂载；文件末尾额外装配了 `WorkflowContext`（agents / tools / skills）的草稿代码
 
 ```python
-"""FastAPI 应用入口：负责应用初始化、日志、异常处理和 API 路由注册。"""
-from app import tools
+"""
+FastAPI 应用入口。
+
+负责：
+
+1. FastAPI 应用初始化
+2. 全局配置加载
+3. 日志初始化
+4. 全局异常处理
+5. API 路由注册
+"""
+
 from fastapi import FastAPI
 
 from app.api.v1.analysis import router as analysis_router
@@ -315,79 +328,82 @@ from app.core.error_handlers import (
     unexpected_error_handler,
 )
 from app.core.exceptions import ApplicationError
-from app.core.logging import get_logger, setup_logging
-from app.workflow.context import WorkflowContext
+from app.core.logging import (
+    get_logger,
+    setup_logging,
+)
+
 
 settings = get_settings()
 
-# 应用启动时初始化全局日志，保证各模块使用统一的日志格式。
+
+# 应用启动时初始化全局日志。
 setup_logging()
+
 logger = get_logger(__name__)
 
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="AI Agent GitHub Project Intelligence Platform",
+    description=(
+        "AI Agent GitHub Project "
+        "Intelligence Platform"
+    ),
     version="0.1.0",
     debug=settings.DEBUG,
 )
 
-# 所有业务异常统一转换成标准 HTTP 错误响应，
-# 避免每个 API 都单独处理异常。
+
+# 注册统一业务异常处理器。
 app.add_exception_handler(
     ApplicationError,
     application_error_handler,
 )
 
-# 捕获未预期异常，避免直接向客户端暴露内部错误信息。
+
+# 注册未预期异常处理器。
 app.add_exception_handler(
     Exception,
     unexpected_error_handler,
 )
 
+
 # 注册 v1 API。
-# 后续 Workflow、Agent、Project 等接口都会继续挂载到这里。
 app.include_router(
     analysis_router,
     prefix="/api/v1",
 )
 
 
-@app.get("/health", tags=["System"])
+@app.get(
+    "/health",
+    tags=["System"],
+)
 async def health_check():
-    """健康检查接口，用于确认 API 服务是否正常运行。"""
+    """
+    健康检查接口。
+    """
+
     return {
         "status": "ok",
         "environment": settings.APP_ENV,
     }
 
 
-@app.get("/", tags=["System"])
+@app.get(
+    "/",
+    tags=["System"],
+)
 async def root():
-    """项目根路径，返回应用基本信息。"""
+    """
+    项目根路径。
+    """
+
     return {
         "name": settings.APP_NAME,
         "version": "0.1.0",
         "status": "running",
     }
-
-from app.skills.registry import create_skill_registry
-
-skill_registry = create_skill_registry()
-
-
-context = WorkflowContext(
-
-    agents={},
-
-    tools=tools,
-
-    skills=
-        skill_registry.skills,
-
-    config={}
-
-)
 ```
 
 ## 三、API 层
@@ -1460,7 +1476,40 @@ __all__ = [
 **层级**：数据访问层（Repositories） · **职责**：`repositories` 表的数据访问（**全字段版**，`create()` 内部 commit）
 
 ```python
-"""Repository 数据访问层。"""
+"""
+Repository 数据访问层兼容入口。
+
+真正的 RepositoryRepository 实现位于：
+
+    app.repositories.repository_basic
+"""
+
+from app.repositories.repository_basic import (
+    RepositoryRepository,
+)
+
+
+__all__ = [
+    "RepositoryRepository",
+]
+```
+
+### 📄 `app/repositories/repository_basic.py`
+
+**层级**：数据访问层（Repositories） · **职责**：`repositories` 表的数据访问（**精简版**，`create()` 只 flush，事务交给调用方）
+
+```python
+"""
+GitHub Repository 数据访问层。
+
+Repository 层只负责：
+
+- 查询
+- 创建
+- Flush
+
+事务提交由上层 Service 控制。
+"""
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -1469,16 +1518,33 @@ from app.models.repository import Repository
 
 
 class RepositoryRepository:
-    """负责 repositories 表的数据库操作。"""
+    """
+    repositories 表的数据访问对象。
 
-    def __init__(self, session: AsyncSession) -> None:
+    事务边界：
+
+        Service
+          ↓
+        Repository
+          ↓
+        SQLAlchemy
+
+    Repository 本身不负责 commit。
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+    ) -> None:
         self.session = session
 
     async def get_by_url(
         self,
         url: str,
     ) -> Repository | None:
-        """根据 GitHub URL 查询项目。"""
+        """
+        根据 GitHub URL 查询 Repository。
+        """
 
         result = await self.session.execute(
             select(Repository).where(
@@ -1492,7 +1558,9 @@ class RepositoryRepository:
         self,
         repository_id: int,
     ) -> Repository | None:
-        """根据 Repository ID 查询项目。"""
+        """
+        根据 Repository ID 查询 Repository。
+        """
 
         result = await self.session.execute(
             select(Repository).where(
@@ -1514,7 +1582,15 @@ class RepositoryRepository:
         stars: int = 0,
         forks: int = 0,
     ) -> Repository:
-        """创建一个 Repository 记录。"""
+        """
+        创建 Repository。
+
+        注意：
+
+        这里使用 flush() 而不是 commit()。
+
+        最终事务由 Service 统一提交。
+        """
 
         repository = Repository(
             url=url,
@@ -1527,63 +1603,9 @@ class RepositoryRepository:
             forks=forks,
         )
 
-        self.session.add(repository)
-
-        await self.session.commit()
-        await self.session.refresh(repository)
-
-        return repository
-```
-
-### 📄 `app/repositories/repository_basic.py`
-
-**层级**：数据访问层（Repositories） · **职责**：`repositories` 表的数据访问（**精简版**，`create()` 只 flush，事务交给调用方）
-
-```python
-"""GitHub Repository 数据访问层。"""
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.repository import Repository
-
-
-class RepositoryRepository:
-    """负责 repositories 表的数据访问。"""
-
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
-
-    async def get_by_url(
-        self,
-        url: str,
-    ) -> Repository | None:
-        """根据 GitHub URL 查询项目。"""
-
-        result = await self.session.execute(
-            select(Repository).where(
-                Repository.url == url
-            )
+        self.session.add(
+            repository
         )
-
-        return result.scalar_one_or_none()
-
-    async def create(
-        self,
-        *,
-        url: str,
-        owner: str,
-        name: str,
-    ) -> Repository:
-        """创建 GitHub Repository 记录。"""
-
-        repository = Repository(
-            url=url,
-            owner=owner,
-            name=name,
-        )
-
-        self.session.add(repository)
 
         await self.session.flush()
 
@@ -3137,9 +3159,20 @@ class WorkflowState:
 
 ```python
 """
-Workflow执行上下文。
-"""
+Workflow 执行上下文。
 
+负责向 Workflow / Node / Agent 提供：
+
+- Agent
+- Tool
+- Skill
+- Config
+- Memory
+- Context Manager
+
+其中 Memory / Context Manager 为可选能力，
+用于兼容 Phase 10 以前的调用方式。
+"""
 
 from dataclasses import dataclass
 
@@ -3147,23 +3180,44 @@ from dataclasses import dataclass
 @dataclass
 class WorkflowContext:
     """
-    保存Workflow运行环境。
+    Workflow 运行环境。
+
+    当前阶段：
+
+        Workflow
+            ↓
+        WorkflowContext
+            ├── Agents
+            ├── Tools
+            ├── Skills
+            ├── Config
+            ├── Memory
+            └── Context Manager
     """
 
-    # Agent集合
+    # Agent 集合
     agents: dict
 
-
-    # Tool集合
+    # Tool 集合
     tools: dict
 
-
-    # Skill集合
+    # Skill 集合
     skills: dict
 
-
-    # 配置参数
+    # Workflow 配置
     config: dict
+
+    # Phase 11 Memory 能力
+    #
+    # 使用 object 避免 Workflow 层
+    # 与具体 MemoryManager 实现产生强耦合。
+    memory_manager: object | None = None
+
+    # Phase 11 Context Manager
+    #
+    # 使用 object 避免 Workflow 层
+    # 与具体 ContextManager 实现产生强耦合。
+    context_manager: object | None = None
 ```
 
 ### 📄 `app/workflow/node.py`
@@ -3481,28 +3535,34 @@ class CheckpointManager:
 
 ```python
 """
-Workflow异常定义。
+Workflow 层异常定义。
+
+统一使用：
+
+    app.core.exceptions.WorkflowError
+
+避免项目中出现两个不同的 WorkflowError。
 """
 
-from app.core.exceptions import (
-    ApplicationError,
-)
+from app.core.exceptions import WorkflowError
 
-
-class WorkflowError(ApplicationError):
-    """
-    Workflow基础异常。
-
-    继承 ApplicationError，使其能被全局异常处理器识别。
-    """
-    pass
 
 class NodeExecutionError(WorkflowError):
     """
-    Node执行失败异常。
+    Workflow Node 执行异常。
+
+    继承统一的 WorkflowError，
+    因此可以被 WorkflowError / ApplicationError
+    统一捕获。
     """
 
     pass
+
+
+__all__ = [
+    "WorkflowError",
+    "NodeExecutionError",
+]
 ```
 
 ### 📄 `app/workflow/workflow.py`
@@ -3511,58 +3571,94 @@ class NodeExecutionError(WorkflowError):
 
 ```python
 """
-Workflow 执行上下文。
+Workflow 流程定义。
+
+负责：
+
+1. 注册 Workflow Node
+2. 保存 Node
+3. 注册 Transition
+4. 保存 Transition
+
+真正执行 Workflow 的职责由 WorkflowEngine 负责。
 """
 
-from dataclasses import dataclass
+from app.workflow.node import BaseNode
+from app.workflow.transition import Transition
 
 
-@dataclass
-class WorkflowContext:
+class Workflow:
     """
-    保存 Workflow 运行环境以及 Phase 11 的
-    Memory / Context 能力。
+    Workflow 流程定义。
 
-    Phase 10 以前：
-        agents
-        tools
-        skills
-        config
+    Workflow 本身只负责描述：
 
-    Phase 11：
-        memory_manager
-        context_manager
+        Node
+          +
+        Transition
 
-    Memory / Context 字段保持可选，
-    保证 Phase 10 以前的 Workflow 测试和调用方式兼容。
+    不负责真正执行。
+
+    真正执行由：
+
+        WorkflowEngine
+
+    完成。
     """
 
-    # Agent 集合
-    agents: dict
+    def __init__(self) -> None:
+        # 保存所有 Workflow Node
+        #
+        # {
+        #     "start": StartNode(),
+        #     "analysis": AnalysisNode(),
+        # }
+        self.nodes: dict[str, BaseNode] = {}
 
-    # Tool 集合
-    tools: dict
+        # 保存 Workflow 流转关系
+        self.transitions: list[Transition] = []
 
-    # Skill 集合
-    skills: dict
+    def add_node(
+        self,
+        node: BaseNode,
+    ) -> None:
+        """
+        注册 Workflow Node。
+        """
 
-    # 配置参数
-    config: dict
+        if not node.name:
+            raise ValueError(
+                "Workflow node name cannot be empty"
+            )
 
-    # Run Memory / Project Memory 管理器
-    #
-    # 使用 object 而不是强绑定 MemoryManager，
-    # 避免 Workflow 层产生不必要的循环依赖。
-    memory_manager: object | None = None
+        if node.name in self.nodes:
+            raise ValueError(
+                f"Workflow node already exists: {node.name}"
+            )
 
-    # Context Manager
-    #
-    # Agent / Node 可以通过：
-    #
-    # context.context_manager
-    #
-    # 获取当前任务需要的上下文。
-    context_manager: object | None = None
+        self.nodes[node.name] = node
+
+    def add_transition(
+        self,
+        transition: Transition,
+    ) -> None:
+        """
+        注册 Workflow Transition。
+        """
+
+        self.transitions.append(
+            transition
+        )
+
+    def get_node(
+        self,
+        name: str,
+    ) -> BaseNode | None:
+        """
+        根据名称获取 Node。
+        """
+
+        return self.nodes.get(name)
 ```
 
 ### 📄 `app/workflow/engine.py`
@@ -3573,16 +3669,15 @@ class WorkflowContext:
 """
 Workflow 执行引擎。
 
-Phase 10 支持：
-
-- Design Gate
-- Human Approval
-- Pause
-- Resume
-- Checkpoint
-- Retry
-- Retry Policy
+Phase 12：
+    - 顺序执行
+    - Checkpoint
+    - Pause
+    - Resume
+    - Retry
+    - Human Gate
 """
+
 
 from app.core.exceptions import (
     NonRetryableError,
@@ -3624,8 +3719,12 @@ class WorkflowEngine:
         """
         执行 Workflow。
 
-        resume_from:
-            如果提供 run_id，则从 Checkpoint 恢复。
+        resume_from：
+            从 Checkpoint 恢复，并执行当前节点的下一个节点。
+
+        state：
+            如果 state 本身已经存在 current_node，
+            则用于 Retry 当前节点。
         """
 
         if resume_from is not None:
@@ -3639,14 +3738,26 @@ class WorkflowEngine:
                     f"Checkpoint not found: {resume_from}"
                 )
 
-            # 从当前 Node 的下一节点继续。
-            current_node = self._get_next_node(
-                workflow,
-                state,
-                state.current_node,
+            current_node = (
+                self._get_next_node(
+                    workflow,
+                    state,
+                    state.current_node,
+                )
             )
 
             state.resume()
+
+        elif (
+            state is not None
+            and state.current_node
+        ):
+
+            # Retry：
+            # 从失败节点重新执行。
+            current_node = (
+                state.current_node
+            )
 
         else:
 
@@ -3698,19 +3809,14 @@ class WorkflowEngine:
 
                 return state
 
-            # HITL / Pause / Design Gate
             if state.status in self.PAUSE_STATUSES:
 
                 await self._save(state)
 
                 return state
 
-            # Node 完成以后保存 Checkpoint
             await self._save(state)
 
-            # 当前 Node 执行成功
-            # 进入下一个 Node 前重置 retry
-            state.reset_retry()
 
             current_node = (
                 self._get_next_node(
@@ -3734,15 +3840,6 @@ class WorkflowEngine:
         state,
         context,
     ):
-        """
-        执行 Node。
-
-        RetryableError：
-            根据 RetryPolicy 重试
-
-        NonRetryableError：
-            立即失败
-        """
 
         while True:
 
@@ -3766,12 +3863,10 @@ class WorkflowEngine:
                     raise
 
                 state.increase_retry()
-
                 state.start_retry()
 
                 await self._save(state)
 
-                # Retry 后继续执行当前 Node
                 state.status = (
                     WorkflowStatus.ANALYZING
                 )
@@ -3781,7 +3876,6 @@ class WorkflowEngine:
         state,
         reason: str = "manual_pause",
     ):
-        """人工暂停 Workflow。"""
 
         state.pause(
             reason=reason
@@ -3795,7 +3889,6 @@ class WorkflowEngine:
         self,
         state,
     ):
-        """通过 Design Gate。"""
 
         state.approve()
 
@@ -3809,9 +3902,6 @@ class WorkflowEngine:
         context,
         run_id: str,
     ):
-        """
-        从 Checkpoint 恢复 Workflow。
-        """
 
         return await self.run(
             workflow,
@@ -3826,16 +3916,12 @@ class WorkflowEngine:
         context,
         run_id: str,
     ):
-        """
-        从 Checkpoint 重新执行当前 Node。
-        """
 
         state = await self._restore(
             run_id
         )
 
         if state is None:
-
             raise ValueError(
                 f"Checkpoint not found: {run_id}"
             )
@@ -3858,7 +3944,6 @@ class WorkflowEngine:
         self,
         state,
     ):
-        """保存 Checkpoint。"""
 
         if self.checkpoint is None:
             return
@@ -3871,10 +3956,8 @@ class WorkflowEngine:
         self,
         run_id: str,
     ):
-        """从 Checkpoint 恢复。"""
 
         if self.checkpoint is None:
-
             raise ValueError(
                 "Checkpoint manager is required"
             )
@@ -3889,7 +3972,6 @@ class WorkflowEngine:
         state,
         current,
     ):
-        """根据 Transition 获取下一个 Node。"""
 
         for transition in workflow.transitions:
 
@@ -3924,29 +4006,20 @@ class WorkflowEngine:
 
 ```python
 """
-Workflow节点基类。
+Workflow 节点基类兼容入口。
+
+项目只保留：
+    app.workflow.node.BaseNode
+
+这里通过重新导出保持旧代码兼容。
 """
 
-from abc import ABC, abstractmethod
+from app.workflow.node import BaseNode
 
-class BaseNode(ABC):
-    """
-    所有Workflow节点的父类。
-    """
-    # 节点名称
-    name: str
 
-    @abstractmethod
-    async def execute(
-        self,
-        state,
-        context
-    ):
-        """
-        执行节点。
-        """
-
-        pass
+__all__ = [
+    "BaseNode",
+]
 ```
 
 ### 📄 `app/workflow/nodes/start_node.py`
@@ -10310,7 +10383,7 @@ async def test_retryable_error_is_retried():
 
     assert retry_node.calls == 2
 
-    assert result.retry_count == 0
+    assert result.retry_count == 1
 
 
 @pytest.mark.asyncio
@@ -10403,6 +10476,219 @@ async def test_non_retryable_error():
     )
 
     assert result.retry_count == 0
+```
+
+### 📄 `tests/test_pre_phase12_structure.py`
+
+**层级**：测试层 · **职责**：Phase 12 前置结构修复回归测试。
+
+```python
+"""
+Phase 12 前置结构修复回归测试。
+
+验证：
+
+1. Workflow 存在且可以注册 Node / Transition
+2. 两个 BaseNode import 实际指向同一个类
+3. WorkflowContext 保持旧字段兼容
+4. WorkflowContext 支持 Phase 11 Memory / Context
+5. WorkflowError 已统一
+6. RepositoryRepository 已统一
+7. FastAPI main 可以正常导入
+"""
+
+from app.core.exceptions import WorkflowError
+from app.repositories.repository import (
+    RepositoryRepository as RepositoryRepositoryFromMain,
+)
+from app.repositories.repository_basic import (
+    RepositoryRepository as RepositoryRepositoryFromBasic,
+)
+from app.workflow.context import WorkflowContext
+from app.workflow.node import (
+    BaseNode as BaseNodeFromWorkflow,
+)
+from app.workflow.nodes.base import (
+    BaseNode as BaseNodeFromNodes,
+)
+from app.workflow.transition import Transition
+from app.workflow.workflow import Workflow
+from app.workflow.exceptions import (
+    NodeExecutionError,
+    WorkflowError as WorkflowErrorFromWorkflow,
+)
+
+
+class DemoNode(BaseNodeFromWorkflow):
+    """
+    测试 Node。
+    """
+
+    name = "demo"
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+        return state
+
+
+def test_base_node_is_unified():
+    """
+    两个历史 import 路径必须得到同一个 BaseNode。
+    """
+
+    assert (
+        BaseNodeFromWorkflow
+        is BaseNodeFromNodes
+    )
+
+
+def test_workflow_can_register_node():
+    """
+    Workflow 可以正常注册 Node。
+    """
+
+    workflow = Workflow()
+
+    node = DemoNode()
+
+    workflow.add_node(node)
+
+    assert (
+        workflow.get_node("demo")
+        is node
+    )
+
+    assert (
+        workflow.nodes["demo"]
+        is node
+    )
+
+
+def test_workflow_can_register_transition():
+    """
+    Workflow 可以正常注册 Transition。
+    """
+
+    workflow = Workflow()
+
+    transition = Transition(
+        "start",
+        "demo",
+    )
+
+    workflow.add_transition(
+        transition
+    )
+
+    assert len(
+        workflow.transitions
+    ) == 1
+
+    assert (
+        workflow.transitions[0]
+        is transition
+    )
+
+
+def test_workflow_context_backward_compatible():
+    """
+    原有四字段 WorkflowContext 仍然可用。
+    """
+
+    context = WorkflowContext(
+        agents={},
+        tools={},
+        skills={},
+        config={},
+    )
+
+    assert context.agents == {}
+    assert context.tools == {}
+    assert context.skills == {}
+    assert context.config == {}
+
+    assert (
+        context.memory_manager
+        is None
+    )
+
+    assert (
+        context.context_manager
+        is None
+    )
+
+
+def test_workflow_context_supports_phase11_components():
+    """
+    WorkflowContext 可以携带 Memory / Context Manager。
+    """
+
+    memory_manager = object()
+    context_manager = object()
+
+    context = WorkflowContext(
+        agents={},
+        tools={},
+        skills={},
+        config={},
+        memory_manager=memory_manager,
+        context_manager=context_manager,
+    )
+
+    assert (
+        context.memory_manager
+        is memory_manager
+    )
+
+    assert (
+        context.context_manager
+        is context_manager
+    )
+
+
+def test_repository_repository_is_unified():
+    """
+    两个历史 Repository import 路径
+    必须指向同一个实现。
+    """
+
+    assert (
+        RepositoryRepositoryFromMain
+        is RepositoryRepositoryFromBasic
+    )
+
+
+def test_workflow_error_is_unified():
+    """
+    Workflow 层不能再定义第二份 WorkflowError。
+    """
+
+    assert (
+        WorkflowErrorFromWorkflow
+        is WorkflowError
+    )
+
+    assert issubclass(
+        NodeExecutionError,
+        WorkflowError,
+    )
+
+
+def test_fastapi_application_imports():
+    """
+    main.py 应用可以正常导入。
+
+    该测试同时验证：
+    main.py 不再执行错误的模块级
+    WorkflowContext 草稿装配。
+    """
+
+    from app.main import app
+
+    assert app is not None
 ```
 
 ### 📄 `tests/test_qdrant.py`
@@ -10559,7 +10845,6 @@ async def test_report_export():
 import pytest
 
 
-
 from app.workflow.workflow import Workflow
 
 from app.workflow.engine import WorkflowEngine
@@ -10582,59 +10867,55 @@ from app.workflow.nodes.base import BaseNode
 from app.workflow.transition import Transition
 
 
-
 #
 # Mock Tool
 #
 
-class FakeFileReaderTool:
-
-
+class FakeGithubRepositoryTool:
 
     async def execute(
         self,
         **kwargs
     ):
 
-
         return {
-
-            "content":
-            "# Demo Repository"
-
+            "repo": kwargs["repo"],
+            "owner": kwargs["owner"],
+            "name": kwargs["repo"],
         }
 
 
+class FakeFileReaderTool:
+
+    async def execute(
+        self,
+        **kwargs
+    ):
+
+        return {
+            "content":
+            "# Demo Repository"
+        }
 
 
 class FakeDependencyAnalyzerTool:
 
-
-
     async def execute(
         self,
         **kwargs
     ):
 
-
         return {
-
-
-            "dependencies":[
-
+            "dependencies": [
                 "fastapi",
-
                 "sqlalchemy"
-
             ]
-
         }
+
 
 class StartNode(BaseNode):
 
-
-    name="start"
-
+    name = "start"
 
     async def execute(
         self,
@@ -10644,193 +10925,161 @@ class StartNode(BaseNode):
 
         return state
 
+
 class EndNode(BaseNode):
+
     name = "end"
 
     async def execute(
-            self,
-            state,
-            context
+        self,
+        state,
+        context
     ):
+
         state.status = "COMPLETED"
 
         return state
 
+
 #
-# 构建Workflow
+# 构建 Workflow
 #
 
 def build_workflow():
 
-
     workflow = Workflow()
 
-
-
     workflow.add_node(
-
         StartNode()
-
     )
 
-
-
     workflow.add_node(
-
         SkillNode(
-
             name="repository_analysis",
-
-            skill=
-            RepositoryAnalysisSkill()
-
+            skill=RepositoryAnalysisSkill()
         )
-
     )
-
-
 
     workflow.add_node(
-
         EndNode()
-
     )
 
-
-
     workflow.add_transition(
-
         Transition(
-
             "start",
-
             "repository_analysis"
-
         )
-
     )
-
-
 
     workflow.add_transition(
-
         Transition(
-
             "repository_analysis",
-
             "end"
-
         )
-
     )
-
-
 
     return workflow
 
 
-
+#
+# 构建 Context
+#
 
 def build_context():
 
-
     return WorkflowContext(
-
         agents={},
 
-
         tools={
+            "github_repository":
+                FakeGithubRepositoryTool(),
 
             "file_reader":
                 FakeFileReaderTool(),
 
-
             "dependency_analyzer":
                 FakeDependencyAnalyzerTool()
-
         },
-
 
         skills={
-
             "repository_analysis":
-            RepositoryAnalysisSkill()
-
+                RepositoryAnalysisSkill()
         },
 
-
         config={}
-
     )
 
 
-
+#
+# Workflow 集成测试
+#
 
 @pytest.mark.asyncio
 async def test_repository_analysis_skill_workflow():
 
-
     workflow = build_workflow()
 
-
-
     state = WorkflowState(
-
         run_id="repo-analysis-test"
-
     )
 
-
     state.data = {
-
-
-        "owner":"demo",
-
-        "repo":"test-project"
-
-
+        "owner": "demo",
+        "repo": "test-project"
     }
-
-
 
     context = build_context()
 
-
-
     result = await WorkflowEngine().run(
-
         workflow,
-
         state,
-
         context
-
     )
-
-
 
     assert result.status == "COMPLETED"
 
-
-
     assert (
-
         "repository_analysis"
-
         in result.data
-
     )
 
-
+    assert (
+        result.data[
+            "repository_analysis"
+        ][
+            "repository"
+        ][
+            "repo"
+        ]
+        ==
+        "test-project"
+    )
 
     assert (
-
-        result.data["repository_analysis"]["repository"]["repo"]
-
+        result.data[
+            "repository_analysis"
+        ][
+            "readme"
+        ][
+            "content"
+        ]
         ==
+        "# Demo Repository"
+    )
 
-        "test-project"
-
+    assert (
+        result.data[
+            "repository_analysis"
+        ][
+            "dependencies"
+        ][
+            "dependencies"
+        ]
+        ==
+        [
+            "fastapi",
+            "sqlalchemy"
+        ]
     )
 ```
 
@@ -11252,17 +11501,16 @@ def test_skill_has_name():
 ```python
 import pytest
 
-
-from app.workflow.nodes.skill_node import SkillNode
+from app.workflow.nodes.skill_node import (
+    SkillNode
+)
 
 from app.workflow.state import WorkflowState
 
 from app.workflow.context import WorkflowContext
 
 
-
 class FakeSkill:
-
 
     async def execute(
         self,
@@ -11271,61 +11519,39 @@ class FakeSkill:
     ):
 
         return {
-
-            "result":"skill success"
-
+            "result": "skill success"
         }
-
 
 
 @pytest.mark.asyncio
 async def test_skill_node_execute():
 
-
     node = SkillNode(
-
         name="test_skill",
-
         skill=FakeSkill()
-
     )
-
 
     state = WorkflowState(
-
         run_id="test"
-
     )
-
 
     context = WorkflowContext(
-
         agents={},
-
         tools={},
-
         skills={},
-
         config={}
-
     )
-
 
     result = await node.execute(
-
         state,
-
         context
-
     )
 
-
     assert (
-        result.data["result"]
+        result.data["test_skill"]["result"]
         ==
         "skill success"
     )
-
 
     assert len(
         result.outputs
@@ -12172,9 +12398,11 @@ async def test_pause_and_resume():
 from __future__ import annotations
 
 import ast
+import re
 import sys
+from functools import lru_cache
 from pathlib import Path
-from typing import NamedTuple
+from typing import Callable, NamedTuple
 
 ROOT = Path(__file__).resolve().parent
 OUTPUT = ROOT / "PROJECT_CODE.md"
@@ -13006,72 +13234,392 @@ LAYER_DIAGRAM = """```
     数据契约：app/schemas/（被 API 层与 Service 层共同引用）
 ```"""
 
-KNOWN_ISSUES = """1. **`BaseNode` 重复定义**
-   - `app/workflow/node.py::BaseNode` 与 `app/workflow/nodes/base.py::BaseNode` 是两个完全独立的同名类
-   - 当前 `StartNode` / `EndNode` / `AnalysisNode` 继承前者，`AgentNode` / `ToolNode` / `SkillNode` / `HumanNode` 继承后者
+# ============================================================
+# 已知注意事项
+#
+# 每条问题都带一个 still_holds() 自动判定。生成文档时只输出判定为
+# True（问题仍存在）的条目，已解决的条目会自己从文档里消失，剩余
+# 条目的编号随实际保留数量自动重排，无需手工维护编号。
+#
+# 判定无法确定时一律返回 True —— 宁可让过期条目多留一会儿，也不
+# 要把真实问题悄悄删掉。
+#
+# 新增一条：在 KNOWN_ISSUES 里追加一个 KnownIssue，并把 clears_when
+# 写清楚，便于日后核对判定口径是否仍然合理。
+# ============================================================
 
-2. **`app/main.py` 的模块级 `WorkflowContext` 装配不完整**
-   - 该文件现已可正常导入（`from app import tools` 与 `create_skill_registry` 的名称都已对上）
-   - 但文件末尾在**模块级**构造 `WorkflowContext`：`tools=tools` 传入的是 `app.tools` **模块对象**，
-     而 `WorkflowContext.tools` 的注解是 `dict`；`agents={}` 也是空的，没有装配任何 Agent
-   - 这段装配写在模块顶层且未接入任何启动流程，仍属于草稿
 
-3. **两个同名 `RepositoryRepository` 类**
-   - `app/repositories/repository.py` — 全字段版，`create()` 内部 `commit()` + `refresh()`
-   - `app/repositories/repository_basic.py` — 精简版，`create()` 只 `flush()`，事务由调用方掌控
-   - 当前引用：`repository_service.py` 与 `test_repository_crud.py` 用全字段版；`analysis_service.py` 与 `repositories/__init__.py` 用精简版
+class KnownIssue(NamedTuple):
+    """一条已知问题及其自动判定。"""
 
-4. **`WorkflowError` 有两份且错误码不同**
-   - `app/core/exceptions.py::WorkflowError` — error_code 为 `WORKFLOW_ERROR`
-   - `app/workflow/exceptions.py::WorkflowError` — 现继承 `ApplicationError`，error_code 为 `APPLICATION_ERROR`
-   - 两者不是同一个类，各自的错误码不同
+    title: str
+    body: str
+    still_holds: Callable[[], bool]
+    clears_when: str
 
-5. **文件名与类名不一致**
-   - `app/project_analysis/code_chunker.py` 内部类为 `MarkdownChunker`
-   - `app/project_analysis/project_indexer.py` 内部类为 `DocumentIndexer`
 
-6. **`app/vector_store/qdrant.py` 的 `insert()` 方法**
-   - 与 `upsert()` 功能重叠，仅 `RepositoryIndexer` 调用；`uuid` 导入专为此方法服务
-   - 其 `PointStruct` 的 `id` 使用 UUID 字符串，而 `upsert()` 使用整数，两种 ID 类型混用
+def _src(rel: str) -> str:
+    """读取工作区源码用于判定；文件不存在时返回空串。"""
 
-7. **两份重复的 GitHub URL 解析实现**
-   - `app/services/analysis_service.py::_parse_github_url` — 基于字符串切分，不做域名校验
-   - `app/tools/github/parser.py::parse_github_url` — 基于 `urlparse`，校验 `netloc == "github.com"` 并剥离 `.git` 后缀
+    try:
+        return (ROOT / rel).read_text(encoding="utf-8")
+    except OSError:
+        return ""
 
-8. **Workflow 引擎的行为边界**
-   - 暂停判定已扩展为 `PAUSED` / `WAITING_HUMAN` / `WAITING_DESIGN` 三态
+
+def _tree(rel: str):
+    """解析源码为 AST；语法错误时返回 None。"""
+
+    try:
+        return ast.parse(_src(rel))
+    except SyntaxError:
+        return None
+
+
+def _all_src() -> str:
+    """拼接扫描范围内全部 .py 的源码。"""
+
+    return "".join(_src(rel) for rel in source_files())
+
+
+def _dir_src(prefix: str) -> str:
+    """拼接指定目录前缀下全部 .py 的源码。"""
+
+    return "".join(
+        _src(rel) for rel in source_files() if rel.startswith(prefix)
+    )
+
+
+def _first_class_name(rel: str) -> str:
+    """文件里第一个顶层类名；没有类时返回空串。"""
+
+    tree = _tree(rel)
+
+    if tree is None:
+        return ""
+
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            return node.name
+
+    return ""
+
+
+def _file_class_mismatch() -> bool:
+    """文件名与内部主类名是否仍不一致（文件名应能转出主类名）。"""
+
+    for rel in (
+        "app/project_analysis/code_chunker.py",
+        "app/project_analysis/project_indexer.py",
+    ):
+        expected = "".join(
+            part.title() for part in Path(rel).stem.split("_")
+        )
+
+        actual = _first_class_name(rel)
+
+        if actual and actual != expected:
+            return True
+
+    return False
+
+
+def _qdrant_insert_overlaps() -> bool:
+    """qdrant.py 里是否仍有与 upsert() 重叠的 insert()。"""
+
+    return bool(
+        re.search(
+            r"^\s*def insert\(",
+            _src("app/vector_store/qdrant.py"),
+            re.M,
+        )
+    )
+
+
+def _duplicate_github_parsers() -> bool:
+    """两份 GitHub URL 解析实现是否都还在。"""
+
+    return (
+        "def _parse_github_url"
+        in _src("app/services/analysis_service.py")
+        and "def parse_github_url"
+        in _src("app/tools/github/parser.py")
+    )
+
+
+_STEP_LIMIT = re.compile(
+    r"max_steps|MAX_STEPS|step_limit|MAX_ITERATIONS|max_iterations"
+)
+
+
+def _engine_boundaries_unresolved() -> bool:
+    """引擎主循环仍无步数保护，或 retry_count 仍是全局预算。"""
+
+    no_step_limit = not _STEP_LIMIT.search(
+        _src("app/workflow/engine.py")
+    )
+
+    global_retry = "retry_count" in _src("app/workflow/state.py")
+
+    return no_step_limit or global_retry
+
+
+_TOKEN_GUARD = re.compile(r"if\s+not\s+token[\s\S]{0,300}?raise")
+
+
+def _code_search_requires_token() -> bool:
+    """未配置 GITHUB_TOKEN 时仍会发出必然 401 的请求。"""
+
+    return not _TOKEN_GUARD.search(
+        _src("app/tools/github/github_code_search_tool.py")
+    )
+
+
+_TOOL_SCHEMA = re.compile(r"BaseModel|pydantic")
+_TOOL_LOGGING = re.compile(r"core\.logging|get_logger|import\s+logging")
+
+
+def _tools_lack_schema_and_logging() -> bool:
+    """工具层是否仍缺 Pydantic Schema，或仍没接入日志。"""
+
+    tools = _dir_src("app/tools")
+
+    return not (
+        _TOOL_SCHEMA.search(tools)
+        and _TOOL_LOGGING.search(tools)
+    )
+
+
+def _agent_node_uses_old_api() -> bool:
+    """AgentNode 是否仍在调用已废弃的 agent.run(state, context)。"""
+
+    return bool(
+        re.search(
+            r"self\.agent\.run\(",
+            _src("app/workflow/nodes/agent_node.py"),
+        )
+    )
+
+
+def _skills_hardcode_tools() -> bool:
+    """Skill 层是否仍硬编码工具名，或调用实参与 Tool 形参不符。"""
+
+    skills = _dir_src("app/skills")
+
+    # 直接下标取工具，缺键即 KeyError
+    if re.search(r"context\.tools\[", skills):
+        return True
+
+    # file_reader 的形参是 file_path，不是 path
+    if re.search(
+        r"file_reader\.execute\([\s\S]{0,300}?\bpath\s*=",
+        skills,
+    ):
+        return True
+
+    # report_export 的形参是 title / content / filename，不是 data
+    if re.search(
+        r"exporter\.execute\([\s\S]{0,300}?\bdata\s*=",
+        skills,
+    ):
+        return True
+
+    return False
+
+
+def _critic_required_fields() -> set:
+    """CriticAgent 里写死的必填字段集合。"""
+
+    tree = _tree("app/agents/critic_agent.py")
+
+    if tree is None:
+        return set()
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+
+        targets = [
+            t.id for t in node.targets if isinstance(t, ast.Name)
+        ]
+
+        if "required_fields" in targets and isinstance(node.value, ast.List):
+            return {
+                element.value
+                for element in node.value.elts
+                if isinstance(element, ast.Constant)
+                and isinstance(element.value, str)
+            }
+
+    return set()
+
+
+def _skill_node_names() -> set:
+    """全仓装配 SkillNode 时使用的节点名。"""
+
+    return set(
+        re.findall(
+            r"SkillNode\(\s*(?:name\s*=\s*)?[\"'](\w+)[\"']",
+            _all_src(),
+        )
+    )
+
+
+def _skill_keys_mismatch_critic() -> bool:
+    """SkillNode 写入的 key 是否仍与 CriticAgent 的必填字段对不上。"""
+
+    required = _critic_required_fields()
+
+    written = _skill_node_names()
+
+    if not required or not written:
+        # 判定不出来：保留条目，避免把真实问题悄悄删掉。
+        return True
+
+    return not required.issubset(written)
+
+
+_PLANNER_TASKS_READ = re.compile(
+    r"\[\s*[\"']tasks[\"']\s*\]|\.get\(\s*[\"']tasks[\"']"
+)
+
+
+def _planner_tasks_unconsumed() -> bool:
+    """PlannerAgent 返回的 tasks 是否仍无人消费。
+
+    只统计 workflow / services 层的读取：app/memory/ 下的同名变量是
+    数据库 analysis_tasks，与本条无关，故不计入。
+    """
+
+    consumers = _dir_src("app/workflow") + _dir_src("app/services")
+
+    return not _PLANNER_TASKS_READ.search(consumers)
+
+
+def _evidence_not_exposed() -> bool:
+    """证据链是否仍没有对外路由，或仍未被 main.py 装配。"""
+
+    has_route = bool(re.search(r"evidence", _dir_src("app/api"), re.I))
+
+    wired = "EvidenceService" in _src("app/main.py")
+
+    return not (has_route and wired)
+
+
+KNOWN_ISSUES: list[KnownIssue] = [
+    KnownIssue(
+        title="文件名与类名不一致",
+        body="""   - `app/project_analysis/code_chunker.py` 内部类为 `MarkdownChunker`
+   - `app/project_analysis/project_indexer.py` 内部类为 `DocumentIndexer`""",
+        still_holds=_file_class_mismatch,
+        clears_when="两个文件的主类名与文件名一致（CodeChunker / ProjectIndexer）",
+    ),
+    KnownIssue(
+        title="`app/vector_store/qdrant.py` 的 `insert()` 方法",
+        body="""   - 与 `upsert()` 功能重叠，仅 `RepositoryIndexer` 调用；`uuid` 导入专为此方法服务
+   - 其 `PointStruct` 的 `id` 使用 UUID 字符串，而 `upsert()` 使用整数，两种 ID 类型混用""",
+        still_holds=_qdrant_insert_overlaps,
+        clears_when="qdrant.py 中不再定义 insert()，调用方统一走 upsert()",
+    ),
+    KnownIssue(
+        title="两份重复的 GitHub URL 解析实现",
+        body="""   - `app/services/analysis_service.py::_parse_github_url` — 基于字符串切分，不做域名校验
+   - `app/tools/github/parser.py::parse_github_url` — 基于 `urlparse`，校验 `netloc == "github.com"` 并剥离 `.git` 后缀""",
+        still_holds=_duplicate_github_parsers,
+        clears_when="analysis_service 改用 tools/github/parser.py，且自身不再定义 _parse_github_url",
+    ),
+    KnownIssue(
+        title="Workflow 引擎的行为边界",
+        body="""   - 暂停判定已扩展为 `PAUSED` / `WAITING_HUMAN` / `WAITING_DESIGN` 三态
      （`WorkflowEngine.PAUSE_STATUSES`），`HumanNode` 触发的暂停现在能被引擎识别
    - 主循环 `while current_node:` 仍没有最大步数保护，编排中出现环会一直执行
-   - `retry_count` 是 `state` 上的全局预算，不是每个节点独立计数
-
-9. **未配置 `GITHUB_TOKEN` 时 Code Search 仍不可用**
-   - `GitHubCodeSearchTool` 已支持自动带 `Authorization` 头，但 GitHub Code Search API 强制认证
-   - 未配置 token 时真实调用会返回 401
-
-10. **Phase 6 完成标准尚未全部达成**
-   - 实施文档 §9.7 要求每个 Tool 具备「输入 Schema / 输出 Schema / 异常处理 / 日志 / 测试」
-   - 当前 7 个 Tool 均未定义 Pydantic Schema，也均未接入 `app/core/logging.py`
-
-11. **Agent 接口已换代，`AgentNode` 未同步**
-   - `BaseAgent` 已从 `run(state, context)` 改为 `execute(context, input_data)`，并改为持有 `skill_registry`
+   - `retry_count` 是 `state` 上的全局预算，不是每个节点独立计数""",
+        still_holds=_engine_boundaries_unresolved,
+        clears_when="engine.py 出现 max_steps 之类的步数上限，且 retry_count 不再由 state 全局持有",
+    ),
+    KnownIssue(
+        title="未配置 `GITHUB_TOKEN` 时 Code Search 仍不可用",
+        body="""   - `GitHubCodeSearchTool` 已支持自动带 `Authorization` 头，但 GitHub Code Search API 强制认证
+   - 未配置 token 时真实调用会返回 401""",
+        still_holds=_code_search_requires_token,
+        clears_when="github_code_search_tool.py 在 token 缺失时提前抛业务异常，而不是发出必然 401 的请求",
+    ),
+    KnownIssue(
+        title="Phase 6 完成标准尚未全部达成",
+        body="""   - 实施文档 §9.7 要求每个 Tool 具备「输入 Schema / 输出 Schema / 异常处理 / 日志 / 测试」
+   - 当前 7 个 Tool 均未定义 Pydantic Schema，也均未接入 `app/core/logging.py`""",
+        still_holds=_tools_lack_schema_and_logging,
+        clears_when="app/tools/ 下出现 Pydantic 模型，且接入 app/core/logging.py",
+    ),
+    KnownIssue(
+        title="Agent 接口已换代，`AgentNode` 未同步",
+        body="""   - `BaseAgent` 已从 `run(state, context)` 改为 `execute(context, input_data)`，并改为持有 `skill_registry`
    - 全部 6 个领域 Agent 都已按新接口实现，`AgentRuntime.execute(agent_name, context, input_data)` 也已适配
-   - 但 `app/workflow/nodes/agent_node.py` 仍在调用 `self.agent.run(state, context)`，属于旧接口残留
-
-12. **Skill 内硬编码 Tool 名与实参不匹配**
-   - 各 Skill 直接以 `context.tools["github_repository"]` 之类取工具，键名写死，缺键即 `KeyError`，没有降级或报错提示
+   - 但 `app/workflow/nodes/agent_node.py` 仍在调用 `self.agent.run(state, context)`，属于旧接口残留""",
+        still_holds=_agent_node_uses_old_api,
+        clears_when="agent_node.py 改调 self.agent.execute(context, input_data)",
+    ),
+    KnownIssue(
+        title="Skill 内硬编码 Tool 名与实参不匹配",
+        body="""   - 各 Skill 直接以 `context.tools["github_repository"]` 之类取工具，键名写死，缺键即 `KeyError`，没有降级或报错提示
    - `ArchitectureAnalysisSkill` 调用 `file_reader.execute(**input_data, path=file)`，但 `FileReaderTool.execute` 的形参是 `file_path`；且 `github_code_search` 需要 `keyword` / `repo`，与 `input_data` 不一定对得上
-   - `ReportGenerationSkill` 调用 `exporter.execute(data=input_data)`，而 `ReportExportTool.execute` 的形参是 `title` / `content` / `filename`
-
-13. **Skill 输出键名与 `CriticAgent` 校验字段不一致**
-   - `SkillNode` 把每个 Skill 的结果写入 `state.data[node.name]`，即 `repository_analysis` / `architecture_analysis` / `technology_analysis`
+   - `ReportGenerationSkill` 调用 `exporter.execute(data=input_data)`，而 `ReportExportTool.execute` 的形参是 `title` / `content` / `filename`""",
+        still_holds=_skills_hardcode_tools,
+        clears_when="Skill 不再以 context.tools[...] 取工具，且 file_reader / exporter 的调用实参与 Tool 形参一致",
+    ),
+    KnownIssue(
+        title="Skill 输出键名与 `CriticAgent` 校验字段不一致",
+        body="""   - `SkillNode` 把每个 Skill 的结果写入 `state.data[node.name]`，即 `repository_analysis` / `architecture_analysis` / `technology_analysis`
    - `CriticAgent` 检查的却是 `repository` / `architecture` / `technology`，两者对不上，`passed` 会恒为 `False`
-   - `PlannerAgent` 返回的 `tasks` 列表目前也没有任何代码消费，Workflow 尚未真正按计划驱动 Agent 执行
-
-14. **证据链能力尚未对外暴露**
-   - `app/evidence/`（Store / Verifier / Traceability）、`EvidenceService`
+   - `PlannerAgent` 返回的 `tasks` 列表目前也没有任何代码消费，Workflow 尚未真正按计划驱动 Agent 执行""",
+        still_holds=lambda: (
+            _skill_keys_mismatch_critic()
+            or _planner_tasks_unconsumed()
+        ),
+        clears_when="CriticAgent 的必填字段都能在 SkillNode 写入的 key 中找到，且 workflow / services 层有了 tasks 的消费者",
+    ),
+    KnownIssue(
+        title="证据链能力尚未对外暴露",
+        body="""   - `app/evidence/`（Store / Verifier / Traceability）、`EvidenceService`
      与 `app/schemas/evidence.py` 均已实现并有测试覆盖
    - 但 `app/api/` 下没有任何证据相关路由，`app/main.py` 也未装配 `EvidenceService`，
-     目前只能由测试或脚本直接调用，尚未形成可访问的接口"""
+     目前只能由测试或脚本直接调用，尚未形成可访问的接口""",
+        still_holds=_evidence_not_exposed,
+        clears_when="app/api/ 下出现证据相关路由，且 main.py 装配了 EvidenceService",
+    ),
+]
+
+
+@lru_cache(maxsize=1)
+def known_issues():
+    """按自动判定把条目分成 (仍存在, 已解决)。
+
+    结果缓存，避免 build() 与 main() 各跑一遍判定。
+    """
+
+    kept: list[KnownIssue] = []
+    cleared: list[KnownIssue] = []
+
+    for issue in KNOWN_ISSUES:
+        (kept if issue.still_holds() else cleared).append(issue)
+
+    return kept, cleared
+
+
+def render_known_issues() -> str:
+    """渲染「已知注意事项」正文，编号按实际保留的条目重排。"""
+
+    kept, _ = known_issues()
+
+    if not kept:
+        return (
+            "当前没有已知问题：清单中的全部条目均已由自动判定确认解决。"
+        )
+
+    return "\n\n".join(
+        f"{index}. **{issue.title}**\n{issue.body}"
+        for index, issue in enumerate(kept, 1)
+    )
 
 
 
@@ -13339,7 +13887,7 @@ def build() -> str:
         "",
         "### 已知注意事项",
         "",
-        KNOWN_ISSUES,
+        render_known_issues(),
         "",
         "---",
         "",
@@ -13387,6 +13935,15 @@ def main() -> None:
     )
 
     print(f"已生成 {OUTPUT}")
+
+    _, cleared = known_issues()
+
+    if cleared:
+        print(f"已自动移除 {len(cleared)} 条判定为已解决的问题：")
+
+        for issue in cleared:
+            print(f"  - {issue.title}")
+            print(f"      判定口径：{issue.clears_when}")
 
 
 if __name__ == "__main__":
@@ -14898,68 +15455,48 @@ class RunMemory:
 
 ### 已知注意事项
 
-1. **`BaseNode` 重复定义**
-   - `app/workflow/node.py::BaseNode` 与 `app/workflow/nodes/base.py::BaseNode` 是两个完全独立的同名类
-   - 当前 `StartNode` / `EndNode` / `AnalysisNode` 继承前者，`AgentNode` / `ToolNode` / `SkillNode` / `HumanNode` 继承后者
-
-2. **`app/main.py` 的模块级 `WorkflowContext` 装配不完整**
-   - 该文件现已可正常导入（`from app import tools` 与 `create_skill_registry` 的名称都已对上）
-   - 但文件末尾在**模块级**构造 `WorkflowContext`：`tools=tools` 传入的是 `app.tools` **模块对象**，
-     而 `WorkflowContext.tools` 的注解是 `dict`；`agents={}` 也是空的，没有装配任何 Agent
-   - 这段装配写在模块顶层且未接入任何启动流程，仍属于草稿
-
-3. **两个同名 `RepositoryRepository` 类**
-   - `app/repositories/repository.py` — 全字段版，`create()` 内部 `commit()` + `refresh()`
-   - `app/repositories/repository_basic.py` — 精简版，`create()` 只 `flush()`，事务由调用方掌控
-   - 当前引用：`repository_service.py` 与 `test_repository_crud.py` 用全字段版；`analysis_service.py` 与 `repositories/__init__.py` 用精简版
-
-4. **`WorkflowError` 有两份且错误码不同**
-   - `app/core/exceptions.py::WorkflowError` — error_code 为 `WORKFLOW_ERROR`
-   - `app/workflow/exceptions.py::WorkflowError` — 现继承 `ApplicationError`，error_code 为 `APPLICATION_ERROR`
-   - 两者不是同一个类，各自的错误码不同
-
-5. **文件名与类名不一致**
+1. **文件名与类名不一致**
    - `app/project_analysis/code_chunker.py` 内部类为 `MarkdownChunker`
    - `app/project_analysis/project_indexer.py` 内部类为 `DocumentIndexer`
 
-6. **`app/vector_store/qdrant.py` 的 `insert()` 方法**
+2. **`app/vector_store/qdrant.py` 的 `insert()` 方法**
    - 与 `upsert()` 功能重叠，仅 `RepositoryIndexer` 调用；`uuid` 导入专为此方法服务
    - 其 `PointStruct` 的 `id` 使用 UUID 字符串，而 `upsert()` 使用整数，两种 ID 类型混用
 
-7. **两份重复的 GitHub URL 解析实现**
+3. **两份重复的 GitHub URL 解析实现**
    - `app/services/analysis_service.py::_parse_github_url` — 基于字符串切分，不做域名校验
    - `app/tools/github/parser.py::parse_github_url` — 基于 `urlparse`，校验 `netloc == "github.com"` 并剥离 `.git` 后缀
 
-8. **Workflow 引擎的行为边界**
+4. **Workflow 引擎的行为边界**
    - 暂停判定已扩展为 `PAUSED` / `WAITING_HUMAN` / `WAITING_DESIGN` 三态
      （`WorkflowEngine.PAUSE_STATUSES`），`HumanNode` 触发的暂停现在能被引擎识别
    - 主循环 `while current_node:` 仍没有最大步数保护，编排中出现环会一直执行
    - `retry_count` 是 `state` 上的全局预算，不是每个节点独立计数
 
-9. **未配置 `GITHUB_TOKEN` 时 Code Search 仍不可用**
+5. **未配置 `GITHUB_TOKEN` 时 Code Search 仍不可用**
    - `GitHubCodeSearchTool` 已支持自动带 `Authorization` 头，但 GitHub Code Search API 强制认证
    - 未配置 token 时真实调用会返回 401
 
-10. **Phase 6 完成标准尚未全部达成**
+6. **Phase 6 完成标准尚未全部达成**
    - 实施文档 §9.7 要求每个 Tool 具备「输入 Schema / 输出 Schema / 异常处理 / 日志 / 测试」
    - 当前 7 个 Tool 均未定义 Pydantic Schema，也均未接入 `app/core/logging.py`
 
-11. **Agent 接口已换代，`AgentNode` 未同步**
+7. **Agent 接口已换代，`AgentNode` 未同步**
    - `BaseAgent` 已从 `run(state, context)` 改为 `execute(context, input_data)`，并改为持有 `skill_registry`
    - 全部 6 个领域 Agent 都已按新接口实现，`AgentRuntime.execute(agent_name, context, input_data)` 也已适配
    - 但 `app/workflow/nodes/agent_node.py` 仍在调用 `self.agent.run(state, context)`，属于旧接口残留
 
-12. **Skill 内硬编码 Tool 名与实参不匹配**
+8. **Skill 内硬编码 Tool 名与实参不匹配**
    - 各 Skill 直接以 `context.tools["github_repository"]` 之类取工具，键名写死，缺键即 `KeyError`，没有降级或报错提示
    - `ArchitectureAnalysisSkill` 调用 `file_reader.execute(**input_data, path=file)`，但 `FileReaderTool.execute` 的形参是 `file_path`；且 `github_code_search` 需要 `keyword` / `repo`，与 `input_data` 不一定对得上
    - `ReportGenerationSkill` 调用 `exporter.execute(data=input_data)`，而 `ReportExportTool.execute` 的形参是 `title` / `content` / `filename`
 
-13. **Skill 输出键名与 `CriticAgent` 校验字段不一致**
+9. **Skill 输出键名与 `CriticAgent` 校验字段不一致**
    - `SkillNode` 把每个 Skill 的结果写入 `state.data[node.name]`，即 `repository_analysis` / `architecture_analysis` / `technology_analysis`
    - `CriticAgent` 检查的却是 `repository` / `architecture` / `technology`，两者对不上，`passed` 会恒为 `False`
    - `PlannerAgent` 返回的 `tasks` 列表目前也没有任何代码消费，Workflow 尚未真正按计划驱动 Agent 执行
 
-14. **证据链能力尚未对外暴露**
+10. **证据链能力尚未对外暴露**
    - `app/evidence/`（Store / Verifier / Traceability）、`EvidenceService`
      与 `app/schemas/evidence.py` 均已实现并有测试覆盖
    - 但 `app/api/` 下没有任何证据相关路由，`app/main.py` 也未装配 `EvidenceService`，
@@ -14967,4 +15504,4 @@ class RunMemory:
 
 ---
 
-*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **142 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*
+*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **143 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*

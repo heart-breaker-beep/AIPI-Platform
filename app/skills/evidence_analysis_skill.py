@@ -93,6 +93,8 @@ class EvidenceAnalysisSkill(
 
         )
 
+        persist_failures = []
+
         if (
             session is not None
             and repository_id is not None
@@ -105,32 +107,52 @@ class EvidenceAnalysisSkill(
 
             for item in unique:
 
-                record = (
-                    await service.create_evidence(
-                        repository_id=repository_id,
-                        source_type=item[
-                            "source_type"
-                        ],
-                        source_url=item.get(
-                            "source_url"
-                        ),
-                        file_path=item.get(
-                            "file_path"
-                        ),
-                        line_start=item.get(
-                            "line_start"
-                        ),
-                        line_end=item.get(
-                            "line_end"
-                        ),
-                        content=item[
-                            "content"
-                        ],
-                        verification_status=(
-                            "UNVERIFIED"
-                        ),
+                # 单条证据落库失败不应中断整个分析：
+                # 记录原因后继续处理其它证据。
+                try:
+
+                    record = (
+                        await service.create_evidence(
+                            repository_id=repository_id,
+                            source_type=item[
+                                "source_type"
+                            ],
+                            source_url=item.get(
+                                "source_url"
+                            ),
+                            file_path=item.get(
+                                "file_path"
+                            ),
+                            line_start=item.get(
+                                "line_start"
+                            ),
+                            line_end=item.get(
+                                "line_end"
+                            ),
+                            content=item[
+                                "content"
+                            ],
+                            verification_status=(
+                                "UNVERIFIED"
+                            ),
+                        )
                     )
-                )
+
+                except Exception as error:
+
+                    persist_failures.append(
+                        {
+                            "file_path": item.get(
+                                "file_path"
+                            ),
+                            "error": (
+                                str(error)
+                                or type(error).__name__
+                            ),
+                        }
+                    )
+
+                    continue
 
                 item = dict(item)
 
@@ -145,6 +167,7 @@ class EvidenceAnalysisSkill(
         return {
             "evidence": unique,
             "count": len(unique),
+            "persist_failures": persist_failures,
         }
 
     async def _from_qdrant(
@@ -268,10 +291,17 @@ class EvidenceAnalysisSkill(
                     "",
                 )
 
-            if not content:
-                continue
-
+            # 纯空白也算「没有内容」。
+            #
+            # 真实事故：空的 __init__.py 只有 1 个换行符，
+            # 通过 `if not content` 检查后
+            # 被证据存储层以
+            # "Evidence content cannot be empty." 拒绝，
+            # 异常冒泡导致整个 5-Agent 计划 FAILED。
             content = str(content)
+
+            if not content.strip():
+                continue
 
             # 限制单条证据长度：
             # 源码文件可能有数万字符，

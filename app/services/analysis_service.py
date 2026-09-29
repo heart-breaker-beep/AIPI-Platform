@@ -24,6 +24,9 @@ from app.schemas.analysis import (
 from app.services.analysis_workflow import (
     AnalysisWorkflowRunner,
 )
+from app.tools.github.parser import (
+    parse_github_url,
+)
 
 
 logger = get_logger(__name__)
@@ -90,6 +93,44 @@ class AnalysisService:
                     name=name,
                 )
             )
+
+        elif (
+            repository.owner != owner
+            or repository.name != name
+        ):
+            # 自愈历史脏数据。
+            #
+            # 之前 _parse_github_url 不剥离 query string，
+            # 因此可能存在
+            #
+            #     name = "repo?utm_source=chatgpt.com"
+            #
+            # 这种行。它的危险之处在于不会报错：
+            #
+            #     api.github.com/repos/{owner}/{name}
+            #         → query 被服务端忽略，元数据仍然 200
+            #
+            #     raw.githubusercontent.com/{owner}/{name}/...
+            #         → "?" 被当成路径的一部分，全部 404
+            #
+            # 结果是 readme 为空、evidences 为 0、
+            # technology_stack 全空，
+            # 而 run 仍然被标记为 COMPLETED。
+            #
+            # 按 URL 命中已有行时会直接复用，
+            # 所以只修解析器救不了存量数据，
+            # 这里顺手把 owner / name 修正回来。
+            logger.warning(
+                "repairing repository row | "
+                "id=%s | name %r -> %r",
+                repository.id,
+                repository.name,
+                name,
+            )
+
+            repository.owner = owner
+
+            repository.name = name
 
         run_id = str(uuid4())
 
@@ -450,31 +491,42 @@ class AnalysisService:
     def _parse_github_url(
         repo_url: str,
     ) -> tuple[str, str]:
-        """解析 GitHub owner/repository。"""
+        """
+        解析 GitHub owner/repository。
 
-        path = (
-            repo_url
-            .rstrip("/")
-            .split("/")
-        )
+        复用 app.tools.github.parser.parse_github_url：
+        它基于 urlparse，会正确剥离 query string 与 fragment。
 
-        if len(path) < 2:
+        旧实现直接按 "/" 切分字符串，因此
+
+            https://github.com/owner/name?utm_source=chatgpt.com
+
+        会被解析成
+
+            name = "name?utm_source=chatgpt.com"
+
+        后果是一整条连锁失败：
+
+            repository.name 被污染
+                → README / 配置文件全部 404
+                → readme 为空
+                → evidences 为 0
+                → technology_stack 全空
+                → 报告多个章节「真实数据不存在」
+
+        而且该 run 仍然会被标记为 COMPLETED，
+        继续参与 Phase 13 的多项目比较。
+        """
+
+        try:
+
+            return parse_github_url(repo_url)
+
+        except ValueError as error:
+
             raise ValidationError(
                 "Invalid GitHub repository URL."
-            )
-
-        owner = path[-2]
-        name = path[-1]
-
-        if name.endswith(".git"):
-            name = name[:-4]
-
-        if not owner or not name:
-            raise ValidationError(
-                "Invalid GitHub repository URL."
-            )
-
-        return owner, name
+            ) from error
 
 
 analysis_service = AnalysisService()

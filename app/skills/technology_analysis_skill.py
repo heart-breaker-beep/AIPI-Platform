@@ -7,6 +7,7 @@ Technology Analysis Skill。
 2. GitHub Repository 远程文件分析
 """
 
+from app.core.exceptions import ToolError
 from app.skills.base import BaseSkill
 
 
@@ -103,14 +104,30 @@ class TechnologyAnalysisSkill(
 
         contents = {}
 
+        failures = {}
+
         for file_path in target_files:
 
-            content = await file_reader.execute(
-                owner=owner,
-                name=repo,
-                file_path=file_path,
-                branch=branch,
-            )
+            # 单个配置文件读取失败（超时 / 网络抖动）
+            # 不应中断整个分析：
+            # 跳过该文件并记录原因，
+            # 技术栈仍然基于读到的其它文件得出。
+            try:
+
+                content = await file_reader.execute(
+                    owner=owner,
+                    name=repo,
+                    file_path=file_path,
+                    branch=branch,
+                )
+
+            except ToolError as error:
+
+                failures[file_path] = (
+                    str(error) or type(error).__name__
+                )
+
+                continue
 
             if content:
                 contents[file_path] = content
@@ -167,15 +184,20 @@ class TechnologyAnalysisSkill(
         if "docker" in all_content:
             deployment.append("Docker")
 
+        technology_stack = {
+            "frameworks": frameworks,
+            "database": databases,
+            "llm": llms,
+            "embedding": embeddings,
+            "deployment": deployment,
+            "source_files": list(
+                contents.keys()
+            ),
+        }
+
+        if failures:
+            technology_stack["read_failures"] = failures
+
         return {
-            "technology_stack": {
-                "frameworks": frameworks,
-                "database": databases,
-                "llm": llms,
-                "embedding": embeddings,
-                "deployment": deployment,
-                "source_files": list(
-                    contents.keys()
-                ),
-            }
+            "technology_stack": technology_stack
         }

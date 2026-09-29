@@ -7,6 +7,7 @@ Repository Analysis Skill。
 - 分析项目依赖
 """
 
+from app.core.exceptions import ToolError
 from app.skills.base import BaseSkill
 
 
@@ -157,17 +158,35 @@ class RepositoryAnalysisSkill(
         )
 
         # 获取 README
-        result["readme"] = (
-            await file_reader.execute(
-                owner=owner,
-                name=repo,
-                file_path="README.md",
-                branch=input_data.get(
-                    "branch",
-                    "main",
-                ),
+        #
+        # README 读取失败（超时 / 网络抖动）
+        # 不应中断整个分析。
+        #
+        # 这里曾经的真实事故：
+        # 一个 README 请求超时
+        # → 第一个 Agent 抛异常
+        # → 整个 5-Agent 计划 FAILED。
+        try:
+
+            result["readme"] = (
+                await file_reader.execute(
+                    owner=owner,
+                    name=repo,
+                    file_path="README.md",
+                    branch=input_data.get(
+                        "branch",
+                        "main",
+                    ),
+                )
             )
-        )
+
+        except ToolError as error:
+
+            result["readme"] = ""
+
+            result["readme_error"] = (
+                str(error) or type(error).__name__
+            )
 
         # 有本地项目目录时才执行依赖分析
         if project_path:

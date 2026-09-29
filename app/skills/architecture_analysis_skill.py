@@ -592,11 +592,19 @@ class ArchitectureAnalysisSkill(
             ):
                 continue
 
-            seen.add(file_path)
-
             basename = os.path.basename(
                 file_path
             ).lower()
+
+            # __init__.py 绝大多数只是空文件或转出声明，
+            # 作为「关键源码」没有意义。
+            #
+            # 实测空的 __init__.py 还会让证据层
+            # 因为「纯空白内容」而报错。
+            if basename == "__init__.py":
+                continue
+
+            seen.add(file_path)
 
             if basename in self.PRIORITY_FILENAMES:
                 prioritized.append(file_path)

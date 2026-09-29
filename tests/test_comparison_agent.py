@@ -50,6 +50,76 @@ RESEARCH_PLAN = {
 }
 
 
+def project_structure(
+    declared=(),
+    items=None,
+    topics=None,
+    available=True,
+):
+    """
+    构造 project_structure。
+
+    这是 ArchitectureAnalysisSkill 从
+    被分析项目自己的 README / topics 抽取出来的
+    项目自述结构，7 个维度各有 declared / items / topics。
+    """
+
+    items = items or {}
+
+    topics = topics or {}
+
+    dimensions = {}
+
+    for name in (
+        "agents",
+        "workflow",
+        "skills",
+        "tools",
+        "rag",
+        "memory",
+        "extension",
+    ):
+
+        is_declared = name in declared
+
+        dimensions[name] = {
+            "declared": is_declared,
+            "items": items.get(name, []),
+            "topics": topics.get(name, []),
+            "evidence": (
+                [
+                    {
+                        "file_path": "README.md",
+                        "line_start": 83,
+                        "line_end": 83,
+                        "text": f"- {name} ...",
+                    }
+                ]
+                if is_declared
+                else []
+            ),
+            "reason": (
+                None
+                if is_declared
+                else (
+                    "被分析项目的 README / topics / "
+                    f"description 中没有 {name} 相关声明。"
+                )
+            ),
+        }
+
+    return {
+        "available": available,
+        "basis": "readme+topics",
+        "reason": (
+            None
+            if available
+            else "被分析项目没有可用 README，无法抽取。"
+        ),
+        "dimensions": dimensions,
+    }
+
+
 def real_project(
     run_id="run-a",
     repository_id=26,
@@ -62,6 +132,7 @@ def real_project(
     language="Python",
     size_kb=8586,
     question="分析这个项目",
+    structure=None,
 ):
     """
     构造一个与 RunMemory.load() 真实返回结构一致的 project。
@@ -114,12 +185,24 @@ def real_project(
             "status": "COMPLETED",
             "current_node": "end",
             "data": {
+                # 这两个字段仍然存在（真实 run 就有），
+                # 但 ComparisonAgent 不能再用它们
+                # 充当项目级事实。
                 "executed_tasks": list(
                     EXECUTED_TASKS
                     if executed_tasks is None
                     else executed_tasks
                 ),
                 "research_plan": plan,
+                # 项目自述结构（Phase 13 的真实数据来源）。
+                #
+                # 默认不提供：
+                # 需要项目级事实的测试显式传 structure。
+                **(
+                    {"project_structure": structure}
+                    if structure is not None
+                    else {}
+                ),
                 "repository": {
                     "language": language,
                     "size": size_kb,
@@ -207,93 +290,160 @@ def test_fixture_has_no_fake_analysis_schema():
 
 
 @pytest.mark.asyncio
-async def test_agent_dimension_reads_executed_tasks():
-    """Agent 维度必须读取真实 executed_tasks。"""
+async def test_agent_dimension_reads_project_structure():
+    """
+    Agent 维度必须读取被分析项目的自述结构，
+    而不是 AIPI 自己的 executed_tasks。
+    """
 
-    same = await run_compare(
-        real_project("run-a"),
-        real_project(
-            "run-b",
-            repository_id=35,
+    a = real_project(
+        "run-a",
+        structure=project_structure(
+            declared=["agents"],
+            items={"agents": ["Planner", "Critic"]},
+            topics={"agents": ["multi-agent"]},
         ),
     )
 
-    agent_dimension = same["comparison"]["agent"]
+    b = real_project(
+        "run-b",
+        repository_id=35,
+        structure=project_structure(
+            declared=["agents"],
+            items={"agents": ["Router", "Worker"]},
+        ),
+    )
 
-    assert agent_dimension["relation"] == "SAME"
+    result = await run_compare(a, b)
+
+    agent_dimension = result["comparison"]["agent"]
+
+    assert agent_dimension["relation"] == "DIFFERENT"
 
     assert (
         agent_dimension["project_a"]["value"]
         == {
-            "count": 5,
-            "agents": EXECUTED_TASKS,
+            "declared": True,
+            "items": ["Critic", "Planner"],
+            "topics": ["multi-agent"],
+            "basis": "readme+topics",
         }
     )
 
     assert (
-        agent_dimension["project_a"]["available"]
-        is True
-    )
-
-    assert (
         agent_dimension["source"]
-        == "workflow_state.data.executed_tasks"
-    )
-
-    different = await run_compare(
-        real_project("run-a"),
-        real_project(
-            "run-b",
-            repository_id=35,
-            executed_tasks=[
-                "repository_analysis_agent",
-                "critic_agent",
-            ],
-        ),
-    )
-
-    assert (
-        different["comparison"]["agent"][
-            "relation"
-        ]
-        == "DIFFERENT"
+        == (
+            "workflow_state.data."
+            "project_structure.dimensions.agents"
+        )
     )
 
 
 @pytest.mark.asyncio
-async def test_workflow_dimension_uses_research_plan():
+async def test_never_falls_back_to_aipi_execution_data():
     """
-    Workflow 维度读取真实 research_plan。
+    核心约束：executed_tasks / research_plan 存在时
+    也绝不能拿它们当项目级事实。
 
-    不同提问不应影响该维度：
-    research_plan["question"] 属于 Run 元数据，
-    不是被分析项目的属性。
+    这两个字段描述的是 AIPI 这个分析平台自己，
+    用它比较项目会得到「看似合理、实际错误」的结论。
+    """
+
+    # 两个 project 的 executed_tasks 故意不同：
+    # 如果实现还在读它，这里就会得到 DIFFERENT。
+    a = real_project(
+        "run-a",
+        executed_tasks=list(EXECUTED_TASKS),
+    )
+
+    b = real_project(
+        "run-b",
+        repository_id=35,
+        executed_tasks=["critic_agent"],
+        research_plan={"plan_version": 99},
+    )
+
+    result = await run_compare(a, b)
+
+    # 没有 project_structure → 如实不可用，
+    # 而不是拿 AIPI 的数据顶上。
+    for dimension in ("agent", "workflow"):
+
+        entry = result["comparison"][dimension]
+
+        assert entry["relation"] == "NOT_AVAILABLE"
+
+        assert (
+            "project_structure"
+            in entry["project_a"][
+                "unavailable_reason"
+            ]
+        )
+
+        assert "executed_tasks" not in (
+            entry["source"] or ""
+        )
+
+        assert "research_plan" not in (
+            entry["source"] or ""
+        )
+
+
+@pytest.mark.asyncio
+async def test_workflow_dimension_reads_project_structure():
+    """
+    Workflow 维度读取被分析项目的 Workflow 自述。
+
+    不同提问、不同 research_plan 都不应影响该维度：
+    那些属于 AIPI 自己的执行数据。
     """
 
     result = await run_compare(
         real_project(
             "run-a",
             question="第一个完全不同的问题",
+            structure=project_structure(
+                declared=["workflow"],
+                items={"workflow": ["StateGraph"]},
+                topics={
+                    "workflow": [
+                        "langchain",
+                        "langgraph",
+                    ]
+                },
+            ),
         ),
         real_project(
             "run-b",
             repository_id=35,
             question="第二个完全不同的问题",
+            research_plan={"plan_version": 99},
+            structure=project_structure(
+                declared=["workflow"],
+                items={"workflow": ["interrupt"]},
+            ),
         ),
     )
 
     workflow = result["comparison"]["workflow"]
 
-    assert workflow["relation"] == "SAME"
+    # 两边自述的 Workflow 结构不同 → DIFFERENT
+    assert workflow["relation"] == "DIFFERENT"
 
-    assert (
-        workflow["project_a"]["value"]
-        == RESEARCH_PLAN
-    )
+    assert workflow["project_a"]["value"][
+        "items"
+    ] == ["StateGraph"]
+
+    assert workflow["project_b"]["value"][
+        "items"
+    ] == ["interrupt"]
 
     assert (
         workflow["source"]
-        == "workflow_state.data.research_plan"
+        == (
+            "workflow_state.data."
+            "project_structure.dimensions.workflow"
+        )
     )
 
 
@@ -392,8 +542,70 @@ async def test_database_dimension_uses_technology_stack():
 
 
 @pytest.mark.asyncio
-async def test_rag_dimension_uses_embedding_field():
-    """RAG 维度读取 technology_stack.embedding（向量库检测）。"""
+async def test_rag_dimension_prefers_project_structure():
+    """
+    RAG 维度主来源是项目自述，
+    vector_store_detected 只作辅助信息。
+
+    单靠 embedding 不能代表完整 RAG：
+    该字段只检测 qdrant / chromadb 两个向量库名。
+    """
+
+    result = await run_compare(
+        real_project(
+            "run-a",
+            technology_stack={
+                "database": [],
+                "deployment": [],
+                "embedding": ["Qdrant"],
+                "llm": [],
+                "frameworks": [],
+                "source_files": [],
+            },
+            structure=project_structure(
+                declared=["rag"],
+                topics={"rag": ["rag"]},
+            ),
+        ),
+        real_project(
+            "run-b",
+            repository_id=35,
+            structure=project_structure(
+                declared=["rag"],
+            ),
+        ),
+    )
+
+    rag = result["comparison"]["rag"]
+
+    assert rag["relation"] == "DIFFERENT"
+
+    value = rag["project_a"]["value"]
+
+    assert value["declared"] is True
+
+    assert value["topics"] == ["rag"]
+
+    # 向量库检测作为辅助信息一并返回
+    assert value["vector_store_detected"] == [
+        "Qdrant"
+    ]
+
+    assert (
+        rag["source"]
+        == (
+            "workflow_state.data."
+            "project_structure.dimensions.rag"
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_rag_falls_back_to_embedding_and_marks_it():
+    """
+    没有 project_structure 时，
+    才退回 embedding 近似，并明确标注 approximate。
+    """
 
     result = await run_compare(
         real_project(
@@ -410,6 +622,14 @@ async def test_rag_dimension_uses_embedding_field():
         real_project(
             "run-b",
             repository_id=35,
+            technology_stack={
+                "database": [],
+                "deployment": [],
+                "embedding": ["ChromaDB"],
+                "llm": [],
+                "frameworks": [],
+                "source_files": [],
+            },
         ),
     )
 
@@ -417,15 +637,15 @@ async def test_rag_dimension_uses_embedding_field():
 
     assert rag["relation"] == "DIFFERENT"
 
-    assert rag["project_a"]["value"] == ["Qdrant"]
+    value = rag["project_a"]["value"]
 
-    assert (
-        rag["source"]
-        == (
-            "workflow_state.data."
-            "technology_stack.embedding"
-        )
-    )
+    assert value["approximate"] is True
+
+    assert value["vector_store_detected"] == [
+        "Qdrant"
+    ]
+
+    assert "近似" in rag["source"]
 
 
 @pytest.mark.asyncio
@@ -560,6 +780,10 @@ async def test_missing_workflow_state_is_unavailable():
         real_project(
             "run-b",
             repository_id=35,
+            structure=project_structure(
+                declared=["agents"],
+                items={"agents": ["Planner"]},
+            ),
         ),
     )
 
@@ -568,12 +792,13 @@ async def test_missing_workflow_state_is_unavailable():
         == "ONE_SIDE_UNAVAILABLE"
     )
 
-    assert (
-        "executed_tasks"
-        in result["comparison"]["agent"][
-            "project_a"
-        ]["unavailable_reason"]
-    )
+    reason = result["comparison"]["agent"][
+        "project_a"
+    ]["unavailable_reason"]
+
+    assert "真实数据不存在" in reason
+
+    assert "project_structure" in reason
 
 
 @pytest.mark.asyncio
@@ -610,12 +835,24 @@ async def test_fake_analysis_schema_is_ignored():
         real_project(
             "run-b",
             repository_id=35,
+            structure=project_structure(
+                declared=["agents"],
+                items={"agents": ["Planner"]},
+            ),
         ),
     )
 
     assert (
         result["comparison"]["agent"]["relation"]
         == "ONE_SIDE_UNAVAILABLE"
+    )
+
+    # 旧结构的 count=99 绝不能出现。
+    assert (
+        result["comparison"]["agent"][
+            "project_a"
+        ]["value"]
+        is None
     )
 
     assert (

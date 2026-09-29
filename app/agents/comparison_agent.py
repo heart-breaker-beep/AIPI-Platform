@@ -20,21 +20,42 @@ Phase 13 不让 LLM 凭空生成结论，
 
 各维度真实数据来源：
 
-    agent            workflow_state.data.executed_tasks
-    workflow         workflow_state.data.research_plan
-    rag              workflow_state.data.technology_stack.embedding
+    agent / workflow / skill / tool
+    memory / extension
+                     workflow_state.data.project_structure
+                       .dimensions.<name>
+
+    rag              workflow_state.data.project_structure
+                       .dimensions.rag
+                     （拿不到时回退 technology_stack.embedding，
+                       并在 source 中标注该回退）
+
     database         workflow_state.data.technology_stack.database
+
     deployment       workflow_state.data.technology_stack.deployment
+
     code_complexity  workflow_state.data.repository（language / size）
                      + architecture_analysis_agent（files / modules）
+                     + directory_structure（total_files / by_extension）
                      + technology_stack.source_files
 
-    skill / tool / memory / extension：
+关于 project_structure
+======================
 
-        当前 Analysis Workflow 并未提取被分析项目的
-        对应结构，真实数据不存在，
-        因此返回 NOT_AVAILABLE 并给出明确原因，
-        而不是因为字段名写错而“看起来没有数据”。
+它由 ArchitectureAnalysisSkill 从
+**被分析项目自己**的 README 与 GitHub topics 中
+确定性抽取，每条都带 README 行号。
+
+它描述的是「被分析项目自述的结构」，
+不是 AIPI 自身的执行状态 —— 这是本 Agent 的核心约束。
+
+刻意不再回退到
+    executed_tasks（AIPI 执行了哪 5 个 Agent）
+    research_plan （AIPI 生成的研究计划）
+因为那两个字段描述的是 **AIPI 这个分析平台自己**，
+用来比较被分析项目会得到
+「看似合理、实际错误」的结论
+（任何两个项目都会得到 SAME）。
 
 Evidence：
 
@@ -99,6 +120,23 @@ class ComparisonAgent(BaseAgent):
         "code_complexity",
         "extension",
     )
+
+    # Phase 13 维度名 -> 被分析项目自述结构里的维度名。
+    #
+    # 这些维度的数据来自被分析项目自己的 README / topics，
+    # 而不是 AIPI 自身的执行数据。
+    PROJECT_STRUCTURE_DIMENSIONS = {
+        "agent": "agents",
+        "workflow": "workflow",
+        "skill": "skills",
+        "tool": "tools",
+        # rag 也来自该结构，
+        # 但会额外补上向量库检测信息，
+        # 因此走独立的 _extract_rag。
+        "rag": "rag",
+        "memory": "memory",
+        "extension": "extension",
+    }
 
     # 维度值中可参与 Evidence 归因的 token。
     #
@@ -315,14 +353,22 @@ class ComparisonAgent(BaseAgent):
         ):
             technology = None
 
-        if dimension == "agent":
-            return cls._extract_agent(data)
+        # rag 要在通用分支之前判断：
+        # 它在 project_structure 的基础上
+        # 还要补向量库检测信息。
+        if dimension == "rag":
+            return cls._extract_rag(
+                data,
+                technology,
+            )
 
-        if dimension == "workflow":
-            return cls._extract_workflow(data)
+        if dimension in cls.PROJECT_STRUCTURE_DIMENSIONS:
+            return cls._extract_project_dimension(
+                data,
+                dimension,
+            )
 
         if dimension in {
-            "rag",
             "database",
             "deployment",
         }:
@@ -369,96 +415,150 @@ class ComparisonAgent(BaseAgent):
 
         return data
 
-    @staticmethod
-    def _extract_agent(
+    @classmethod
+    def _extract_project_dimension(
+        cls,
         data: dict[str, Any],
+        dimension: str,
     ) -> DimensionExtraction:
-        """Agent 维度：真实 Agent 执行列表。"""
+        """
+        从被分析项目的自述结构里取某个维度。
 
-        executed_tasks = data.get(
-            "executed_tasks"
+        数据来源：
+        ArchitectureAnalysisSkill 产出的
+        workflow_state.data.project_structure，
+        它基于被分析项目自己的 README 与 GitHub topics，
+        每条都带 README 行号可复核。
+
+        刻意不回退到 executed_tasks / research_plan：
+        那是 AIPI 自己的执行数据。
+        """
+
+        structure = data.get(
+            "project_structure"
         )
 
         if (
-            not isinstance(
-                executed_tasks,
-                list,
-            )
-            or not executed_tasks
+            not isinstance(structure, dict)
+            or not structure.get("available")
         ):
             return DimensionExtraction(
                 available=False,
                 reason=(
-                    "真实 Analysis Workflow 未产生 "
-                    "executed_tasks。"
+                    "真实数据不存在：该 run 未产出"
+                    "被分析项目的自述结构"
+                    "（project_structure），"
+                    "因此没有项目级事实可比较。"
                 ),
             )
 
+        key = cls.PROJECT_STRUCTURE_DIMENSIONS[
+            dimension
+        ]
+
+        entry = (
+            structure.get("dimensions")
+            or {}
+        ).get(key)
+
+        if not isinstance(entry, dict):
+            return DimensionExtraction(
+                available=False,
+                reason=(
+                    "真实数据不存在："
+                    f"project_structure 无 {key} 维度。"
+                ),
+            )
+
+        declared = bool(
+            entry.get("declared")
+        )
+
+        # value 里刻意不放 reason / evidence 行号：
+        # 那些是「证据出处」，两个项目天然不同，
+        # 放进来会让任何两个项目都被判成 DIFFERENT。
+        #
+        # 这里比较的是「项目自述了哪些能力」，
+        # 所以只取 declared / items / topics。
         return DimensionExtraction(
             value={
-                "count": len(executed_tasks),
-                "agents": list(executed_tasks),
+                "declared": declared,
+                "items": sorted(
+                    entry.get("items") or []
+                ),
+                "topics": sorted(
+                    entry.get("topics") or []
+                ),
+                "basis": structure.get("basis"),
             },
             source=(
                 "workflow_state.data."
-                "executed_tasks"
+                "project_structure.dimensions."
+                f"{key}"
             ),
             available=True,
         )
 
-    @staticmethod
-    def _extract_workflow(
+    @classmethod
+    def _extract_rag(
+        cls,
         data: dict[str, Any],
+        technology: dict[str, Any] | None,
     ) -> DimensionExtraction:
-        """Workflow 维度：真实 Research Plan。"""
+        """
+        RAG 维度。
 
-        research_plan = data.get(
-            "research_plan"
-        )
+        主来源是被分析项目 README 里的 rag 声明；
+        technology_stack.embedding 只作辅助信息，
+        它只是「是否检测到向量库」，
+        不能单独代表完整的 RAG 实现
+        （检测关键词只有 qdrant / chromadb 两个）。
 
-        if research_plan is None:
-            return DimensionExtraction(
-                available=False,
-                reason=(
-                    "真实 Analysis Workflow 未产生 "
-                    "research_plan。"
-                ),
+        只有在完全没有 project_structure 时，
+        才退回 embedding 近似，并在 source 里标注。
+        """
+
+        embedding = None
+
+        if technology is not None:
+            embedding = technology.get(
+                "embedding"
             )
 
-        # research_plan["question"] 是本次分析请求，
-        # 属于 Run 元数据，不是被分析项目的属性。
-        # 若不剔除，两个项目只要提问不同
-        # 就会让 workflow 维度被判为 DIFFERENT。
-        plan = research_plan
-
-        if isinstance(
-            research_plan,
-            dict,
-        ):
-            plan = {
-                key: value
-                for key, value in (
-                    research_plan.items()
-                )
-                if key != "question"
-            }
-
-        # 只使用 research_plan 本身。
-        #
-        # 不把 workflow_state.status / current_node
-        # 放进维度值：它们是本次 Run 的执行状态，
-        # 不是被分析项目的属性。
-        # 例如 status="COMPLETED" 会让 token "completed"
-        # 与 README Evidence 巧合匹配，
-        # 从而产生看起来合理、实际无意义的 Evidence 引用。
-        return DimensionExtraction(
-            value=plan,
-            source=(
-                "workflow_state.data."
-                "research_plan"
-            ),
-            available=True,
+        extraction = cls._extract_project_dimension(
+            data,
+            "rag",
         )
+
+        if extraction.available:
+
+            extraction.value[
+                "vector_store_detected"
+            ] = sorted(embedding or [])
+
+            return extraction
+
+        if embedding:
+
+            return DimensionExtraction(
+                value={
+                    "declared": None,
+                    "items": [],
+                    "topics": [],
+                    "vector_store_detected": sorted(
+                        embedding
+                    ),
+                    "approximate": True,
+                },
+                source=(
+                    "workflow_state.data."
+                    "technology_stack.embedding"
+                    "（近似：仅表示检测到向量库）"
+                ),
+                available=True,
+            )
+
+        return extraction
 
     @staticmethod
     def _extract_technology(
@@ -507,7 +607,20 @@ class ComparisonAgent(BaseAgent):
         data: dict[str, Any],
         technology: dict[str, Any] | None,
     ) -> DimensionExtraction:
-        """代码复杂度维度：仓库规模与架构分析结果。"""
+        """
+        代码规模维度：仓库体积与目录结构统计。
+
+        说明：这些是**规模**指标，不是复杂度指标。
+
+        repository.size 是 GitHub API 的仓库体积（KB，含 .git），
+        与圈复杂度 / 耦合度无关；
+        directory_structure 给出的是文件数与文件类型分布。
+
+        当前 Analysis Workflow 没有产出
+        类数 / 函数数 / 代码行数 / 圈复杂度，
+        因此这里只做规模比较，命名沿用 Phase 13 文档的
+        code_complexity 维度名。
+        """
 
         repository = data.get(
             "repository"
@@ -557,6 +670,28 @@ class ComparisonAgent(BaseAgent):
                 "source_files"
             )
 
+        directory_structure = architecture.get(
+            "directory_structure"
+        )
+
+        if not isinstance(
+            directory_structure,
+            dict,
+        ):
+            directory_structure = {}
+
+        # 只取文件数最多的前 5 种类型，
+        # 避免维度值过大。
+        file_types = directory_structure.get(
+            "by_extension"
+        )
+
+        if not isinstance(
+            file_types,
+            dict,
+        ):
+            file_types = {}
+
         return DimensionExtraction(
             value={
                 "language": (
@@ -565,6 +700,17 @@ class ComparisonAgent(BaseAgent):
                 "size_kb": (
                     repository or {}
                 ).get("size"),
+                "total_files": (
+                    directory_structure.get(
+                        "total_files"
+                    )
+                ),
+                "file_types": dict(
+                    sorted(
+                        file_types.items(),
+                        key=lambda item: -item[1],
+                    )[:5]
+                ),
                 "file_count": (
                     len(files)
                     if isinstance(
@@ -585,7 +731,8 @@ class ComparisonAgent(BaseAgent):
             },
             source=(
                 "workflow_state.data.repository + "
-                "architecture_analysis_agent + "
+                "architecture_analysis_agent"
+                "（含 directory_structure）+ "
                 "technology_stack.source_files"
             ),
             available=True,

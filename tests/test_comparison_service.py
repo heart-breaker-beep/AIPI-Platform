@@ -50,12 +50,61 @@ TECH_EMPTY = {
 }
 
 
+def project_structure(
+    agents=(),
+    available=True,
+):
+    """
+    构造被分析项目的自述结构。
+
+    结构与 ArchitectureAnalysisSkill 的真实产出一致。
+    """
+
+    declared = bool(agents)
+
+    def dimension(name, items):
+
+        is_declared = bool(items)
+
+        return {
+            "declared": is_declared,
+            "items": list(items),
+            "topics": [],
+            "evidence": [],
+            "reason": (
+                None
+                if is_declared
+                else f"没有 {name} 相关声明。"
+            ),
+        }
+
+    return {
+        "available": available,
+        "basis": "readme+topics",
+        "reason": (
+            None if available else "没有可用 README。"
+        ),
+        "dimensions": {
+            "agents": dimension("agents", agents),
+            "workflow": dimension("workflow", ()),
+            "skills": dimension("skills", ()),
+            "tools": dimension("tools", ()),
+            "rag": dimension("rag", ()),
+            "memory": dimension("memory", ()),
+            "extension": dimension(
+                "extension", ()
+            ),
+        },
+    }
+
+
 def run_memory_payload(
     run_id,
     repository_id,
     repository_name,
     technology_stack,
     evidences=None,
+    agents=(),
 ):
     """构造 RunMemory.load() 的真实返回结构。"""
 
@@ -111,6 +160,9 @@ def run_memory_payload(
                 },
                 "technology_stack": (
                     technology_stack
+                ),
+                "project_structure": project_structure(
+                    agents=agents
                 ),
             },
         },
@@ -205,7 +257,9 @@ async def test_create_comparison_with_real_runmemory_schema(
                         "Stores data in PostgreSQL.",
                     )
                 ],
+                agents=["Planner", "Critic"],
             ),
+            # B 项目 README 没有声明 Agent
             run_memory_payload(
                 "run-b",
                 2,
@@ -233,16 +287,30 @@ async def test_create_comparison_with_real_runmemory_schema(
         == "project-a"
     )
 
-    # Agent 维度来自真实 executed_tasks。
+    # Agent 维度来自被分析项目自己的自述结构。
     agent_dimension = result.comparison["agent"]
 
-    assert agent_dimension["relation"] == "SAME"
+    # A 声明了 Agent，B 没有 → DIFFERENT
+    assert agent_dimension["relation"] == "DIFFERENT"
+
+    assert agent_dimension["project_a"]["value"][
+        "items"
+    ] == ["Critic", "Planner"]
+
+    assert agent_dimension["project_a"]["value"][
+        "declared"
+    ] is True
+
+    assert agent_dimension["project_b"]["value"][
+        "declared"
+    ] is False
 
     assert (
-        agent_dimension["project_a"]["value"][
-            "count"
-        ]
-        == 5
+        agent_dimension["source"]
+        == (
+            "workflow_state.data."
+            "project_structure.dimensions.agents"
+        )
     )
 
     # database 维度来自真实 technology_stack。

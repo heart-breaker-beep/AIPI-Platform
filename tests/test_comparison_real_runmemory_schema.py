@@ -30,6 +30,74 @@ from app.agents.comparison_agent import (
 )
 
 
+def project_structure(
+    agents=(),
+    agent_topics=(),
+    workflow=(),
+    tools=(),
+    rag_topics=(),
+    available=True,
+):
+    """
+    构造被分析项目的自述结构。
+
+    结构与 ArchitectureAnalysisSkill 的真实产出一致：
+    7 个维度，每个含 declared / items / topics / evidence / reason。
+    """
+
+    def dimension(name, items, topics):
+
+        declared = bool(items or topics)
+
+        return {
+            "declared": declared,
+            "items": list(items),
+            "topics": list(topics),
+            "evidence": (
+                [
+                    {
+                        "file_path": "README.md",
+                        "line_start": 83,
+                        "line_end": 83,
+                        "text": f"- {name} ...",
+                    }
+                ]
+                if declared
+                else []
+            ),
+            "reason": (
+                None
+                if declared
+                else f"没有 {name} 相关声明。"
+            ),
+        }
+
+    return {
+        "available": available,
+        "basis": "readme+topics",
+        "reason": (
+            None if available else "没有可用 README。"
+        ),
+        "dimensions": {
+            "agents": dimension(
+                "agents", agents, agent_topics
+            ),
+            "workflow": dimension(
+                "workflow", workflow, ()
+            ),
+            "skills": dimension("skills", (), ()),
+            "tools": dimension("tools", tools, ()),
+            "rag": dimension(
+                "rag", (), rag_topics
+            ),
+            "memory": dimension("memory", (), ()),
+            "extension": dimension(
+                "extension", (), ()
+            ),
+        },
+    }
+
+
 def build_real_run(
     run_id,
     repository_id,
@@ -38,6 +106,11 @@ def build_real_run(
     evidences=None,
     language="Python",
     size_kb=8586,
+    agents=(),
+    agent_topics=(),
+    workflow=(),
+    tools=(),
+    rag_topics=(),
 ):
     """
     构造与 RunMemory.load() 完全一致的顶层结构。
@@ -148,6 +221,8 @@ def build_real_run(
                     "language": language,
                     "size": size_kb,
                 },
+                # AIPI 自己的执行数据：
+                # 真实 run 里有，但 Phase 13 不能用它比较项目。
                 "executed_tasks": list(executed_tasks),
                 "research_plan": research_plan,
                 "technology_stack": technology_stack,
@@ -155,6 +230,16 @@ def build_real_run(
                     "files": [],
                     "modules": [],
                 },
+                # 项目级事实（Phase 13 的真实来源）：
+                # 由 ArchitectureAnalysisSkill 从被分析项目的
+                # README / topics 确定性抽取。
+                "project_structure": project_structure(
+                    agents=agents,
+                    agent_topics=agent_topics,
+                    workflow=workflow,
+                    tools=tools,
+                    rag_topics=rag_topics,
+                ),
                 "critic_agent": {
                     "errors": [],
                     "passed": True,
@@ -230,13 +315,24 @@ async def compare_two_real_runs():
     return await agent.execute(
         context=None,
         input_data={
+            # 项目 A：README 自述了 Agent / Workflow / Tool / RAG
             "project_a": build_real_run(
                 "d1d71c3e-a9b6-4073-8d3d-bbbfe0b11005",
                 26,
                 "Multi-Agent-Research-Assistant",
                 TECH_A,
                 evidences=EVIDENCES_A,
+                agents=[
+                    "Planner",
+                    "Executor",
+                    "Critic",
+                ],
+                agent_topics=["multi-agent"],
+                workflow=["StateGraph"],
+                tools=["web_search", "read_webpage"],
+                rag_topics=["rag"],
             ),
+            # 项目 B：README 没有声明这些能力
             "project_b": build_real_run(
                 "799049b1-3d51-4c2f-bbe5-81930ce59a23",
                 35,
@@ -301,10 +397,13 @@ async def test_requirement_1_agent_dimension_is_available():
 
 
 @pytest.mark.asyncio
-async def test_requirement_2_executed_tasks_is_read():
+async def test_requirement_2_project_structure_is_read():
     """
     要求 2：
-    executed_tasks 可以被正确读取。
+    被分析项目的自述结构可以被正确读取。
+
+    （Phase 13 之前这里读的是 executed_tasks，
+      那是 AIPI 自己的执行数据。）
     """
 
     result = await compare_two_real_runs()
@@ -313,15 +412,23 @@ async def test_requirement_2_executed_tasks_is_read():
         "project_a"
     ]["value"]
 
-    assert value["count"] == 5
+    assert value["declared"] is True
 
-    assert value["agents"] == [
-        "repository_analysis_agent",
-        "architecture_analysis_agent",
-        "technology_analysis_agent",
-        "evidence_analysis_agent",
-        "critic_agent",
+    assert value["items"] == [
+        "Critic",
+        "Executor",
+        "Planner",
     ]
+
+    assert value["topics"] == ["multi-agent"]
+
+    assert (
+        result["comparison"]["agent"]["source"]
+        == (
+            "workflow_state.data."
+            "project_structure.dimensions.agents"
+        )
+    )
 
 
 @pytest.mark.asyncio
@@ -469,12 +576,12 @@ async def test_requirement_6_evidence_based_is_computed():
 
 
 @pytest.mark.asyncio
-async def test_real_runs_produce_more_than_one_usable_dimension():
+async def test_all_ten_dimensions_are_comparable():
     """
-    修复前只有 workflow 一个维度可用。
+    Phase 13 修复后 10 个维度全部可比较。
 
-    现在 database / deployment / code_complexity /
-    agent / workflow / rag 都应给出真实结果。
+    修复前：只有 1 个维度可用，
+    另外 6 个恒为 NOT_AVAILABLE、2 个语义错误。
     """
 
     result = await compare_two_real_runs()
@@ -485,31 +592,49 @@ async def test_real_runs_produce_more_than_one_usable_dimension():
             result["comparison"].items()
         )
         if entry["project_a"]["available"]
+        or entry["project_b"]["available"]
     ]
 
-    for expected in (
-        "agent",
-        "workflow",
-        "rag",
-        "database",
-        "deployment",
-        "code_complexity",
-    ):
-        assert expected in usable
+    assert sorted(usable) == sorted(
+        result["comparison"].keys()
+    )
 
-    # 真实数据中确实不存在的维度仍然如实返回不可用。
-    for missing in (
+    assert len(usable) == 10
+
+
+@pytest.mark.asyncio
+async def test_undeclared_capability_is_reported_not_invented():
+    """
+    B 项目没有声明 skill / memory / extension 时，
+    如实返回 declared=False，而不是编造内容，
+    也不是用 AIPI 自己的 Skill/Memory 顶上。
+    """
+
+    result = await compare_two_real_runs()
+
+    for dimension in (
         "skill",
-        "tool",
         "memory",
         "extension",
     ):
+
+        entry = result["comparison"][dimension]
+
+        # 数据是可用的（确实做了判断）……
+        assert entry["project_b"]["available"] is True
+
+        # ……但结论是「未声明」，不是编造。
         assert (
-            result["comparison"][missing][
-                "relation"
-            ]
-            == "NOT_AVAILABLE"
+            entry["project_b"]["value"]["declared"]
+            is False
         )
+
+        assert entry["project_b"]["value"][
+            "items"
+        ] == []
+
+        # 两个项目都未声明 → SAME
+        assert entry["relation"] == "SAME"
 
 
 @pytest.mark.asyncio

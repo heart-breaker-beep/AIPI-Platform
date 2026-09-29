@@ -1,13 +1,28 @@
 """
 FileReaderTool 测试。
 
-覆盖：
+读取策略（Phase 12 网络稳定性修复）：
 
-1. httpx 超时转换为带 URL 的 ToolError
-2. 其他 httpx 错误同样转换为 ToolError
-3. 保持 404 → master fallback 的既有行为
-4. 保持正常读取行为
+    1. 优先 GitHub Contents API
+       api.github.com/repos/{owner}/{name}/contents/{path}
+    2. 失败时回退 raw.githubusercontent.com
+
+原因：部分网络环境下 raw.githubusercontent.com
+极不稳定（实测同一 README：
+Contents API 0.88 秒成功、raw 20 秒后 ReadError），
+而一个文件读取失败曾导致整个 5-Agent 计划 FAILED。
+
+本文件覆盖：
+
+1. Contents API 优先，成功时完全不碰 raw
+2. Contents API 失败时回退 raw
+3. 大文件（encoding != base64）回退 raw
+4. 文件确实不存在时不浪费 raw 超时
+5. 所有来源网络错误时抛 ToolError
+6. main → master 分支回退
 """
+
+import base64
 
 import httpx
 import pytest
@@ -18,16 +33,14 @@ from app.tools.file_reader_tool import (
 )
 
 
-BASE = "https://raw.githubusercontent.com"
-
 EXPECTED_MAIN = (
-    f"{BASE}/openai/openai-python/"
-    "main/requirements.txt"
+    "https://api.github.com/repos/openai/"
+    "openai-python/contents/requirements.txt"
 )
 
-EXPECTED_MASTER = (
-    f"{BASE}/openai/openai-python/"
-    "master/requirements.txt"
+EXPECTED_MAIN_RAW = (
+    "https://raw.githubusercontent.com/openai/"
+    "openai-python/main/requirements.txt"
 )
 
 
@@ -38,34 +51,56 @@ class FakeResponse:
         self,
         status_code,
         text="",
+        payload=None,
     ):
 
         self.status_code = status_code
 
         self.text = text
 
+        self._payload = payload
+
+    def json(self):
+
+        if self._payload is None:
+            raise ValueError("no json body")
+
+        return self._payload
+
+
+def contents_payload(text):
+    """构造 Contents API 的 base64 响应体。"""
+
+    return {
+        "encoding": "base64",
+        "content": base64.b64encode(
+            text.encode("utf-8")
+        ).decode("ascii"),
+    }
+
 
 class FakeAsyncClient:
     """
-    假 httpx.AsyncClient。
+    按来源分派的假 httpx.AsyncClient。
 
-    支持两种模式：
-
-    - error 不为 None：get() 直接抛异常
-    - 否则按 responses 顺序返回
+    api / raw 都是 {branch: FakeResponse}。
     """
 
     def __init__(
         self,
-        responses=None,
-        error=None,
+        api=None,
+        raw=None,
+        api_error=None,
+        raw_error=None,
     ):
 
-        self.responses = list(
-            responses or []
-        )
+        self.api = api or {}
 
-        self.error = error
+        self.raw = raw or {}
+
+        self.api_error = api_error
+
+        self.raw_error = raw_error
 
         self.urls = []
 
@@ -80,29 +115,68 @@ class FakeAsyncClient:
 
         return False
 
+    @staticmethod
+    def _branch_from_url(url):
+        """
+        从 raw URL 的路径里取分支。
+
+        raw 的 URL 形如
+            raw.githubusercontent.com/{owner}/{name}/{branch}/{path}
+        分支在路径里，不在 query 参数里。
+        """
+
+        tail = url.split(
+            "raw.githubusercontent.com/",
+            1,
+        )[-1]
+
+        parts = tail.split("/")
+
+        if len(parts) > 2:
+            return parts[2]
+
+        return None
+
     async def get(
         self,
         url,
+        params=None,
+        headers=None,
         timeout=None,
     ):
 
-        self.urls.append(url)
+        is_api = "api.github.com" in url
 
-        if self.error is not None:
+        if is_api:
 
-            raise self.error
+            branch = (params or {}).get("ref")
 
-        if not self.responses:
+        else:
 
-            return FakeResponse(404)
+            branch = self._branch_from_url(url)
 
-        return self.responses.pop(0)
+        self.urls.append((url, branch))
+
+        if is_api:
+
+            if self.api_error is not None:
+                raise self.api_error
+
+            return self.api.get(
+                branch,
+                FakeResponse(404),
+            )
+
+        if self.raw_error is not None:
+            raise self.raw_error
+
+        return self.raw.get(
+            branch,
+            FakeResponse(404),
+        )
 
 
-def install_client(
-    monkeypatch,
-    client,
-):
+def install_client(monkeypatch, client):
     """把假 Client 注入 FileReaderTool 使用的 httpx 模块。"""
 
     monkeypatch.setattr(
@@ -114,90 +188,146 @@ def install_client(
     return client
 
 
-@pytest.mark.asyncio
-async def test_timeout_is_converted_to_tool_error(
-    monkeypatch,
-):
-    """
-    httpx.ReadTimeout 必须转换成 ToolError，
-    并且错误信息包含 URL。
+def api_urls(client):
+    return [
+        url
+        for url, _ in client.urls
+        if "api.github.com" in url
+    ]
 
-    httpx.ReadTimeout('') 的 str() 为空字符串，
-    直接向上抛出会产生 errors == [""]。
+
+def raw_urls(client):
+    return [
+        url
+        for url, _ in client.urls
+        if "raw.githubusercontent.com" in url
+    ]
+
+
+@pytest.mark.asyncio
+async def test_contents_api_is_used_first(monkeypatch):
+    """
+    Contents API 成功时完全不请求 raw。
+
+    这是网络稳定性的关键：
+    raw.githubusercontent.com 不稳定时，
+    读取不应该再受影响。
     """
 
     client = install_client(
         monkeypatch,
         FakeAsyncClient(
-            error=httpx.ReadTimeout("")
+            api={
+                "main": FakeResponse(
+                    200,
+                    payload=contents_payload(
+                        "fastapi==0.1.0"
+                    ),
+                )
+            }
         ),
     )
 
-    with pytest.raises(ToolError) as excinfo:
-
-        await FileReaderTool().execute(
-            owner="openai",
-            name="openai-python",
-            file_path="requirements.txt",
-        )
-
-    message = str(excinfo.value)
-
-    assert "Read timeout" in message
-
-    assert EXPECTED_MAIN in message
-
-    assert message.strip() != ""
-
-    assert client.urls == [EXPECTED_MAIN]
-
-
-@pytest.mark.asyncio
-async def test_connect_error_is_converted_to_tool_error(
-    monkeypatch,
-):
-    """非超时的 httpx 错误同样转换成 ToolError。"""
-
-    install_client(
-        monkeypatch,
-        FakeAsyncClient(
-            error=httpx.ConnectError(
-                "connection refused"
-            )
-        ),
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
     )
 
-    with pytest.raises(ToolError) as excinfo:
+    assert result == "fastapi==0.1.0"
 
-        await FileReaderTool().execute(
-            owner="openai",
-            name="openai-python",
-            file_path="requirements.txt",
-        )
+    assert api_urls(client) == [EXPECTED_MAIN]
 
-    message = str(excinfo.value)
-
-    assert "Read failed" in message
-
-    assert EXPECTED_MAIN in message
-
-    assert "connection refused" in message
+    # 关键断言：完全没有碰 raw
+    assert raw_urls(client) == []
 
 
 @pytest.mark.asyncio
-async def test_404_on_main_falls_back_to_master(
+async def test_falls_back_to_raw_when_api_fails(
     monkeypatch,
 ):
-    """main 返回 404 时回退 master，两者都 404 则返回空字符串。"""
+    """Contents API 网络出错时回退 raw。"""
 
     client = install_client(
         monkeypatch,
         FakeAsyncClient(
-            responses=[
-                FakeResponse(404),
-                FakeResponse(404),
-            ]
+            raw={
+                "main": FakeResponse(
+                    200,
+                    "fastapi==0.1.0",
+                )
+            },
+            api_error=httpx.ReadTimeout(""),
         ),
+    )
+
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
+    )
+
+    assert result == "fastapi==0.1.0"
+
+    assert raw_urls(client) == [EXPECTED_MAIN_RAW]
+
+
+@pytest.mark.asyncio
+async def test_oversized_file_falls_back_to_raw(
+    monkeypatch,
+):
+    """
+    超过 1MB 的文件 Contents API 不返回内容
+    （encoding != base64），此时回退 raw。
+    """
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(
+            api={
+                "main": FakeResponse(
+                    200,
+                    payload={
+                        "encoding": "none",
+                        "content": "",
+                        "size": 5_000_000,
+                    },
+                )
+            },
+            raw={
+                "main": FakeResponse(
+                    200,
+                    "big file",
+                )
+            },
+        ),
+    )
+
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
+    )
+
+    assert result == "big file"
+
+    assert raw_urls(client) == [EXPECTED_MAIN_RAW]
+
+
+@pytest.mark.asyncio
+async def test_missing_file_does_not_waste_raw_timeout(
+    monkeypatch,
+):
+    """
+    文件确实不存在时，不再去 raw 白等超时。
+
+    修复前：Contents API 404 后仍尝试 raw，
+    main + master 两个超时合计 51 秒。
+    """
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(),
     )
 
     result = await FileReaderTool().execute(
@@ -208,25 +338,84 @@ async def test_404_on_main_falls_back_to_master(
 
     assert result == ""
 
-    assert client.urls == [
-        EXPECTED_MAIN,
-        EXPECTED_MASTER,
-    ]
+    # 两个分支都问过 Contents API
+    assert len(api_urls(client)) == 2
+
+    # 但一次 raw 都没请求
+    assert raw_urls(client) == []
 
 
 @pytest.mark.asyncio
-async def test_404_on_master_returns_empty_without_retry(
+async def test_all_sources_network_error_raises(
     monkeypatch,
 ):
-    """分支已经是 master 时不再回退，直接返回空字符串。"""
+    """所有来源都是网络错误时抛 ToolError，而不是伪装成文件不存在。"""
+
+    install_client(
+        monkeypatch,
+        FakeAsyncClient(
+            api_error=httpx.ReadTimeout(""),
+            raw_error=httpx.ReadTimeout(""),
+        ),
+    )
+
+    with pytest.raises(ToolError) as excinfo:
+
+        await FileReaderTool().execute(
+            owner="openai",
+            name="openai-python",
+            file_path="requirements.txt",
+        )
+
+    message = str(excinfo.value)
+
+    assert "timeout" in message.lower()
+
+    assert "openai-python" in message
+
+
+@pytest.mark.asyncio
+async def test_branch_fallback_main_to_master(
+    monkeypatch,
+):
+    """main 没有该文件时回退 master。"""
 
     client = install_client(
         monkeypatch,
         FakeAsyncClient(
-            responses=[
-                FakeResponse(404),
-            ]
+            api={
+                "master": FakeResponse(
+                    200,
+                    payload=contents_payload(
+                        "old-style"
+                    ),
+                )
+            }
         ),
+    )
+
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
+    )
+
+    assert result == "old-style"
+
+    assert [
+        branch for _, branch in client.urls
+    ] == ["main", "master"]
+
+
+@pytest.mark.asyncio
+async def test_non_main_branch_does_not_fallback(
+    monkeypatch,
+):
+    """显式指定 master 时不再回退。"""
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(),
     )
 
     result = await FileReaderTool().execute(
@@ -238,66 +427,6 @@ async def test_404_on_master_returns_empty_without_retry(
 
     assert result == ""
 
-    assert client.urls == [EXPECTED_MASTER]
-
-
-@pytest.mark.asyncio
-async def test_master_fallback_success(
-    monkeypatch,
-):
-    """main 404 但 master 命中时返回 master 内容。"""
-
-    client = install_client(
-        monkeypatch,
-        FakeAsyncClient(
-            responses=[
-                FakeResponse(404),
-                FakeResponse(
-                    200,
-                    "fastapi==0.1.0",
-                ),
-            ]
-        ),
-    )
-
-    result = await FileReaderTool().execute(
-        owner="openai",
-        name="openai-python",
-        file_path="requirements.txt",
-    )
-
-    assert result == "fastapi==0.1.0"
-
-    assert client.urls == [
-        EXPECTED_MAIN,
-        EXPECTED_MASTER,
-    ]
-
-
-@pytest.mark.asyncio
-async def test_success_returns_text_unchanged(
-    monkeypatch,
-):
-    """200 时原样返回文本，且不回退 master。"""
-
-    client = install_client(
-        monkeypatch,
-        FakeAsyncClient(
-            responses=[
-                FakeResponse(
-                    200,
-                    "fastapi==0.1.0",
-                ),
-            ]
-        ),
-    )
-
-    result = await FileReaderTool().execute(
-        owner="openai",
-        name="openai-python",
-        file_path="requirements.txt",
-    )
-
-    assert result == "fastapi==0.1.0"
-
-    assert client.urls == [EXPECTED_MAIN]
+    assert [
+        branch for _, branch in client.urls
+    ] == ["master"]

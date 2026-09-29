@@ -144,3 +144,78 @@ def test_analysis_not_found():
         data["error"]["code"]
         == "VALIDATION_ERROR"
     )
+
+def test_parse_github_url_strips_query_string():
+    """
+    带 query string 的 GitHub URL 必须被正确解析。
+
+    旧实现按 "/" 朴素切分，
+    会把 "?utm_source=chatgpt.com" 当成 repository name 的一部分，
+    导致 README 与配置文件全部 404、
+    证据为 0、technology_stack 全空，
+    而该 run 仍然被标记为 COMPLETED。
+    """
+
+    from app.services.analysis_service import (
+        AnalysisService,
+    )
+
+    owner, name = AnalysisService._parse_github_url(
+        "https://github.com/smlfy/"
+        "enterprise-workflow-agent-platform"
+        "?utm_source=chatgpt.com"
+    )
+
+    assert owner == "smlfy"
+
+    assert name == "enterprise-workflow-agent-platform"
+
+
+def test_parse_github_url_handles_common_forms():
+    """常见的 URL 写法都要能解析。"""
+
+    from app.services.analysis_service import (
+        AnalysisService,
+    )
+
+    cases = [
+        (
+            "https://github.com/openai/openai-python",
+            ("openai", "openai-python"),
+        ),
+        (
+            "https://github.com/openai/openai-python.git",
+            ("openai", "openai-python"),
+        ),
+        (
+            "https://github.com/openai/openai-python/",
+            ("openai", "openai-python"),
+        ),
+        (
+            "https://github.com/openai/openai-python"
+            "?tab=readme-ov-file#install",
+            ("openai", "openai-python"),
+        ),
+    ]
+
+    for url, expected in cases:
+        assert (
+            AnalysisService._parse_github_url(url)
+            == expected
+        ), url
+
+
+def test_parse_github_url_rejects_non_github():
+    """非 GitHub 域名必须抛业务异常（→ HTTP 400）。"""
+
+    import pytest
+
+    from app.core.exceptions import ValidationError
+    from app.services.analysis_service import (
+        AnalysisService,
+    )
+
+    with pytest.raises(ValidationError):
+        AnalysisService._parse_github_url(
+            "https://example.com/owner/name"
+        )

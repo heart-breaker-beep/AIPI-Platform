@@ -28,6 +28,7 @@ AIPI Platform/
 │   │   ├── agent_runtime.py
 │   │   ├── architecture_analysis_agent.py
 │   │   ├── base.py
+│   │   ├── comparison_agent.py
 │   │   ├── critic_agent.py
 │   │   ├── evidence_analysis_agent.py
 │   │   ├── planner_agent.py
@@ -37,7 +38,8 @@ AIPI Platform/
 │   ├── api/                                                         # ── API 层 ──
 │   │   ├── v1/                                                      # v1 路由
 │   │   │   ├── __init__.py                                          # (空)
-│   │   │   └── analysis.py
+│   │   │   ├── analysis.py
+│   │   │   └── comparison.py
 │   │   └── __init__.py                                              # (空)
 │   ├── context/
 │   │   ├── __init__.py
@@ -97,12 +99,16 @@ AIPI Platform/
 │   ├── schemas/                                                     # ── 数据契约层 ──
 │   │   ├── __init__.py                                              # (空)
 │   │   ├── analysis.py
+│   │   ├── analysis_result.py
+│   │   ├── comparison.py
 │   │   ├── error.py
 │   │   └── evidence.py
 │   ├── services/                                                    # ── 业务服务层 ──
 │   │   ├── __init__.py                                              # (空)
+│   │   ├── analysis_result_service.py
 │   │   ├── analysis_service.py
 │   │   ├── analysis_workflow.py
+│   │   ├── comparison_service.py
 │   │   ├── evidence_service.py
 │   │   └── repository_service.py
 │   ├── skills/                                                      # ── Skill 能力层 ──
@@ -159,13 +165,22 @@ AIPI Platform/
 │   ├── __init__.py                                                  # (空)
 │   └── main.py
 ├── reports/
+│   ├── 799049b1-3d51-4c2f-bbe5-81930ce59a23_analysis.md
+│   ├── a57edd4e-59b1-4aa9-a889-d4d10dfbc0d5_analysis.md
+│   ├── caaaf822-e1ee-42f8-a52a-3b1eac1434bb_analysis.md
+│   └── d1d71c3e-a9b6-4073-8d3d-bbbfe0b11005_analysis.md
 ├── test_reports/                                                    # 测试产生的报告输出目录
 │   └── test.md
 ├── tests/                                                           # ── 测试层 ──
 │   ├── test_agent_registry.py
 │   ├── test_agent_runtime.py
 │   ├── test_analysis_api.py
+│   ├── test_analysis_result.py
 │   ├── test_chunker.py
+│   ├── test_comparison_agent.py
+│   ├── test_comparison_api.py
+│   ├── test_comparison_real_runmemory_schema.py
+│   ├── test_comparison_service.py
 │   ├── test_config.py
 │   ├── test_context_manager.py
 │   ├── test_context_retriever.py
@@ -180,6 +195,7 @@ AIPI Platform/
 │   ├── test_evidence_store.py
 │   ├── test_evidence_verifier.py
 │   ├── test_exceptions.py
+│   ├── test_file_reader_tool.py
 │   ├── test_github_client.py
 │   ├── test_github_code_search_tool.py
 │   ├── test_github_parser.py
@@ -205,7 +221,8 @@ AIPI Platform/
 │   ├── test_skill_workflow.py
 │   ├── test_tools.py
 │   ├── test_traceability.py
-│   └── test_workflow.py
+│   ├── test_workflow.py
+│   └── test_workflow_engine_errors.py
 ├── .env                                                             # 本地环境变量（已 gitignore）
 ├── .env.example                                                     # 环境变量模板
 ├── .gitignore
@@ -215,6 +232,7 @@ AIPI Platform/
 ├── AI-Agent-GitHub-Project-Intelligence-Platform-项目设计文档.md
 ├── alembic.ini                                                      # Alembic 配置
 ├── generate_project_code.py                                         # 本文档生成脚本
+├── Phase12-Phase13-数据契约审查报告.md
 ├── PROJECT_CODE.md
 ├── pytest.ini                                                       # Pytest 配置
 └── requirements.txt                                                 # 依赖清单
@@ -329,7 +347,12 @@ FastAPI 应用入口。
 
 from fastapi import FastAPI
 
-from app.api.v1.analysis import router as analysis_router
+from app.api.v1.analysis import (
+    router as analysis_router,
+)
+from app.api.v1.comparison import (
+    router as comparison_router,
+)
 from app.core.config import get_settings
 from app.core.error_handlers import (
     application_error_handler,
@@ -348,7 +371,9 @@ settings = get_settings()
 # 应用启动时初始化全局日志。
 setup_logging()
 
-logger = get_logger(__name__)
+logger = get_logger(
+    __name__
+)
 
 
 app = FastAPI(
@@ -376,9 +401,16 @@ app.add_exception_handler(
 )
 
 
-# 注册 v1 API。
+# 注册 Analysis API。
 app.include_router(
     analysis_router,
+    prefix="/api/v1",
+)
+
+
+# 注册 Comparison API。
+app.include_router(
+    comparison_router,
     prefix="/api/v1",
 )
 
@@ -569,6 +601,54 @@ async def get_analysis_report(
 
 > 该文件为 **0 字节** 空文件，无源码内容。
 
+### 📄 `app/api/v1/comparison.py`
+
+**层级**：API 层 · **职责**：Comparison API 路由。
+
+```python
+"""Comparison API 路由。"""
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.session import get_db
+from app.schemas.comparison import (
+    ComparisonCreateRequest,
+    ComparisonResponse,
+)
+from app.services.comparison_service import (
+    comparison_service,
+)
+
+
+router = APIRouter(
+    prefix="/comparison",
+    tags=["Comparison"],
+)
+
+
+@router.post(
+    "",
+    response_model=ComparisonResponse,
+)
+async def create_comparison(
+    request: ComparisonCreateRequest,
+    session: AsyncSession = Depends(
+        get_db
+    ),
+) -> ComparisonResponse:
+    """
+    比较两个已经完成的项目分析结果。
+    """
+
+    return await (
+        comparison_service.create_comparison(
+            session,
+            request,
+        )
+    )
+```
+
 ## 四、数据契约层（Schemas）
 
 接口的请求体与响应体定义，被 API 层与 Service 层共同引用
@@ -756,6 +836,198 @@ class CitationResponse(BaseModel):
 **层级**：数据契约层 · **职责**：（未标注）
 
 > 该文件为 **0 字节** 空文件，无源码内容。
+
+### 📄 `app/schemas/analysis_result.py`
+
+**层级**：数据契约层 · **职责**：Analysis Result 数据契约。
+
+```python
+"""
+Analysis Result 数据契约。
+
+Phase12:
+Workflow执行结果标准化。
+
+用于:
+    Workflow
+        ↓
+    Report
+        ↓
+    Comparison
+"""
+
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+class ProjectOverview(BaseModel):
+    """
+    项目概览。
+    """
+
+    name: str | None = None
+
+    description: str | None = None
+
+    repository_url: str | None = None
+
+    language: str | None = None
+
+
+
+class TechnologyStack(BaseModel):
+    """
+    技术栈信息。
+    """
+
+    languages: list[str] = Field(
+        default_factory=list
+    )
+
+    frameworks: list[str] = Field(
+        default_factory=list
+    )
+
+    databases: list[str] = Field(
+        default_factory=list
+    )
+
+    tools: list[str] = Field(
+        default_factory=list
+    )
+
+
+
+class AgentResult(BaseModel):
+    """
+    Agent分析结果。
+    """
+
+    agent_name: str
+
+    summary: str | None = None
+
+    facts: list[str] = Field(
+        default_factory=list
+    )
+
+    evidence_ids: list[str] = Field(
+        default_factory=list
+    )
+
+
+
+class AnalysisResult(BaseModel):
+    """
+    Phase12标准分析结果。
+    """
+
+    run_id: str
+
+
+    project_overview: ProjectOverview = Field(
+        default_factory=ProjectOverview
+    )
+
+
+    technology_stack: TechnologyStack = Field(
+        default_factory=TechnologyStack
+    )
+
+
+    agents: list[AgentResult] = Field(
+        default_factory=list
+    )
+
+
+    workflow: dict[str, Any] = Field(
+        default_factory=dict
+    )
+
+
+    skills: list[str] = Field(
+        default_factory=list
+    )
+
+
+    tools: list[str] = Field(
+        default_factory=list
+    )
+
+
+    rag: dict[str, Any] = Field(
+        default_factory=dict
+    )
+
+
+    memory: dict[str, Any] = Field(
+        default_factory=dict
+    )
+
+
+    database: dict[str, Any] = Field(
+        default_factory=dict
+    )
+
+
+    evidence: list[Any] = Field(
+        default_factory=list
+    )
+```
+
+### 📄 `app/schemas/comparison.py`
+
+**层级**：数据契约层 · **职责**：Comparison API 数据契约。
+
+```python
+"""
+Comparison API 数据契约。
+"""
+
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+class ComparisonCreateRequest(BaseModel):
+    """创建多项目比较请求。"""
+
+    run_ids: list[str] = Field(
+        ...,
+        min_length=2,
+        max_length=2,
+        description=(
+            "两个已经完成的 Analysis Run ID"
+        ),
+    )
+
+
+class ComparisonProjectResponse(BaseModel):
+    """比较项目摘要。"""
+
+    run_id: str
+    repository_id: int | None = None
+    repository_url: str | None = None
+    repository_name: str | None = None
+    status: str
+
+
+class ComparisonResponse(BaseModel):
+    """多项目比较结果。"""
+
+    comparison_id: str
+
+    status: str
+
+    evidence_based: bool
+
+    projects: list[
+        ComparisonProjectResponse
+    ]
+
+    comparison: dict[str, Any]
+```
 
 ## 五、业务服务层（Services）
 
@@ -1564,6 +1836,222 @@ class EvidenceService:
 
 > 该文件为 **0 字节** 空文件，无源码内容。
 
+### 📄 `app/services/analysis_result_service.py`
+
+**层级**：业务服务层 · **职责**：Analysis Result 构建服务。
+
+```python
+"""
+Analysis Result 构建服务。
+
+负责将 Workflow State
+转换成标准 AnalysisResult。
+"""
+
+from typing import Any
+
+
+from app.schemas.analysis_result import (
+    AnalysisResult,
+    AgentResult,
+    ProjectOverview,
+    TechnologyStack,
+)
+
+
+
+class AnalysisResultService:
+    """
+    构建标准分析结果。
+    """
+
+
+    def build(
+        self,
+        run_id: str,
+        data: dict[str, Any],
+    ) -> AnalysisResult:
+        """
+        Workflow State
+        ->
+        AnalysisResult
+        """
+
+
+        repository = (
+            data.get(
+                "repository",
+                {}
+            )
+        )
+
+
+        agents = []
+
+
+        agent_outputs = (
+            data.get(
+                "agent_outputs",
+                {}
+            )
+        )
+
+
+        for name, output in (
+            agent_outputs.items()
+        ):
+
+            if not isinstance(
+                output,
+                dict,
+            ):
+                continue
+
+
+            agents.append(
+                AgentResult(
+                    agent_name=name,
+
+                    summary=(
+                        output.get(
+                            "summary"
+                        )
+                    ),
+
+                    facts=(
+                        output.get(
+                            "facts",
+                            []
+                        )
+                    ),
+
+                    evidence_ids=(
+                        output.get(
+                            "evidence_ids",
+                            []
+                        )
+                    ),
+                )
+            )
+
+
+        technology = (
+            data.get(
+                "technology_stack",
+                {}
+            )
+        )
+
+
+        return AnalysisResult(
+
+            run_id=run_id,
+
+
+            project_overview=
+            ProjectOverview(
+
+                name=repository.get(
+                    "name"
+                ),
+
+                description=repository.get(
+                    "description"
+                ),
+
+                repository_url=repository.get(
+                    "url"
+                ),
+
+                language=repository.get(
+                    "language"
+                ),
+            ),
+
+
+            technology_stack=
+            TechnologyStack(
+
+                languages=
+                technology.get(
+                    "languages",
+                    []
+                ),
+
+                frameworks=
+                technology.get(
+                    "frameworks",
+                    []
+                ),
+
+                databases=
+                technology.get(
+                    "databases",
+                    []
+                ),
+
+                tools=
+                technology.get(
+                    "tools",
+                    []
+                ),
+            ),
+
+
+            agents=agents,
+
+
+            workflow={
+                "state":
+                    data.get(
+                        "workflow_state"
+                    )
+            },
+
+
+            skills=data.get(
+                "skills",
+                []
+            ),
+
+
+            tools=data.get(
+                "tools",
+                []
+            ),
+
+
+            rag=data.get(
+                "rag",
+                {}
+            ),
+
+
+            memory=data.get(
+                "memory",
+                {}
+            ),
+
+
+            database=data.get(
+                "database",
+                {}
+            ),
+
+
+            evidence=data.get(
+                "evidences",
+                []
+            ),
+        )
+
+
+
+analysis_result_service = (
+    AnalysisResultService()
+)
+```
+
 ### 📄 `app/services/analysis_workflow.py`
 
 **层级**：业务服务层 · **职责**：Analysis Workflow Runner。
@@ -2018,6 +2506,198 @@ class AnalysisWorkflowRunner:
         await self.session.commit()
 
         return state
+```
+
+### 📄 `app/services/comparison_service.py`
+
+**层级**：业务服务层 · **职责**：多项目比较业务服务。
+
+```python
+"""
+多项目比较业务服务。
+
+职责：
+
+API
+ ↓
+ComparisonService
+ ↓
+AnalysisRun / RunMemory
+ ↓
+ComparisonAgent
+"""
+from uuid import uuid4
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.agents.comparison_agent import (
+    ComparisonAgent,
+)
+from app.core.exceptions import ValidationError
+from app.memory.run_memory import RunMemory
+from app.repositories.analysis_run import (
+    AnalysisRunRepository,
+)
+from app.schemas.comparison import (
+    ComparisonCreateRequest,
+    ComparisonProjectResponse,
+    ComparisonResponse,
+)
+
+
+class ComparisonService:
+    """负责多项目分析结果比较。"""
+
+    comparison_agent_factory = (
+        ComparisonAgent
+    )
+
+    async def create_comparison(
+        self,
+        session: AsyncSession,
+        request: ComparisonCreateRequest,
+    ) -> ComparisonResponse:
+        """比较两个已经完成的 Analysis Run。"""
+
+        run_ids = [
+            run_id.strip()
+            for run_id in request.run_ids
+        ]
+
+        if len(run_ids) != 2:
+            raise ValidationError(
+                "Exactly two analysis run IDs "
+                "are required."
+            )
+
+        if run_ids[0] == run_ids[1]:
+            raise ValidationError(
+                "The two analysis runs "
+                "must be different."
+            )
+
+        run_repository = (
+            AnalysisRunRepository(
+                session
+            )
+        )
+
+        runs = []
+
+        for run_id in run_ids:
+            run = await (
+                run_repository.get_by_id(
+                    run_id
+                )
+            )
+
+            if run is None:
+                raise ValidationError(
+                    f"Analysis run not found: "
+                    f"{run_id}"
+                )
+
+            if run.status != "COMPLETED":
+                raise ValidationError(
+                    "Only completed analysis runs "
+                    "can be compared: "
+                    f"{run_id} "
+                    f"has status {run.status}."
+                )
+
+            runs.append(run)
+
+        if (
+            runs[0].repository_id
+            == runs[1].repository_id
+        ):
+            raise ValidationError(
+                "The two analysis runs "
+                "must belong to different repositories."
+            )
+
+        memory = RunMemory(
+            session
+        )
+
+        project_a = await memory.load(
+            runs[0].id
+        )
+
+        project_b = await memory.load(
+            runs[1].id
+        )
+
+        if project_a is None:
+            raise ValidationError(
+                f"Analysis memory not found: "
+                f"{runs[0].id}"
+            )
+
+        if project_b is None:
+            raise ValidationError(
+                f"Analysis memory not found: "
+                f"{runs[1].id}"
+            )
+
+        agent = (
+            self.comparison_agent_factory(
+                skill_registry=None
+            )
+        )
+
+        result = await agent.execute(
+            context=None,
+            input_data={
+                "project_a": project_a,
+                "project_b": project_b,
+            },
+        )
+
+        projects = [
+            ComparisonProjectResponse(
+                run_id=project.get(
+                    "run_id"
+                ),
+                repository_id=project.get(
+                    "repository_id"
+                ),
+                repository_url=project.get(
+                    "repository_url"
+                ),
+                repository_name=project.get(
+                    "repository_name"
+                ),
+                status=project.get(
+                    "status"
+                ),
+            )
+            for project in result.get(
+                "projects",
+                [],
+            )
+        ]
+
+        return ComparisonResponse(
+            comparison_id=str(
+                uuid4()
+            ),
+            status="COMPLETED",
+            evidence_based=bool(
+                result.get(
+                    "evidence_based",
+                    False,
+                )
+            ),
+            projects=projects,
+            comparison=result.get(
+                "comparison",
+                {},
+            ),
+        )
+
+
+comparison_service = ComparisonService()
 ```
 
 ## 六、数据访问层（Repositories）
@@ -4269,8 +4949,12 @@ from app.core.exceptions import (
     NonRetryableError,
     RetryableError,
 )
+from app.core.logging import get_logger
 from app.workflow.retry import RetryPolicy
 from app.workflow.state import WorkflowStatus
+
+
+logger = get_logger(__name__)
 
 
 class WorkflowEngine:
@@ -4324,15 +5008,31 @@ class WorkflowEngine:
                     f"Checkpoint not found: {resume_from}"
                 )
 
-            current_node = (
-                self._get_next_node(
-                    workflow,
-                    state,
-                    state.current_node,
+            if state.status == WorkflowStatus.FAILED:
+
+                # FAILED 表示当前节点没有执行完成，
+                # 因此必须重新执行该节点，
+                # 不能像 Pause / Human Gate 那样跳到下一个节点。
+                current_node = state.current_node
+
+            else:
+
+                # PAUSED / WAITING_DESIGN / WAITING_HUMAN：
+                # 当前节点已经执行完成，
+                # 从下一个节点继续。
+                current_node = (
+                    self._get_next_node(
+                        workflow,
+                        state,
+                        state.current_node,
+                    )
                 )
-            )
 
             state.resume()
+
+            # 重新执行意味着重新开始，
+            # 上一轮失败留下的错误不再保留。
+            state.errors = []
 
         elif (
             state is not None
@@ -4383,8 +5083,20 @@ class WorkflowEngine:
 
             except Exception as error:
 
+                # 记录完整 traceback。
+                #
+                # 部分异常（例如 httpx.ReadTimeout）
+                # 的 str() 为空字符串，
+                # 只记录 str(error) 会导致
+                # errors == [""] 而无法排查。
+                logger.exception(
+                    "Workflow node failed: %s",
+                    current_node,
+                )
+
                 state.errors.append(
                     str(error)
+                    or type(error).__name__
                 )
 
                 state.status = (
@@ -5199,30 +5911,37 @@ class DesignGateNode(BaseNode):
 
 ### 📄 `app/workflow/nodes/finalizer_node.py`
 
-**层级**：Workflow 节点层 · **职责**：Finalizer Workflow Node。
+**层级**：Workflow 节点层 · **职责**：最终报告生成节点。
 
 ```python
 """
-Finalizer Workflow Node。
+最终报告生成节点。
 
-负责：
-
-Human Review
-    ↓
-Finalizer
-    ↓
-ReportGenerationSkill
-    ↓
-Final Report
+Phase12:
+    Workflow State
+        ↓
+    AnalysisResult
+        ↓
+    ReportGenerationSkill
+        ↓
+    final_report
 """
+
 
 from .base import BaseNode
 
+from app.services.analysis_result_service import (
+    analysis_result_service,
+)
+
 
 class FinalizerNode(BaseNode):
-    """最终报告生成节点。"""
+    """
+    最终报告生成节点。
+    """
 
     name = "finalizer"
+
 
     def __init__(
         self,
@@ -5230,12 +5949,48 @@ class FinalizerNode(BaseNode):
     ):
         self.skill = skill
 
+
     async def execute(
         self,
         state,
         context,
     ):
-        """生成最终项目分析报告。"""
+        """
+        生成最终项目分析报告。
+
+        Phase12新增:
+
+        state.data
+            ↓
+        AnalysisResult
+            ↓
+        Report
+        """
+
+
+        # ==========================
+        # 1. 构建标准 AnalysisResult
+        # ==========================
+
+        analysis_result = (
+            analysis_result_service.build(
+                run_id=state.run_id,
+                data=state.data,
+            )
+        )
+
+
+        # 保存结构化分析结果
+
+        state.data[
+            "analysis_result"
+        ] = analysis_result.model_dump()
+
+
+
+        # ==========================
+        # 2. 构造报告输入
+        # ==========================
 
         report_input = {
             key: value
@@ -5243,24 +5998,42 @@ class FinalizerNode(BaseNode):
             if not key.startswith("_")
         }
 
+
         report_input.setdefault(
             "title",
             "GitHub Project Intelligence Report",
         )
+
 
         report_input.setdefault(
             "filename",
             f"{state.run_id}_analysis.md",
         )
 
+
+        # ==========================
+        # 3. 生成 Markdown 报告
+        # ==========================
+
         result = await self.skill.execute(
             context=context,
             input_data=report_input,
         )
 
-        state.data["final_report"] = result
 
-        state.outputs.append(result)
+        # ==========================
+        # 4. 保留旧字段兼容
+        # ==========================
+
+        state.data[
+            "final_report"
+        ] = result
+
+
+        state.outputs.append(
+            result
+        )
+
 
         return state
 ```
@@ -5986,203 +6759,98 @@ class CriticAgent(
 """
 Agent Registry。
 
-
-作用：
-
 统一管理系统中的 Agent。
-
-
-类似 SkillRegistry：
-
-SkillRegistry:
-    管理 Skill
-
-
-AgentRegistry:
-    管理 Agent
-
-
-
-避免业务代码：
-
-RepositoryAnalysisAgent()
-
-TechnologyAgent()
-
-大量硬编码创建。
-
-
 """
 
-
-from app.agents.planner_agent import (
-    PlannerAgent
-)
-
-
-from app.agents.repository_analysis_agent import (
-    RepositoryAnalysisAgent
-)
-
-
 from app.agents.architecture_analysis_agent import (
-    ArchitectureAnalysisAgent
+    ArchitectureAnalysisAgent,
 )
-
-
-from app.agents.technology_analysis_agent import (
-    TechnologyAnalysisAgent
+from app.agents.comparison_agent import (
+    ComparisonAgent,
 )
-
-
-from app.agents.evidence_analysis_agent import (
-    EvidenceAnalysisAgent
-)
-
-
 from app.agents.critic_agent import (
-    CriticAgent
+    CriticAgent,
 )
-
-
-
+from app.agents.evidence_analysis_agent import (
+    EvidenceAnalysisAgent,
+)
+from app.agents.planner_agent import (
+    PlannerAgent,
+)
+from app.agents.repository_analysis_agent import (
+    RepositoryAnalysisAgent,
+)
+from app.agents.technology_analysis_agent import (
+    TechnologyAnalysisAgent,
+)
 
 
 class AgentRegistry:
-    """
-    Agent 管理器。
-
-
-    保存：
-
-    {
-        agent_name:
-            agent_instance
-    }
-
-    """
-
-
+    """Agent 管理器。"""
 
     def __init__(self):
-
-
-        # 保存所有Agent实例
+        """初始化 Agent Registry。"""
 
         self.agents = {}
 
-
-
     def register(
         self,
-        agent
+        agent,
     ):
-
-        """
-        注册 Agent。
-
-        """
+        """注册 Agent。"""
 
         self.agents[
             agent.name
         ] = agent
 
-
-
-
     def get(
         self,
-        name
+        name,
     ):
-
-        """
-        根据名称获取 Agent。
-        """
+        """根据名称获取 Agent。"""
 
         return self.agents.get(
             name
         )
 
 
-
-
-
 def create_agent_registry(
-    skill_registry
+    skill_registry,
 ):
     """
     创建默认 Agent 集合。
-
-
-    项目启动时调用。
-
     """
 
     registry = AgentRegistry()
 
-
-
-    # 初始化所有领域Agent
-
     agents = [
-        # 任务规划Agent
-
         PlannerAgent(
             skill_registry
         ),
-
-        # 仓库分析Agent
-
         RepositoryAnalysisAgent(
             skill_registry
         ),
-
-
-
-        # 架构分析Agent
-
         ArchitectureAnalysisAgent(
             skill_registry
         ),
-
-
-
-        # 技术栈分析Agent
-
         TechnologyAnalysisAgent(
             skill_registry
         ),
-
-
-
-        # 证据分析Agent
-
         EvidenceAnalysisAgent(
             skill_registry
         ),
-
-
-
-        # 结果检查Agent
-
         CriticAgent(
             skill_registry
-        )
-
+        ),
+        ComparisonAgent(
+            skill_registry
+        ),
     ]
 
-
-
-    # 注册到Registry
-
     for agent in agents:
-
-
         registry.register(
             agent
         )
-
-
 
     return registry
 ```
@@ -6292,6 +6960,775 @@ class AgentRuntime:
 **层级**：Agent 层（Agents） · **职责**：**空文件**（0 字节），预留的研究 Agent 占位
 
 > 该文件为 **0 字节** 空文件，无源码内容。
+
+### 📄 `app/agents/comparison_agent.py`
+
+**层级**：Agent 层 · **职责**：Comparison Agent。
+
+```python
+"""
+Comparison Agent。
+
+负责基于两个已经完成的 Analysis Run
+以及对应 Evidence，生成多项目比较结果。
+
+Phase 13 不让 LLM 凭空生成结论，
+只比较 Analysis Result 中已经存在的结构化事实。
+
+真实数据来源（RunMemory.load() 的顶层结构）：
+
+    run_id / status / current_node / question
+    repository / research_plan / final_report
+    agent_outputs / task_results / evidences / workflow_state
+
+注意：
+
+    project["analysis"] 这个结构在真实数据中并不存在，
+    因此所有维度都必须从上面这些真实字段读取。
+
+各维度真实数据来源：
+
+    agent            workflow_state.data.executed_tasks
+    workflow         workflow_state.data.research_plan
+    rag              workflow_state.data.technology_stack.embedding
+    database         workflow_state.data.technology_stack.database
+    deployment       workflow_state.data.technology_stack.deployment
+    code_complexity  workflow_state.data.repository（language / size）
+                     + architecture_analysis_agent（files / modules）
+                     + technology_stack.source_files
+
+    skill / tool / memory / extension：
+
+        当前 Analysis Workflow 并未提取被分析项目的
+        对应结构，真实数据不存在，
+        因此返回 NOT_AVAILABLE 并给出明确原因，
+        而不是因为字段名写错而“看起来没有数据”。
+
+Evidence：
+
+    引用必须来自 project["evidences"][*]["id"]（真实 Evidence ID）。
+    归因规则是确定性的：
+
+        维度值中的字符串叶子值会被拆成 token，
+        若某个 token 出现在某条 Evidence 的 content 中，
+        则该 Evidence 被引用。
+
+    只取字符串叶子值、不取 dict key，
+    是为了避免 JSON 结构名（tasks / question 等）
+    与 Evidence 内容产生巧合匹配。
+
+    该规则不会生成、不会猜测、不会以下标冒充 Evidence ID。
+"""
+
+import re
+
+from dataclasses import dataclass
+from typing import Any
+
+from app.agents.base import BaseAgent
+
+
+@dataclass(frozen=True)
+class DimensionExtraction:
+    """单个项目在某个维度上的真实数据提取结果。"""
+
+    # 维度值
+    value: Any = None
+
+    # 真实来源字段路径，便于审计
+    source: str | None = None
+
+    # 真实数据是否存在
+    available: bool = False
+
+    # 不可用原因（available 为 False 时说明是数据缺失）
+    reason: str | None = None
+
+
+class ComparisonAgent(BaseAgent):
+    """多项目比较 Agent。"""
+
+    name = "comparison_agent"
+
+    description = (
+        "Compare multiple GitHub project "
+        "analysis results using evidence."
+    )
+
+    DIMENSIONS = (
+        "agent",
+        "workflow",
+        "skill",
+        "tool",
+        "rag",
+        "memory",
+        "database",
+        "deployment",
+        "code_complexity",
+        "extension",
+    )
+
+    # 维度值中可参与 Evidence 归因的 token。
+    #
+    # 至少 4 个字符，避免过短的通用词造成巧合匹配。
+    _TOKEN_PATTERN = re.compile(
+        r"[A-Za-z][A-Za-z0-9_.\-]{3,}"
+    )
+
+    async def execute(
+        self,
+        context,
+        input_data,
+    ) -> dict[str, Any]:
+        """
+        比较两个项目。
+
+        input_data:
+            {
+                "project_a": {...},
+                "project_b": {...}
+            }
+
+        其中 project 必须是 RunMemory.load() 的真实返回结构。
+        """
+
+        project_a = input_data.get(
+            "project_a"
+        )
+
+        project_b = input_data.get(
+            "project_b"
+        )
+
+        if not isinstance(project_a, dict):
+            raise ValueError(
+                "project_a must be a dictionary."
+            )
+
+        if not isinstance(project_b, dict):
+            raise ValueError(
+                "project_b must be a dictionary."
+            )
+
+        comparison = {}
+
+        for dimension in self.DIMENSIONS:
+            comparison[dimension] = (
+                self._compare_dimension(
+                    project_a,
+                    project_b,
+                    dimension,
+                )
+            )
+
+        return {
+            "comparison": comparison,
+            "projects": [
+                self._project_summary(
+                    project_a
+                ),
+                self._project_summary(
+                    project_b
+                ),
+            ],
+            # 只有比较结果确实引用了真实 Evidence 时
+            # evidence_based 才为 True。
+            "evidence_based": (
+                self._is_evidence_based(
+                    comparison
+                )
+            ),
+        }
+
+    @staticmethod
+    def _is_evidence_based(
+        comparison: dict[str, Any],
+    ) -> bool:
+        """
+        根据实际 Evidence 引用情况计算 evidence_based。
+
+        不能因为 API 成功返回而置 True，
+        也不能因为有 dimensions 而置 True。
+        """
+
+        for result in comparison.values():
+
+            if not isinstance(result, dict):
+                continue
+
+            for side in (
+                "project_a",
+                "project_b",
+            ):
+
+                value = result.get(side)
+
+                if not isinstance(value, dict):
+                    continue
+
+                if value.get("evidence_ids"):
+                    return True
+
+        return False
+
+    @classmethod
+    def _compare_dimension(
+        cls,
+        project_a: dict[str, Any],
+        project_b: dict[str, Any],
+        dimension: str,
+    ) -> dict[str, Any]:
+        """比较单个维度。"""
+
+        extraction_a = cls._extract_dimension(
+            project_a,
+            dimension,
+        )
+
+        extraction_b = cls._extract_dimension(
+            project_b,
+            dimension,
+        )
+
+        if (
+            not extraction_a.available
+            and not extraction_b.available
+        ):
+            relation = "NOT_AVAILABLE"
+
+        elif (
+            not extraction_a.available
+            or not extraction_b.available
+        ):
+            relation = "ONE_SIDE_UNAVAILABLE"
+
+        elif extraction_a.value == extraction_b.value:
+            relation = "SAME"
+
+        else:
+            relation = "DIFFERENT"
+
+        return {
+            "relation": relation,
+
+            # 真实来源字段，便于确认数据不是凭空产生的。
+            "source": (
+                extraction_a.source
+                or extraction_b.source
+            ),
+
+            "project_a": cls._build_side(
+                project_a,
+                extraction_a,
+            ),
+
+            "project_b": cls._build_side(
+                project_b,
+                extraction_b,
+            ),
+        }
+
+    @classmethod
+    def _build_side(
+        cls,
+        project: dict[str, Any],
+        extraction: DimensionExtraction,
+    ) -> dict[str, Any]:
+        """构建单侧比较结果。"""
+
+        evidence_ids: list[str] = []
+
+        if extraction.available:
+            evidence_ids = (
+                cls._attribute_evidence_ids(
+                    project,
+                    extraction.value,
+                )
+            )
+
+        return {
+            "value": extraction.value,
+            "evidence_ids": evidence_ids,
+            "available": extraction.available,
+            "unavailable_reason": (
+                extraction.reason
+            ),
+        }
+
+    @classmethod
+    def _extract_dimension(
+        cls,
+        project: dict[str, Any],
+        dimension: str,
+    ) -> DimensionExtraction:
+        """
+        从真实 Analysis Result 中提取某个维度。
+
+        不进行主观推断：
+        只读取真实存在的字段，
+        读不到就返回 available=False 并说明原因。
+        """
+
+        data = cls._workflow_data(
+            project
+        )
+
+        technology = data.get(
+            "technology_stack"
+        )
+
+        if not isinstance(
+            technology,
+            dict,
+        ):
+            technology = None
+
+        if dimension == "agent":
+            return cls._extract_agent(data)
+
+        if dimension == "workflow":
+            return cls._extract_workflow(data)
+
+        if dimension in {
+            "rag",
+            "database",
+            "deployment",
+        }:
+            return cls._extract_technology(
+                technology,
+                dimension,
+            )
+
+        if dimension == "code_complexity":
+            return cls._extract_code_complexity(
+                data,
+                technology,
+            )
+
+        return cls._unavailable_dimension(
+            dimension
+        )
+
+    @staticmethod
+    def _workflow_data(
+        project: dict[str, Any],
+    ) -> dict[str, Any]:
+        """读取 workflow_state.data（真实业务数据所在位置）。"""
+
+        workflow_state = project.get(
+            "workflow_state"
+        )
+
+        if not isinstance(
+            workflow_state,
+            dict,
+        ):
+            return {}
+
+        data = workflow_state.get(
+            "data"
+        )
+
+        if not isinstance(
+            data,
+            dict,
+        ):
+            return {}
+
+        return data
+
+    @staticmethod
+    def _extract_agent(
+        data: dict[str, Any],
+    ) -> DimensionExtraction:
+        """Agent 维度：真实 Agent 执行列表。"""
+
+        executed_tasks = data.get(
+            "executed_tasks"
+        )
+
+        if (
+            not isinstance(
+                executed_tasks,
+                list,
+            )
+            or not executed_tasks
+        ):
+            return DimensionExtraction(
+                available=False,
+                reason=(
+                    "真实 Analysis Workflow 未产生 "
+                    "executed_tasks。"
+                ),
+            )
+
+        return DimensionExtraction(
+            value={
+                "count": len(executed_tasks),
+                "agents": list(executed_tasks),
+            },
+            source=(
+                "workflow_state.data."
+                "executed_tasks"
+            ),
+            available=True,
+        )
+
+    @staticmethod
+    def _extract_workflow(
+        data: dict[str, Any],
+    ) -> DimensionExtraction:
+        """Workflow 维度：真实 Research Plan。"""
+
+        research_plan = data.get(
+            "research_plan"
+        )
+
+        if research_plan is None:
+            return DimensionExtraction(
+                available=False,
+                reason=(
+                    "真实 Analysis Workflow 未产生 "
+                    "research_plan。"
+                ),
+            )
+
+        # research_plan["question"] 是本次分析请求，
+        # 属于 Run 元数据，不是被分析项目的属性。
+        # 若不剔除，两个项目只要提问不同
+        # 就会让 workflow 维度被判为 DIFFERENT。
+        plan = research_plan
+
+        if isinstance(
+            research_plan,
+            dict,
+        ):
+            plan = {
+                key: value
+                for key, value in (
+                    research_plan.items()
+                )
+                if key != "question"
+            }
+
+        # 只使用 research_plan 本身。
+        #
+        # 不把 workflow_state.status / current_node
+        # 放进维度值：它们是本次 Run 的执行状态，
+        # 不是被分析项目的属性。
+        # 例如 status="COMPLETED" 会让 token "completed"
+        # 与 README Evidence 巧合匹配，
+        # 从而产生看起来合理、实际无意义的 Evidence 引用。
+        return DimensionExtraction(
+            value=plan,
+            source=(
+                "workflow_state.data."
+                "research_plan"
+            ),
+            available=True,
+        )
+
+    @staticmethod
+    def _extract_technology(
+        technology: dict[str, Any] | None,
+        dimension: str,
+    ) -> DimensionExtraction:
+        """
+        技术栈相关维度。
+
+        rag 使用 technology_stack.embedding：
+        该字段是 TechnologyAnalysisSkill 对
+        向量库 / Embedding（qdrant / chromadb）
+        的真实检测结果，是当前真实数据中
+        与 RAG 最直接对应的字段。
+        """
+
+        key = {
+            "rag": "embedding",
+            "database": "database",
+            "deployment": "deployment",
+        }[dimension]
+
+        if (
+            technology is None
+            or key not in technology
+        ):
+            return DimensionExtraction(
+                available=False,
+                reason=(
+                    "真实 Analysis Workflow 未产生 "
+                    f"technology_stack.{key}。"
+                ),
+            )
+
+        return DimensionExtraction(
+            value=technology.get(key),
+            source=(
+                "workflow_state.data."
+                f"technology_stack.{key}"
+            ),
+            available=True,
+        )
+
+    @staticmethod
+    def _extract_code_complexity(
+        data: dict[str, Any],
+        technology: dict[str, Any] | None,
+    ) -> DimensionExtraction:
+        """代码复杂度维度：仓库规模与架构分析结果。"""
+
+        repository = data.get(
+            "repository"
+        )
+
+        if not isinstance(
+            repository,
+            dict,
+        ):
+            repository = None
+
+        architecture = data.get(
+            "architecture_analysis_agent"
+        )
+
+        if not isinstance(
+            architecture,
+            dict,
+        ):
+            architecture = {}
+
+        if (
+            repository is None
+            and not architecture
+        ):
+            return DimensionExtraction(
+                available=False,
+                reason=(
+                    "真实 Analysis Workflow 未产生 "
+                    "repository 与 "
+                    "architecture_analysis_agent 数据。"
+                ),
+            )
+
+        files = architecture.get(
+            "files"
+        )
+
+        modules = architecture.get(
+            "modules"
+        )
+
+        source_files = None
+
+        if technology is not None:
+            source_files = technology.get(
+                "source_files"
+            )
+
+        return DimensionExtraction(
+            value={
+                "language": (
+                    repository or {}
+                ).get("language"),
+                "size_kb": (
+                    repository or {}
+                ).get("size"),
+                "file_count": (
+                    len(files)
+                    if isinstance(
+                        files,
+                        list,
+                    )
+                    else None
+                ),
+                "module_count": (
+                    len(modules)
+                    if isinstance(
+                        modules,
+                        list,
+                    )
+                    else None
+                ),
+                "source_files": source_files,
+            },
+            source=(
+                "workflow_state.data.repository + "
+                "architecture_analysis_agent + "
+                "technology_stack.source_files"
+            ),
+            available=True,
+        )
+
+    @staticmethod
+    def _unavailable_dimension(
+        dimension: str,
+    ) -> DimensionExtraction:
+        """
+        真实数据不存在时的显式结果。
+
+        与“字段名写错导致读不到”区分开：
+        这里是当前 Analysis Workflow
+        确实没有提取被分析项目的该结构。
+        """
+
+        return DimensionExtraction(
+            available=False,
+            reason=(
+                "当前 Analysis Workflow 未提取"
+                "被分析项目的 "
+                f"{dimension} 结构，"
+                "真实数据不存在。"
+            ),
+        )
+
+    @classmethod
+    def _attribute_evidence_ids(
+        cls,
+        project: dict[str, Any],
+        value: Any,
+    ) -> list[str]:
+        """
+        把真实 Evidence 归因到维度值。
+
+        Evidence ID 只能来自 project["evidences"][*]["id"]。
+        """
+
+        evidences = project.get(
+            "evidences"
+        )
+
+        if not isinstance(
+            evidences,
+            list,
+        ):
+            return []
+
+        tokens = cls._specific_tokens(
+            value
+        )
+
+        if not tokens:
+            return []
+
+        evidence_ids: list[str] = []
+
+        for evidence in evidences:
+
+            if not isinstance(
+                evidence,
+                dict,
+            ):
+                continue
+
+            evidence_id = evidence.get("id")
+
+            content = evidence.get("content")
+
+            if (
+                not isinstance(
+                    evidence_id,
+                    str,
+                )
+                or not evidence_id
+            ):
+                continue
+
+            if not isinstance(content, str):
+                continue
+
+            if evidence_id in evidence_ids:
+                continue
+
+            lowered = content.lower()
+
+            if any(
+                token in lowered
+                for token in tokens
+            ):
+                evidence_ids.append(
+                    evidence_id
+                )
+
+        return evidence_ids
+
+    @classmethod
+    def _specific_tokens(
+        cls,
+        value: Any,
+    ) -> set[str]:
+        """
+        提取维度值中的字面量 token。
+
+        只取字符串叶子值，不取 dict key，
+        避免 JSON 结构名（tasks / question 等）
+        与 Evidence 内容产生巧合匹配。
+        """
+
+        tokens: set[str] = set()
+
+        def visit(item: Any) -> None:
+
+            if isinstance(item, dict):
+
+                for child in item.values():
+                    visit(child)
+
+            elif isinstance(
+                item,
+                (list, tuple),
+            ):
+
+                for child in item:
+                    visit(child)
+
+            elif isinstance(item, str):
+
+                for token in (
+                    cls._TOKEN_PATTERN
+                    .findall(item)
+                ):
+                    tokens.add(
+                        token.lower()
+                    )
+
+        visit(value)
+
+        return tokens
+
+    @staticmethod
+    def _project_summary(
+        project: dict[str, Any],
+    ) -> dict[str, Any]:
+        """生成项目基本信息摘要。"""
+
+        repository = project.get(
+            "repository"
+        )
+
+        if not isinstance(
+            repository,
+            dict,
+        ):
+            repository = {}
+
+        return {
+            "run_id": project.get(
+                "run_id"
+            ),
+            "repository_id": repository.get(
+                "id"
+            ),
+            "repository_url": repository.get(
+                "url"
+            ),
+            "repository_name": repository.get(
+                "name"
+            ),
+            "status": project.get(
+                "status"
+            ),
+        }
+```
 
 ## 十三、Skill 层（Skills）
 
@@ -7156,259 +8593,377 @@ class EvidenceAnalysisSkill(
 
 ````python
 """
-Report Generation Skill。
+报告生成 Skill。
 
-负责生成第一版 Project Intelligence Report。
+负责：
+
+AnalysisResult
+    ↓
+Markdown Report
 """
+
 
 import json
 
+
 from app.skills.base import BaseSkill
+
 
 
 class ReportGenerationSkill(
     BaseSkill
 ):
-    """项目智能分析报告生成能力。"""
+    """
+    生成项目分析报告。
+    """
+
 
     name = "report_generation"
 
+
     description = (
-        "Generate final GitHub project "
-        "intelligence report."
+        "Generate final GitHub "
+        "project intelligence report."
     )
+
+
 
     async def execute(
         self,
         context,
         input_data: dict,
     ):
+        """
+        生成 Markdown 报告。
+        """
+
+
         exporter = context.tools.get(
             "report_export"
         )
 
+
         title = input_data.get(
             "title",
-            "Repository Analysis Report",
+            "GitHub Project Intelligence Report",
         )
+
 
         filename = input_data.get(
             "filename",
             "repository_analysis.md",
         )
 
-        content = self._build_report(
-            input_data
+
+        # =========================
+        # Phase12:
+        # 使用标准 AnalysisResult
+        # =========================
+
+        report_data = (
+            input_data.get(
+                "analysis_result"
+            )
+            or input_data
         )
 
-        if exporter is None:
+
+        content = (
+            self._build_markdown(
+                report_data
+            )
+        )
+
+
+
+        # =========================
+        # 优先使用 ReportExportTool
+        # =========================
+
+        if exporter is not None:
+
+            report = await exporter.execute(
+                title=title,
+                content=content,
+                filename=filename,
+            )
+
+
             return {
-                "report": {
-                    "format": "markdown",
-                    "content": content,
-                }
+
+                "report":
+                    report,
+
+                "content":
+                    content,
             }
 
-        report = await exporter.execute(
-            title=title,
-            content=content,
-            filename=filename,
-        )
+
+
+        # fallback
 
         return {
-            "report": report,
-            "content": content,
+
+            "report": {
+
+                "format":
+                    "markdown",
+
+                "content":
+                    content,
+            },
+
+            "content":
+                content,
         }
 
+
+
     @staticmethod
-    def _build_report(
+    def _build_markdown(
         data: dict,
-    ) -> str:
-        """生成第一版结构化项目报告。"""
+    ):
+        """
+        构造 Markdown。
+        """
+
 
         sections = []
 
+
+
+        # =====================
+        # 01 项目概览
+        # =====================
+
         sections.append(
+
             ReportGenerationSkill._section(
+
                 "01 项目概览",
+
                 data.get(
-                    "repository"
+                    "project_overview",
+                    {},
                 ),
             )
         )
 
+
+
+        # =====================
+        # 02 技术栈
+        # =====================
+
         sections.append(
+
             ReportGenerationSkill._section(
+
                 "02 技术栈",
+
                 data.get(
-                    "technology_stack"
-                )
-                or data.get(
-                    "technology_analysis_agent"
+                    "technology_stack",
+                    {},
                 ),
             )
         )
 
+
+
+        # =====================
+        # 03 Agent 架构
+        # =====================
+
         sections.append(
+
             ReportGenerationSkill._section(
-                "03 目录与源码结构",
+
+                "03 Agent 架构",
+
                 data.get(
-                    "architecture"
-                )
-                or data.get(
-                    "architecture_analysis_agent"
+                    "agents",
+                    [],
                 ),
             )
         )
 
+
+
+        # =====================
+        # 04 Workflow
+        # =====================
+
         sections.append(
+
             ReportGenerationSkill._section(
-                "04 Agent 架构",
+
+                "04 Workflow",
+
                 data.get(
-                    "executed_tasks"
+                    "workflow",
+                    {},
                 ),
             )
         )
 
-        sections.append(
-            ReportGenerationSkill._section(
-                "05 Workflow",
-                {
-                    "executed_tasks": data.get(
-                        "executed_tasks",
-                        [],
-                    ),
-                    "research_plan": data.get(
-                        "research_plan"
-                    ),
-                },
-            )
-        )
+
+
+        # =====================
+        # 05 Skill
+        # =====================
 
         sections.append(
-            ReportGenerationSkill._section(
-                "06 Skill",
-                {
-                    "repository_analysis": data.get(
-                        "repository"
-                    ),
-                    "architecture_analysis": data.get(
-                        "architecture"
-                    ),
-                    "technology_analysis": data.get(
-                        "technology_stack"
-                    ),
-                },
-            )
-        )
 
-        sections.append(
             ReportGenerationSkill._section(
-                "07 Tool",
-                {
-                    "github_repository": (
-                        "GitHub Repository Tool"
-                    ),
-                    "github_code_search": (
-                        "GitHub Code Search Tool"
-                    ),
-                    "file_reader": (
-                        "File Reader Tool"
-                    ),
-                    "dependency_analyzer": (
-                        "Dependency Analyzer Tool"
-                    ),
-                    "qdrant_search": (
-                        "Qdrant Search Tool"
-                    ),
-                    "report_export": (
-                        "Report Export Tool"
-                    ),
-                },
-            )
-        )
 
-        sections.append(
-            ReportGenerationSkill._section(
-                "08 RAG / Evidence",
+                "05 Skill",
+
                 data.get(
-                    "evidence"
+                    "skills",
+                    [],
                 ),
             )
         )
 
+
+
+        # =====================
+        # 06 Tool
+        # =====================
+
         sections.append(
+
             ReportGenerationSkill._section(
-                "09 Memory / Context",
-                {
-                    "context_enabled": True,
-                    "memory_enabled": True,
-                },
+
+                "06 Tool",
+
+                data.get(
+                    "tools",
+                    [],
+                ),
             )
         )
 
+
+
+        # =====================
+        # 07 RAG / Evidence
+        # =====================
+
         sections.append(
+
             ReportGenerationSkill._section(
-                "10 数据库",
+
+                "07 RAG / Evidence",
+
                 {
-                    "database": (
+
+                    "rag":
                         data.get(
-                            "technology_stack",
+                            "rag",
                             {},
-                        ).get(
-                            "database",
-                            []
-                        )
-                        if isinstance(
-                            data.get(
-                                "technology_stack"
-                            ),
-                            dict,
-                        )
-                        else []
-                    )
+                        ),
+
+                    "evidence":
+                        data.get(
+                            "evidence",
+                            [],
+                        ),
                 },
             )
         )
 
+
+
+        # =====================
+        # 08 Memory
+        # =====================
+
         sections.append(
+
             ReportGenerationSkill._section(
-                "11 Evidence",
+
+                "08 Memory / Context",
+
+                {
+
+                    "memory":
+                        data.get(
+                            "memory",
+                            {},
+                        ),
+                },
+            )
+        )
+
+
+
+        # =====================
+        # 09 Database
+        # =====================
+
+        sections.append(
+
+            ReportGenerationSkill._section(
+
+                "09 Database",
+
                 data.get(
-                    "evidence"
+                    "database",
+                    {},
                 ),
             )
         )
+
+
 
         return "\n\n".join(
             sections
         )
 
+
+
     @staticmethod
     def _section(
         title: str,
         value,
-    ) -> str:
+    ):
+
         if value is None:
+
             value = "暂无数据"
+
 
         if isinstance(
             value,
             str,
         ):
+
             content = value
+
         else:
+
             content = json.dumps(
+
                 value,
+
                 ensure_ascii=False,
+
                 indent=2,
+
                 default=str,
             )
 
+
+
         return (
+
             f"## {title}\n\n"
+
             f"```text\n"
+
             f"{content}\n"
+
             f"```"
         )
 ````
@@ -8082,6 +9637,7 @@ File Reader Tool。
 
 import httpx
 
+from app.core.exceptions import ToolError
 from app.tools.base import BaseTool
 
 
@@ -8134,31 +9690,49 @@ class FileReaderTool(BaseTool):
             f"{branch}/{file_path}"
         )
 
-        async with httpx.AsyncClient() as client:
+        # httpx 的超时异常（例如 ReadTimeout）
+        # 其 str() 可能是空字符串，
+        # 直接向上抛出会丢失 URL 和异常语义，
+        # 因此统一转换成带上下文的 ToolError。
+        try:
 
+            async with httpx.AsyncClient() as client:
 
-            response = await client.get(
-                url,
-                timeout=10,
-            )
+                response = await client.get(
+                    url,
+                    timeout=10,
+                )
 
-            if response.status_code != 200:
-                # main不存在时尝试master
+        except httpx.TimeoutException as error:
 
-                if branch == "main":
+            raise ToolError(
+                f"Read timeout: {url}"
+            ) from error
 
-                    return await self.read_file(
-                        owner,
-                        name,
-                        file_path,
-                        "master",
-                    )
+        except httpx.HTTPError as error:
 
+            raise ToolError(
+                f"Read failed: {url}: {error}"
+            ) from error
 
-                return ""
+        # 非 200 视为“文件不存在”，
+        # 保持原有语义：不抛异常。
+        if response.status_code != 200:
 
+            # main不存在时尝试master
 
-            return response.text
+            if branch == "main":
+
+                return await self.read_file(
+                    owner,
+                    name,
+                    file_path,
+                    "master",
+                )
+
+            return ""
+
+        return response.text
 ```
 
 ### 📄 `app/tools/dependency_analyzer_tool.py`
@@ -10080,6 +11654,86 @@ def test_analysis_not_found():
     )
 ```
 
+### 📄 `tests/test_analysis_result.py`
+
+**层级**：测试层 · **职责**：（未标注）
+
+```python
+from app.services.analysis_result_service import (
+    analysis_result_service,
+)
+
+
+def test_analysis_result_build():
+
+    data = {
+
+        "repository": {
+
+            "name": "demo",
+
+            "language": "Python",
+
+            "url":
+            "https://github.com/a/b",
+        },
+
+
+        "agent_outputs": {
+
+            "ArchitectureAgent": {
+
+                "summary":
+                "architecture",
+
+                "facts":[
+                    "FastAPI"
+                ],
+
+                "evidence_ids":[
+                    "e1"
+                ],
+            }
+        },
+
+        "technology_stack": {
+
+            "languages":[
+                "Python"
+            ]
+        }
+    }
+
+
+    result = (
+        analysis_result_service.build(
+            "run-001",
+            data,
+        )
+    )
+
+
+    assert (
+        result.run_id
+        ==
+        "run-001"
+    )
+
+
+    assert (
+        result.project_overview.name
+        ==
+        "demo"
+    )
+
+
+    assert (
+        len(result.agents)
+        ==
+        1
+    )
+```
+
 ### 📄 `tests/test_chunker.py`
 
 **层级**：测试层 · **职责**：Markdown 切分器单元测试
@@ -10115,6 +11769,1841 @@ Human approval is required for sensitive operations.
     assert "Introduction" in chunks[0]
     assert "Architecture" in chunks[1]
     assert "HITL" in chunks[2]
+```
+
+### 📄 `tests/test_comparison_agent.py`
+
+**层级**：测试层 · **职责**：Comparison Agent 测试。
+
+```python
+"""
+Comparison Agent 测试。
+
+重要：
+
+本文件所有 fixture 都模拟 RunMemory.load() 的
+真实返回结构，不再使用 project["analysis"]
+这种真实系统中并不存在的结构。
+
+真实结构（顶层 key）：
+
+    run_id / status / current_node / question
+    repository / research_plan / final_report
+    agent_outputs / task_results / evidences / workflow_state
+"""
+
+import pytest
+
+from app.agents.comparison_agent import (
+    ComparisonAgent,
+)
+
+# Phase 13 文档 16.3 定义的比较维度。
+PHASE13_DIMENSIONS = [
+    "agent",
+    "workflow",
+    "skill",
+    "tool",
+    "rag",
+    "memory",
+    "database",
+    "deployment",
+    "code_complexity",
+    "extension",
+]
+
+EXECUTED_TASKS = [
+    "repository_analysis_agent",
+    "architecture_analysis_agent",
+    "technology_analysis_agent",
+    "evidence_analysis_agent",
+    "critic_agent",
+]
+
+RESEARCH_PLAN = {
+    "tasks": list(EXECUTED_TASKS),
+    "plan_version": 1,
+    "analysis_type": "github_agent_project",
+    "evidence_required": True,
+}
+
+
+def real_project(
+    run_id="run-a",
+    repository_id=26,
+    repository_name="project-a",
+    executed_tasks=None,
+    research_plan=None,
+    technology_stack=None,
+    architecture=None,
+    evidences=None,
+    language="Python",
+    size_kb=8586,
+    question="分析这个项目",
+):
+    """
+    构造一个与 RunMemory.load() 真实返回结构一致的 project。
+
+    注意：刻意不包含 project["analysis"]。
+    """
+
+    plan = (
+        RESEARCH_PLAN
+        if research_plan is None
+        else research_plan
+    )
+
+    return {
+        "run_id": run_id,
+        "status": "COMPLETED",
+        "current_node": "end",
+        "question": question,
+        "repository": {
+            "id": repository_id,
+            "url": (
+                "https://github.com/demo/"
+                f"{repository_name}"
+            ),
+            "owner": "demo",
+            "name": repository_name,
+            "description": None,
+            "language": language,
+        },
+        "research_plan": plan,
+        "final_report": {
+            "report": {
+                "path": f"reports/{run_id}.md",
+                "format": "markdown",
+            },
+            "content": "# report",
+        },
+        "agent_outputs": [
+            {
+                "dependencies": {},
+                "readme": "# readme",
+                "repository": {},
+            },
+        ],
+        "task_results": [],
+        "evidences": list(
+            evidences or []
+        ),
+        "workflow_state": {
+            "status": "COMPLETED",
+            "current_node": "end",
+            "data": {
+                "executed_tasks": list(
+                    EXECUTED_TASKS
+                    if executed_tasks is None
+                    else executed_tasks
+                ),
+                "research_plan": plan,
+                "repository": {
+                    "language": language,
+                    "size": size_kb,
+                },
+                "architecture_analysis_agent": (
+                    architecture
+                    if architecture is not None
+                    else {
+                        "files": [],
+                        "modules": [],
+                    }
+                ),
+                "technology_stack": (
+                    technology_stack
+                    if technology_stack is not None
+                    else {
+                        "llm": [],
+                        "database": [],
+                        "embedding": [],
+                        "deployment": [],
+                        "frameworks": [],
+                        "source_files": [],
+                    }
+                ),
+            },
+        },
+    }
+
+
+def real_evidence(
+    evidence_id,
+    content,
+    file_path="README.md",
+):
+    """构造一条与真实 Evidence 行结构一致的记录。"""
+
+    return {
+        "id": evidence_id,
+        "source_type": "github",
+        "file_path": file_path,
+        "line_start": 1,
+        "line_end": 10,
+        "content": content,
+        "verification_status": "UNVERIFIED",
+    }
+
+
+async def run_compare(project_a, project_b):
+    """执行一次比较。"""
+
+    agent = ComparisonAgent(
+        skill_registry=None
+    )
+
+    return await agent.execute(
+        context=None,
+        input_data={
+            "project_a": project_a,
+            "project_b": project_b,
+        },
+    )
+
+
+def test_dimensions_match_phase13_document():
+    """比较维度必须与 Phase 13 文档一致。"""
+
+    assert list(
+        ComparisonAgent.DIMENSIONS
+    ) == PHASE13_DIMENSIONS
+
+
+def test_fixture_has_no_fake_analysis_schema():
+    """
+    回归保护：fixture 不得再出现
+    真实系统中不存在的 project["analysis"]。
+    """
+
+    project = real_project()
+
+    assert "analysis" not in project
+
+    assert "workflow_state" in project
+
+    assert "evidences" in project
+
+
+@pytest.mark.asyncio
+async def test_agent_dimension_reads_executed_tasks():
+    """Agent 维度必须读取真实 executed_tasks。"""
+
+    same = await run_compare(
+        real_project("run-a"),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    agent_dimension = same["comparison"]["agent"]
+
+    assert agent_dimension["relation"] == "SAME"
+
+    assert (
+        agent_dimension["project_a"]["value"]
+        == {
+            "count": 5,
+            "agents": EXECUTED_TASKS,
+        }
+    )
+
+    assert (
+        agent_dimension["project_a"]["available"]
+        is True
+    )
+
+    assert (
+        agent_dimension["source"]
+        == "workflow_state.data.executed_tasks"
+    )
+
+    different = await run_compare(
+        real_project("run-a"),
+        real_project(
+            "run-b",
+            repository_id=35,
+            executed_tasks=[
+                "repository_analysis_agent",
+                "critic_agent",
+            ],
+        ),
+    )
+
+    assert (
+        different["comparison"]["agent"][
+            "relation"
+        ]
+        == "DIFFERENT"
+    )
+
+
+@pytest.mark.asyncio
+async def test_workflow_dimension_uses_research_plan():
+    """
+    Workflow 维度读取真实 research_plan。
+
+    不同提问不应影响该维度：
+    research_plan["question"] 属于 Run 元数据，
+    不是被分析项目的属性。
+    """
+
+    result = await run_compare(
+        real_project(
+            "run-a",
+            question="第一个完全不同的问题",
+        ),
+        real_project(
+            "run-b",
+            repository_id=35,
+            question="第二个完全不同的问题",
+        ),
+    )
+
+    workflow = result["comparison"]["workflow"]
+
+    assert workflow["relation"] == "SAME"
+
+    assert (
+        workflow["project_a"]["value"]
+        == RESEARCH_PLAN
+    )
+
+    assert (
+        workflow["source"]
+        == "workflow_state.data.research_plan"
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_status_does_not_create_false_evidence():
+    """
+    回归保护：Run 执行状态不能污染 Evidence 归因。
+
+    workflow_state.status == "COMPLETED"
+    这类 Run 元数据若进入维度值，
+    token "completed" 会与 README Evidence 巧合匹配，
+    产生看起来合理、实际无意义的 Evidence 引用。
+    """
+
+    # Evidence 内容里刻意包含 "completed" 与 "end"。
+    result = await run_compare(
+        real_project(
+            "run-a",
+            evidences=[
+                real_evidence(
+                    "evidence-real-1",
+                    "The analysis was completed "
+                    "and reached the end.",
+                ),
+            ],
+        ),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    # workflow 维度值只有 research_plan，
+    # 不含 status / current_node，因此不应引用 Evidence。
+    assert (
+        result["comparison"]["workflow"][
+            "project_a"
+        ]["evidence_ids"]
+        == []
+    )
+
+    # agent 维度同理：Agent 名称不会命中 Evidence。
+    assert (
+        result["comparison"]["agent"][
+            "project_a"
+        ]["evidence_ids"]
+        == []
+    )
+
+    # 没有任何真实引用，因此 evidence_based 必须为 False。
+    assert result["evidence_based"] is False
+
+
+@pytest.mark.asyncio
+async def test_database_dimension_uses_technology_stack():
+    """Database 维度读取真实 technology_stack.database。"""
+
+    result = await run_compare(
+        real_project(
+            "run-a",
+            technology_stack={
+                "database": ["PostgreSQL"],
+                "deployment": [],
+                "embedding": [],
+                "llm": [],
+                "frameworks": [],
+                "source_files": [
+                    "docker-compose.yml"
+                ],
+            },
+        ),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    database = result["comparison"]["database"]
+
+    assert database["relation"] == "DIFFERENT"
+
+    assert (
+        database["project_a"]["value"]
+        == ["PostgreSQL"]
+    )
+
+    assert database["project_b"]["value"] == []
+
+    assert (
+        database["source"]
+        == (
+            "workflow_state.data."
+            "technology_stack.database"
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_rag_dimension_uses_embedding_field():
+    """RAG 维度读取 technology_stack.embedding（向量库检测）。"""
+
+    result = await run_compare(
+        real_project(
+            "run-a",
+            technology_stack={
+                "database": [],
+                "deployment": [],
+                "embedding": ["Qdrant"],
+                "llm": [],
+                "frameworks": [],
+                "source_files": [],
+            },
+        ),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    rag = result["comparison"]["rag"]
+
+    assert rag["relation"] == "DIFFERENT"
+
+    assert rag["project_a"]["value"] == ["Qdrant"]
+
+    assert (
+        rag["source"]
+        == (
+            "workflow_state.data."
+            "technology_stack.embedding"
+        )
+    )
+
+
+@pytest.mark.asyncio
+async def test_deployment_dimension_uses_technology_stack():
+    """Deployment 维度读取真实 technology_stack.deployment。"""
+
+    result = await run_compare(
+        real_project(
+            "run-a",
+            technology_stack={
+                "database": [],
+                "deployment": ["Docker"],
+                "embedding": [],
+                "llm": [],
+                "frameworks": [],
+                "source_files": [],
+            },
+        ),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    deployment = result["comparison"]["deployment"]
+
+    assert deployment["relation"] == "DIFFERENT"
+
+    assert deployment["project_a"]["value"] == [
+        "Docker"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_code_complexity_uses_repository_and_architecture():
+    """代码复杂度维度读取真实 repository / architecture 数据。"""
+
+    result = await run_compare(
+        real_project(
+            "run-a",
+            language="Python",
+            size_kb=8586,
+            architecture={
+                "files": ["a.py", "b.py"],
+                "modules": [{"file_path": "a.py"}],
+            },
+        ),
+        real_project(
+            "run-b",
+            repository_id=35,
+            language="Go",
+            size_kb=120,
+        ),
+    )
+
+    complexity = result["comparison"][
+        "code_complexity"
+    ]
+
+    assert complexity["relation"] == "DIFFERENT"
+
+    value_a = complexity["project_a"]["value"]
+
+    assert value_a["language"] == "Python"
+
+    assert value_a["size_kb"] == 8586
+
+    assert value_a["file_count"] == 2
+
+    assert value_a["module_count"] == 1
+
+    assert complexity["project_b"]["value"][
+        "language"
+    ] == "Go"
+
+
+@pytest.mark.asyncio
+async def test_unavailable_dimensions_explain_missing_data():
+    """
+    skill / tool / memory / extension
+    在真实数据中确实不存在，
+    必须返回 NOT_AVAILABLE 并说明原因。
+    """
+
+    result = await run_compare(
+        real_project("run-a"),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    for dimension in (
+        "skill",
+        "tool",
+        "memory",
+        "extension",
+    ):
+
+        entry = result["comparison"][dimension]
+
+        assert entry["relation"] == "NOT_AVAILABLE"
+
+        assert (
+            entry["project_a"]["available"]
+            is False
+        )
+
+        reason = entry["project_a"][
+            "unavailable_reason"
+        ]
+
+        assert "真实数据不存在" in reason
+
+
+@pytest.mark.asyncio
+async def test_missing_workflow_state_is_unavailable():
+    """
+    缺少 workflow_state 时必须是
+    “真实数据缺失”，而不是读错了字段名。
+    """
+
+    project_without_state = {
+        "run_id": "run-a",
+        "status": "COMPLETED",
+        "repository": {"id": 1},
+        "evidences": [],
+    }
+
+    result = await run_compare(
+        project_without_state,
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    assert (
+        result["comparison"]["agent"]["relation"]
+        == "ONE_SIDE_UNAVAILABLE"
+    )
+
+    assert (
+        "executed_tasks"
+        in result["comparison"]["agent"][
+            "project_a"
+        ]["unavailable_reason"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_fake_analysis_schema_is_ignored():
+    """
+    project["analysis"] 不再被读取。
+
+    即使传入旧结构，也不会产生有效维度值。
+    """
+
+    legacy_project = {
+        "run_id": "run-a",
+        "status": "COMPLETED",
+        "repository": {"id": 1},
+        "evidences": [],
+        "analysis": {
+            "agents": {
+                "count": 99,
+                "evidence_ids": [
+                    "fake-evidence-id"
+                ],
+            },
+            "database": {
+                "type": "FakeDB",
+                "evidence_ids": [
+                    "fake-evidence-id"
+                ],
+            },
+        },
+    }
+
+    result = await run_compare(
+        legacy_project,
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    assert (
+        result["comparison"]["agent"]["relation"]
+        == "ONE_SIDE_UNAVAILABLE"
+    )
+
+    assert (
+        result["comparison"]["database"][
+            "project_a"
+        ]["value"]
+        is None
+    )
+
+    # 关键：假 evidence id 绝不能出现在结果里。
+    assert "fake-evidence-id" not in str(
+        result
+    )
+
+
+@pytest.mark.asyncio
+async def test_evidence_ids_come_from_real_evidences():
+    """
+    evidence_ids 必须来自 project["evidences"][*]["id"]。
+
+    真实 Evidence 使用 id 字段，
+    而不是 evidence_id / evidence_ids。
+    """
+
+    result = await run_compare(
+        real_project(
+            "run-a",
+            technology_stack={
+                "database": ["PostgreSQL"],
+                "deployment": [],
+                "embedding": [],
+                "llm": [],
+                "frameworks": [],
+                "source_files": [],
+            },
+            evidences=[
+                real_evidence(
+                    "evidence-real-1",
+                    "This project stores data in "
+                    "PostgreSQL.",
+                ),
+                real_evidence(
+                    "evidence-real-2",
+                    "Unrelated content about CSS.",
+                ),
+            ],
+        ),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    evidence_ids = (
+        result["comparison"]["database"][
+            "project_a"
+        ]["evidence_ids"]
+    )
+
+    assert evidence_ids == ["evidence-real-1"]
+
+    assert (
+        result["comparison"]["agent"][
+            "project_a"
+        ]["evidence_ids"]
+        == []
+    )
+
+
+@pytest.mark.asyncio
+async def test_evidence_ids_are_never_invented():
+    """引用的 Evidence ID 必须全部存在于真实 evidences 中。"""
+
+    evidences = [
+        real_evidence(
+            "evidence-real-1",
+            "Uses PostgreSQL.",
+        ),
+    ]
+
+    result = await run_compare(
+        real_project(
+            "run-a",
+            technology_stack={
+                "database": ["PostgreSQL"],
+                "deployment": [],
+                "embedding": [],
+                "llm": [],
+                "frameworks": [],
+                "source_files": [],
+            },
+            evidences=evidences,
+        ),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    known_ids = {
+        evidence["id"]
+        for evidence in evidences
+    }
+
+    for dimension in result["comparison"].values():
+
+        for side in (
+            "project_a",
+            "project_b",
+        ):
+
+            for evidence_id in dimension[
+                side
+            ]["evidence_ids"]:
+
+                assert evidence_id in known_ids
+
+
+@pytest.mark.asyncio
+async def test_evidence_based_is_false_without_evidence():
+    """
+    evidence_based 不再硬编码。
+
+    没有任何 Evidence 引用时必须为 False。
+    """
+
+    result = await run_compare(
+        real_project("run-a"),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    assert result["evidence_based"] is False
+
+
+@pytest.mark.asyncio
+async def test_evidence_based_is_true_with_real_evidence():
+    """存在真实 Evidence 引用时必须为 True。"""
+
+    result = await run_compare(
+        real_project(
+            "run-a",
+            technology_stack={
+                "database": ["PostgreSQL"],
+                "deployment": [],
+                "embedding": [],
+                "llm": [],
+                "frameworks": [],
+                "source_files": [],
+            },
+            evidences=[
+                real_evidence(
+                    "evidence-real-1",
+                    "Backed by PostgreSQL.",
+                ),
+            ],
+        ),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    assert result["evidence_based"] is True
+
+
+@pytest.mark.asyncio
+async def test_evidence_based_not_triggered_by_dimensions_alone():
+    """
+    evidence_based 不能因为“有 dimensions”而变 True。
+    """
+
+    result = await run_compare(
+        real_project("run-a"),
+        real_project(
+            "run-b",
+            repository_id=35,
+        ),
+    )
+
+    assert len(result["comparison"]) == 10
+
+    assert result["evidence_based"] is False
+```
+
+### 📄 `tests/test_comparison_api.py`
+
+**层级**：测试层 · **职责**：Comparison API 测试。
+
+```python
+"""Comparison API 测试。"""
+
+from fastapi.testclient import TestClient
+
+from app.main import app
+
+
+client = TestClient(
+    app
+)
+
+
+def test_comparison_route_exists():
+    """
+    验证 Comparison API 已经挂载。
+
+    这里使用非法 Run ID，
+    重点检查路由是否存在，而不是执行真实比较。
+    """
+
+    response = client.post(
+        "/api/v1/comparison",
+        json={
+            "run_ids": [
+                "run-a",
+                "run-b",
+            ]
+        },
+    )
+
+    # 由于 run 不存在，
+    # 应该进入统一业务异常处理，
+    # 而不是 404 路由不存在。
+    assert response.status_code != 404
+
+
+def test_comparison_request_requires_two_runs():
+    """必须提供两个 Run ID。"""
+
+    response = client.post(
+        "/api/v1/comparison",
+        json={
+            "run_ids": [
+                "only-one-run"
+            ]
+        },
+    )
+
+    assert (
+        response.status_code
+        == 422
+    )
+```
+
+### 📄 `tests/test_comparison_real_runmemory_schema.py`
+
+**层级**：测试层 · **职责**：Phase 13 真实结构回归测试。
+
+```python
+"""
+Phase 13 真实结构回归测试。
+
+背景：
+
+修复前 ComparisonAgent 假设 project["analysis"] 存在，
+而 RunMemory.load() 的真实返回中并没有这个 key，
+导致 10 个维度里 9 个恒为 NOT_AVAILABLE，
+evidence_ids 恒为空，evidence_based 恒为 True（硬编码）。
+
+本文件用 RunMemory.load() 的真实结构作为 fixture，
+锁住以下事实：
+
+    1. Agent 维度不再因为缺少 analysis 而直接 NOT_AVAILABLE
+    2. executed_tasks 可以被正确读取
+    3. Evidence 的 id 可以被正确读取
+    4. project["evidences"] 会被真正使用
+    5. evidence_ids 不再全部为 0
+    6. evidence_based 不再硬编码 True
+
+fixture 结构取自当前工作区真实数据
+（run d1d71c3e 的 RunMemory.load() 返回），
+只对长文本与 id 做了缩短处理。
+"""
+
+import pytest
+
+from app.agents.comparison_agent import (
+    ComparisonAgent,
+)
+
+
+def build_real_run(
+    run_id,
+    repository_id,
+    repository_name,
+    technology_stack,
+    evidences=None,
+    language="Python",
+    size_kb=8586,
+):
+    """
+    构造与 RunMemory.load() 完全一致的顶层结构。
+
+    真实顶层 key：
+        run_id / status / current_node / question
+        repository / research_plan / final_report
+        agent_outputs / task_results / evidences
+        workflow_state
+    """
+
+    executed_tasks = [
+        "repository_analysis_agent",
+        "architecture_analysis_agent",
+        "technology_analysis_agent",
+        "evidence_analysis_agent",
+        "critic_agent",
+    ]
+
+    research_plan = {
+        "tasks": list(executed_tasks),
+        "question": "分析这个 GitHub Agent 项目",
+        "plan_version": 1,
+        "analysis_type": "github_agent_project",
+        "evidence_required": True,
+    }
+
+    return {
+        "run_id": run_id,
+        "status": "COMPLETED",
+        "current_node": "end",
+        "question": "分析这个 GitHub Agent 项目",
+
+        # RunMemory 返回的是数据库 Repository 摘要。
+        "repository": {
+            "id": repository_id,
+            "url": (
+                "https://github.com/demo/"
+                f"{repository_name}"
+            ),
+            "owner": "demo",
+            "name": repository_name,
+            "description": None,
+            "language": language,
+        },
+
+        "research_plan": research_plan,
+
+        "final_report": {
+            "report": {
+                "path": f"reports/{run_id}_analysis.md",
+                "format": "markdown",
+            },
+            "content": "## report",
+        },
+
+        # 真实 run 的 agent_outputs 顺序：
+        # planner / repository / architecture /
+        # technology / evidence / critic / final_report
+        "agent_outputs": [
+            {
+                "tasks": list(executed_tasks),
+                "research_plan": research_plan,
+            },
+            {
+                "readme": "# readme",
+                "repository": {},
+                "dependencies": {},
+            },
+            {
+                "files": [],
+                "modules": [],
+            },
+            {
+                "technology_stack": technology_stack,
+            },
+            {
+                "count": len(evidences or []),
+                "evidence": [],
+            },
+            {
+                "errors": [],
+                "passed": True,
+            },
+            {
+                "report": {"format": "markdown"},
+                "content": "# report",
+            },
+        ],
+
+        # 真实 run 中 analysis_tasks 表为空。
+        "task_results": [],
+
+        "evidences": list(evidences or []),
+
+        "workflow_state": {
+            "status": "COMPLETED",
+            "current_node": "end",
+            "errors": [],
+            "retry_count": 0,
+            "pause_reason": None,
+            "human_approved": True,
+            "checkpoint_version": 10,
+            "data": {
+                "run_id": run_id,
+                "repository_id": repository_id,
+                "repository": {
+                    "language": language,
+                    "size": size_kb,
+                },
+                "executed_tasks": list(executed_tasks),
+                "research_plan": research_plan,
+                "technology_stack": technology_stack,
+                "architecture_analysis_agent": {
+                    "files": [],
+                    "modules": [],
+                },
+                "critic_agent": {
+                    "errors": [],
+                    "passed": True,
+                },
+                "evidence_analysis_agent": {
+                    "count": len(evidences or []),
+                    "evidence": [],
+                },
+                "readme": "# readme",
+                "question": "分析这个 GitHub Agent 项目",
+            },
+        },
+    }
+
+
+def real_evidence(
+    evidence_id,
+    content,
+):
+    """真实 Evidence 行的字段结构。"""
+
+    return {
+        "id": evidence_id,
+        "source_type": "github",
+        "file_path": "README.md",
+        "line_start": 1,
+        "line_end": 215,
+        "content": content,
+        "verification_status": "UNVERIFIED",
+    }
+
+
+# 与真实 run d1d71c3e 一致的 technology_stack：
+# database 检测到 PostgreSQL，source_files 只拿到 docker-compose.yml。
+TECH_A = {
+    "llm": [],
+    "database": ["PostgreSQL"],
+    "embedding": [],
+    "deployment": [],
+    "frameworks": [],
+    "source_files": ["docker-compose.yml"],
+}
+
+# 与真实 run 799049b1 一致：技术栈全部为空。
+TECH_B = {
+    "llm": [],
+    "database": [],
+    "embedding": [],
+    "deployment": [],
+    "frameworks": [],
+    "source_files": [],
+}
+
+EVIDENCES_A = [
+    real_evidence(
+        "55c64c81-b22b-4098-81c0-08d0bc5e5355",
+        "This project stores data in PostgreSQL.",
+    ),
+    real_evidence(
+        "35e63b87-8ded-42f7-8389-c6f14ea8fb7a",
+        "Deployment uses Docker.",
+    ),
+]
+
+
+async def compare_two_real_runs():
+    """执行一次真实结构下的比较。"""
+
+    agent = ComparisonAgent(
+        skill_registry=None
+    )
+
+    return await agent.execute(
+        context=None,
+        input_data={
+            "project_a": build_real_run(
+                "d1d71c3e-a9b6-4073-8d3d-bbbfe0b11005",
+                26,
+                "Multi-Agent-Research-Assistant",
+                TECH_A,
+                evidences=EVIDENCES_A,
+            ),
+            "project_b": build_real_run(
+                "799049b1-3d51-4c2f-bbe5-81930ce59a23",
+                35,
+                "enterprise-workflow-agent-platform",
+                TECH_B,
+            ),
+        },
+    )
+
+
+def test_real_fixture_has_no_analysis_key():
+    """
+    fixture 必须与真实结构一致：
+
+    有 workflow_state / evidences，
+    没有 project["analysis"]。
+    """
+
+    project = build_real_run(
+        "run-a",
+        26,
+        "repo-a",
+        TECH_A,
+    )
+
+    assert "analysis" not in project
+
+    assert "workflow_state" in project
+
+    assert "evidences" in project
+
+    assert "agent_outputs" in project
+
+    assert "task_results" in project
+
+
+@pytest.mark.asyncio
+async def test_requirement_1_agent_dimension_is_available():
+    """
+    要求 1：
+    Agent 维度不再因为缺少 analysis 而 NOT_AVAILABLE。
+    """
+
+    result = await compare_two_real_runs()
+
+    agent_dimension = result["comparison"]["agent"]
+
+    assert (
+        agent_dimension["relation"]
+        != "NOT_AVAILABLE"
+    )
+
+    assert (
+        agent_dimension["project_a"]["available"]
+        is True
+    )
+
+    assert (
+        agent_dimension["project_b"]["available"]
+        is True
+    )
+
+
+@pytest.mark.asyncio
+async def test_requirement_2_executed_tasks_is_read():
+    """
+    要求 2：
+    executed_tasks 可以被正确读取。
+    """
+
+    result = await compare_two_real_runs()
+
+    value = result["comparison"]["agent"][
+        "project_a"
+    ]["value"]
+
+    assert value["count"] == 5
+
+    assert value["agents"] == [
+        "repository_analysis_agent",
+        "architecture_analysis_agent",
+        "technology_analysis_agent",
+        "evidence_analysis_agent",
+        "critic_agent",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_requirement_3_evidence_id_field_is_read():
+    """
+    要求 3：
+    Evidence 使用 id 字段，可以被正确读取。
+    """
+
+    result = await compare_two_real_runs()
+
+    database = result["comparison"]["database"]
+
+    assert database["project_a"][
+        "evidence_ids"
+    ] == [
+        "55c64c81-b22b-4098-81c0-08d0bc5e5355"
+    ]
+
+
+def total_evidence_ids(result, side):
+    """统计某一侧被引用的 Evidence 总数。"""
+
+    return sum(
+        len(entry[side]["evidence_ids"])
+        for entry in result["comparison"].values()
+    )
+
+
+@pytest.mark.asyncio
+async def test_requirement_4_project_evidences_is_used():
+    """
+    要求 4：
+    project["evidences"] 会被真正使用。
+
+    两个项目的 evidences 不同，
+    因此引用情况必须不同：
+    项目 A 有 Evidence 且被引用，
+    项目 B 的 evidences 为空，引用必须为 0。
+    """
+
+    result = await compare_two_real_runs()
+
+    assert total_evidence_ids(
+        result,
+        "project_a",
+    ) > 0
+
+    assert (
+        total_evidence_ids(
+            result,
+            "project_b",
+        )
+        == 0
+    )
+
+    assert (
+        result["comparison"]["database"][
+            "project_b"
+        ]["evidence_ids"]
+        == []
+    )
+
+    # deployment 维度在真实 run A 中为空列表，
+    # 空值没有 token 可匹配，
+    # 因此不会产生 Evidence 引用。
+    assert (
+        result["comparison"]["deployment"][
+            "project_a"
+        ]["value"]
+        == []
+    )
+
+    assert (
+        result["comparison"]["deployment"][
+            "project_a"
+        ]["evidence_ids"]
+        == []
+    )
+
+
+@pytest.mark.asyncio
+async def test_requirement_5_evidence_ids_not_all_empty():
+    """
+    要求 5：
+    evidence_ids 不再全部为 0。
+
+    修复前 10 个维度的 evidence_ids 全为 0。
+    """
+
+    result = await compare_two_real_runs()
+
+    total = 0
+
+    for dimension in result["comparison"].values():
+
+        for side in (
+            "project_a",
+            "project_b",
+        ):
+
+            total += len(
+                dimension[side]["evidence_ids"]
+            )
+
+    assert total > 0
+
+
+@pytest.mark.asyncio
+async def test_requirement_6_evidence_based_is_computed():
+    """
+    要求 6：
+    evidence_based 不再硬编码 True，而是由真实引用决定。
+    """
+
+    with_evidence = await compare_two_real_runs()
+
+    assert with_evidence["evidence_based"] is True
+
+    agent = ComparisonAgent(
+        skill_registry=None
+    )
+
+    without_evidence = await agent.execute(
+        context=None,
+        input_data={
+            "project_a": build_real_run(
+                "run-a",
+                26,
+                "repo-a",
+                TECH_A,
+                evidences=[],
+            ),
+            "project_b": build_real_run(
+                "run-b",
+                35,
+                "repo-b",
+                TECH_B,
+                evidences=[],
+            ),
+        },
+    )
+
+    assert without_evidence["evidence_based"] is False
+
+
+@pytest.mark.asyncio
+async def test_real_runs_produce_more_than_one_usable_dimension():
+    """
+    修复前只有 workflow 一个维度可用。
+
+    现在 database / deployment / code_complexity /
+    agent / workflow / rag 都应给出真实结果。
+    """
+
+    result = await compare_two_real_runs()
+
+    usable = [
+        dimension
+        for dimension, entry in (
+            result["comparison"].items()
+        )
+        if entry["project_a"]["available"]
+    ]
+
+    for expected in (
+        "agent",
+        "workflow",
+        "rag",
+        "database",
+        "deployment",
+        "code_complexity",
+    ):
+        assert expected in usable
+
+    # 真实数据中确实不存在的维度仍然如实返回不可用。
+    for missing in (
+        "skill",
+        "tool",
+        "memory",
+        "extension",
+    ):
+        assert (
+            result["comparison"][missing][
+                "relation"
+            ]
+            == "NOT_AVAILABLE"
+        )
+
+
+@pytest.mark.asyncio
+async def test_database_dimension_is_different_between_real_runs():
+    """
+    真实数据下 database 维度应该能区分两个项目。
+
+    run A 检测到 PostgreSQL，
+    run B 技术栈为空。
+    """
+
+    result = await compare_two_real_runs()
+
+    assert (
+        result["comparison"]["database"][
+            "relation"
+        ]
+        == "DIFFERENT"
+    )
+
+    assert (
+        result["comparison"]["database"][
+            "project_a"
+        ]["value"]
+        == ["PostgreSQL"]
+    )
+```
+
+### 📄 `tests/test_comparison_service.py`
+
+**层级**：测试层 · **职责**：Comparison Service 测试。
+
+```python
+"""
+Comparison Service 测试。
+
+fixture 使用 RunMemory.load() 的真实返回结构
+（workflow_state / evidences），
+不再使用真实系统中不存在的 project["analysis"]。
+
+同时这里不再替换 ComparisonAgent，
+而是让真实的 ComparisonAgent 参与测试，
+以验证“服务 → Agent → 真实数据”整条链路。
+"""
+
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
+
+from app.schemas.comparison import (
+    ComparisonCreateRequest,
+)
+from app.services.comparison_service import (
+    ComparisonService,
+)
+
+
+EXECUTED_TASKS = [
+    "repository_analysis_agent",
+    "architecture_analysis_agent",
+    "technology_analysis_agent",
+    "evidence_analysis_agent",
+    "critic_agent",
+]
+
+TECH_WITH_DATABASE = {
+    "llm": [],
+    "database": ["PostgreSQL"],
+    "embedding": [],
+    "deployment": [],
+    "frameworks": [],
+    "source_files": ["docker-compose.yml"],
+}
+
+TECH_EMPTY = {
+    "llm": [],
+    "database": [],
+    "embedding": [],
+    "deployment": [],
+    "frameworks": [],
+    "source_files": [],
+}
+
+
+def run_memory_payload(
+    run_id,
+    repository_id,
+    repository_name,
+    technology_stack,
+    evidences=None,
+):
+    """构造 RunMemory.load() 的真实返回结构。"""
+
+    research_plan = {
+        "tasks": list(EXECUTED_TASKS),
+        "plan_version": 1,
+        "analysis_type": "github_agent_project",
+        "evidence_required": True,
+    }
+
+    return {
+        "run_id": run_id,
+        "status": "COMPLETED",
+        "current_node": "end",
+        "question": "分析这个项目",
+        "repository": {
+            "id": repository_id,
+            "url": (
+                "https://github.com/demo/"
+                f"{repository_name}"
+            ),
+            "owner": "demo",
+            "name": repository_name,
+            "description": None,
+            "language": "Python",
+        },
+        "research_plan": research_plan,
+        "final_report": {
+            "report": {
+                "path": f"reports/{run_id}.md",
+                "format": "markdown",
+            },
+            "content": "# report",
+        },
+        "agent_outputs": [],
+        "task_results": [],
+        "evidences": list(evidences or []),
+        "workflow_state": {
+            "status": "COMPLETED",
+            "current_node": "end",
+            "data": {
+                "executed_tasks": list(
+                    EXECUTED_TASKS
+                ),
+                "research_plan": research_plan,
+                "repository": {
+                    "language": "Python",
+                    "size": 8586,
+                },
+                "architecture_analysis_agent": {
+                    "files": [],
+                    "modules": [],
+                },
+                "technology_stack": (
+                    technology_stack
+                ),
+            },
+        },
+    }
+
+
+def real_evidence(evidence_id, content):
+    """真实 Evidence 行的字段结构。"""
+
+    return {
+        "id": evidence_id,
+        "source_type": "github",
+        "file_path": "README.md",
+        "line_start": 1,
+        "line_end": 215,
+        "content": content,
+        "verification_status": "UNVERIFIED",
+    }
+
+
+def install_fakes(
+    monkeypatch,
+    runs,
+    memories,
+):
+    """替换 Service 依赖的 Repository 与 RunMemory。"""
+
+    import app.services.comparison_service as module
+
+    fake_repository = SimpleNamespace(
+        get_by_id=AsyncMock(
+            side_effect=runs
+        )
+    )
+
+    fake_memory = SimpleNamespace(
+        load=AsyncMock(
+            side_effect=memories
+        )
+    )
+
+    monkeypatch.setattr(
+        module,
+        "AnalysisRunRepository",
+        lambda session: fake_repository,
+    )
+
+    monkeypatch.setattr(
+        module,
+        "RunMemory",
+        lambda session: fake_memory,
+    )
+
+    return fake_repository, fake_memory
+
+
+@pytest.mark.asyncio
+async def test_create_comparison_with_real_runmemory_schema(
+    monkeypatch,
+):
+    """
+    ComparisonService 在真实 RunMemory 结构下
+    必须产生真实业务结果。
+    """
+
+    session = SimpleNamespace()
+
+    run_a = SimpleNamespace(
+        id="run-a",
+        repository_id=1,
+        status="COMPLETED",
+    )
+
+    run_b = SimpleNamespace(
+        id="run-b",
+        repository_id=2,
+        status="COMPLETED",
+    )
+
+    install_fakes(
+        monkeypatch,
+        runs=[run_a, run_b],
+        memories=[
+            run_memory_payload(
+                "run-a",
+                1,
+                "project-a",
+                TECH_WITH_DATABASE,
+                evidences=[
+                    real_evidence(
+                        "evidence-real-1",
+                        "Stores data in PostgreSQL.",
+                    )
+                ],
+            ),
+            run_memory_payload(
+                "run-b",
+                2,
+                "project-b",
+                TECH_EMPTY,
+            ),
+        ],
+    )
+
+    service = ComparisonService()
+
+    result = await service.create_comparison(
+        session,
+        ComparisonCreateRequest(
+            run_ids=["run-a", "run-b"]
+        ),
+    )
+
+    assert result.status == "COMPLETED"
+
+    assert len(result.projects) == 2
+
+    assert (
+        result.projects[0].repository_name
+        == "project-a"
+    )
+
+    # Agent 维度来自真实 executed_tasks。
+    agent_dimension = result.comparison["agent"]
+
+    assert agent_dimension["relation"] == "SAME"
+
+    assert (
+        agent_dimension["project_a"]["value"][
+            "count"
+        ]
+        == 5
+    )
+
+    # database 维度来自真实 technology_stack。
+    assert (
+        result.comparison["database"]["relation"]
+        == "DIFFERENT"
+    )
+
+    # evidence_based 由真实 Evidence 引用决定。
+    assert result.evidence_based is True
+
+
+@pytest.mark.asyncio
+async def test_comparison_without_evidence_is_not_evidence_based(
+    monkeypatch,
+):
+    """两个 Run 都没有 Evidence 时 evidence_based 必须为 False。"""
+
+    session = SimpleNamespace()
+
+    run_a = SimpleNamespace(
+        id="run-a",
+        repository_id=1,
+        status="COMPLETED",
+    )
+
+    run_b = SimpleNamespace(
+        id="run-b",
+        repository_id=2,
+        status="COMPLETED",
+    )
+
+    install_fakes(
+        monkeypatch,
+        runs=[run_a, run_b],
+        memories=[
+            run_memory_payload(
+                "run-a",
+                1,
+                "project-a",
+                TECH_EMPTY,
+            ),
+            run_memory_payload(
+                "run-b",
+                2,
+                "project-b",
+                TECH_EMPTY,
+            ),
+        ],
+    )
+
+    service = ComparisonService()
+
+    result = await service.create_comparison(
+        session,
+        ComparisonCreateRequest(
+            run_ids=["run-a", "run-b"]
+        ),
+    )
+
+    assert result.evidence_based is False
+
+
+@pytest.mark.asyncio
+async def test_comparison_requires_two_runs(monkeypatch):
+    """必须提供两个不同的 Run ID。"""
+
+    service = ComparisonService()
+
+    with pytest.raises(
+        Exception,
+        match="must be different",
+    ):
+        await service.create_comparison(
+            SimpleNamespace(),
+            ComparisonCreateRequest(
+                run_ids=["run-a", "run-a"]
+            ),
+        )
+
+
+@pytest.mark.asyncio
+async def test_comparison_requires_completed_runs(
+    monkeypatch,
+):
+    """未完成的 Analysis Run 不能参与比较。"""
+
+    session = SimpleNamespace()
+
+    run = SimpleNamespace(
+        id="run-a",
+        repository_id=1,
+        status="ANALYZING",
+    )
+
+    import app.services.comparison_service as module
+
+    fake_repository = SimpleNamespace(
+        get_by_id=AsyncMock(
+            return_value=run
+        )
+    )
+
+    monkeypatch.setattr(
+        module,
+        "AnalysisRunRepository",
+        lambda session: fake_repository,
+    )
+
+    service = ComparisonService()
+
+    with pytest.raises(
+        Exception,
+        match="Only completed analysis runs",
+    ):
+        await service.create_comparison(
+            session,
+            ComparisonCreateRequest(
+                run_ids=["run-a", "run-b"]
+            ),
+        )
+
+
+@pytest.mark.asyncio
+async def test_comparison_requires_different_repositories(
+    monkeypatch,
+):
+    """两个 Run 必须来自不同仓库。"""
+
+    session = SimpleNamespace()
+
+    run_a = SimpleNamespace(
+        id="run-a",
+        repository_id=1,
+        status="COMPLETED",
+    )
+
+    run_b = SimpleNamespace(
+        id="run-b",
+        repository_id=1,
+        status="COMPLETED",
+    )
+
+    import app.services.comparison_service as module
+
+    fake_repository = SimpleNamespace(
+        get_by_id=AsyncMock(
+            side_effect=[run_a, run_b]
+        )
+    )
+
+    monkeypatch.setattr(
+        module,
+        "AnalysisRunRepository",
+        lambda session: fake_repository,
+    )
+
+    service = ComparisonService()
+
+    with pytest.raises(
+        Exception,
+        match="different repositories",
+    ):
+        await service.create_comparison(
+            session,
+            ComparisonCreateRequest(
+                run_ids=["run-a", "run-b"]
+            ),
+        )
 ```
 
 ### 📄 `tests/test_config.py`
@@ -11003,6 +14492,316 @@ def test_retryable_error():
     error = RetryableError("temporary error")
 
     assert error.error_code == "RETRYABLE_ERROR"
+```
+
+### 📄 `tests/test_file_reader_tool.py`
+
+**层级**：测试层 · **职责**：FileReaderTool 测试。
+
+```python
+"""
+FileReaderTool 测试。
+
+覆盖：
+
+1. httpx 超时转换为带 URL 的 ToolError
+2. 其他 httpx 错误同样转换为 ToolError
+3. 保持 404 → master fallback 的既有行为
+4. 保持正常读取行为
+"""
+
+import httpx
+import pytest
+
+from app.core.exceptions import ToolError
+from app.tools.file_reader_tool import (
+    FileReaderTool,
+)
+
+
+BASE = "https://raw.githubusercontent.com"
+
+EXPECTED_MAIN = (
+    f"{BASE}/openai/openai-python/"
+    "main/requirements.txt"
+)
+
+EXPECTED_MASTER = (
+    f"{BASE}/openai/openai-python/"
+    "master/requirements.txt"
+)
+
+
+class FakeResponse:
+    """最小可用的 httpx Response 替身。"""
+
+    def __init__(
+        self,
+        status_code,
+        text="",
+    ):
+
+        self.status_code = status_code
+
+        self.text = text
+
+
+class FakeAsyncClient:
+    """
+    假 httpx.AsyncClient。
+
+    支持两种模式：
+
+    - error 不为 None：get() 直接抛异常
+    - 否则按 responses 顺序返回
+    """
+
+    def __init__(
+        self,
+        responses=None,
+        error=None,
+    ):
+
+        self.responses = list(
+            responses or []
+        )
+
+        self.error = error
+
+        self.urls = []
+
+    async def __aenter__(self):
+
+        return self
+
+    async def __aexit__(
+        self,
+        *exc_info,
+    ):
+
+        return False
+
+    async def get(
+        self,
+        url,
+        timeout=None,
+    ):
+
+        self.urls.append(url)
+
+        if self.error is not None:
+
+            raise self.error
+
+        if not self.responses:
+
+            return FakeResponse(404)
+
+        return self.responses.pop(0)
+
+
+def install_client(
+    monkeypatch,
+    client,
+):
+    """把假 Client 注入 FileReaderTool 使用的 httpx 模块。"""
+
+    monkeypatch.setattr(
+        httpx,
+        "AsyncClient",
+        lambda *args, **kwargs: client,
+    )
+
+    return client
+
+
+@pytest.mark.asyncio
+async def test_timeout_is_converted_to_tool_error(
+    monkeypatch,
+):
+    """
+    httpx.ReadTimeout 必须转换成 ToolError，
+    并且错误信息包含 URL。
+
+    httpx.ReadTimeout('') 的 str() 为空字符串，
+    直接向上抛出会产生 errors == [""]。
+    """
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(
+            error=httpx.ReadTimeout("")
+        ),
+    )
+
+    with pytest.raises(ToolError) as excinfo:
+
+        await FileReaderTool().execute(
+            owner="openai",
+            name="openai-python",
+            file_path="requirements.txt",
+        )
+
+    message = str(excinfo.value)
+
+    assert "Read timeout" in message
+
+    assert EXPECTED_MAIN in message
+
+    assert message.strip() != ""
+
+    assert client.urls == [EXPECTED_MAIN]
+
+
+@pytest.mark.asyncio
+async def test_connect_error_is_converted_to_tool_error(
+    monkeypatch,
+):
+    """非超时的 httpx 错误同样转换成 ToolError。"""
+
+    install_client(
+        monkeypatch,
+        FakeAsyncClient(
+            error=httpx.ConnectError(
+                "connection refused"
+            )
+        ),
+    )
+
+    with pytest.raises(ToolError) as excinfo:
+
+        await FileReaderTool().execute(
+            owner="openai",
+            name="openai-python",
+            file_path="requirements.txt",
+        )
+
+    message = str(excinfo.value)
+
+    assert "Read failed" in message
+
+    assert EXPECTED_MAIN in message
+
+    assert "connection refused" in message
+
+
+@pytest.mark.asyncio
+async def test_404_on_main_falls_back_to_master(
+    monkeypatch,
+):
+    """main 返回 404 时回退 master，两者都 404 则返回空字符串。"""
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(
+            responses=[
+                FakeResponse(404),
+                FakeResponse(404),
+            ]
+        ),
+    )
+
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
+    )
+
+    assert result == ""
+
+    assert client.urls == [
+        EXPECTED_MAIN,
+        EXPECTED_MASTER,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_404_on_master_returns_empty_without_retry(
+    monkeypatch,
+):
+    """分支已经是 master 时不再回退，直接返回空字符串。"""
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(
+            responses=[
+                FakeResponse(404),
+            ]
+        ),
+    )
+
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
+        branch="master",
+    )
+
+    assert result == ""
+
+    assert client.urls == [EXPECTED_MASTER]
+
+
+@pytest.mark.asyncio
+async def test_master_fallback_success(
+    monkeypatch,
+):
+    """main 404 但 master 命中时返回 master 内容。"""
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(
+            responses=[
+                FakeResponse(404),
+                FakeResponse(
+                    200,
+                    "fastapi==0.1.0",
+                ),
+            ]
+        ),
+    )
+
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
+    )
+
+    assert result == "fastapi==0.1.0"
+
+    assert client.urls == [
+        EXPECTED_MAIN,
+        EXPECTED_MASTER,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_success_returns_text_unchanged(
+    monkeypatch,
+):
+    """200 时原样返回文本，且不回退 master。"""
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(
+            responses=[
+                FakeResponse(
+                    200,
+                    "fastapi==0.1.0",
+                ),
+            ]
+        ),
+    )
+
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
+    )
+
+    assert result == "fastapi==0.1.0"
+
+    assert client.urls == [EXPECTED_MAIN]
 ```
 
 ### 📄 `tests/test_github_client.py`
@@ -14805,6 +18604,392 @@ async def test_pause_and_resume():
     assert resumed.data["visited"] == ["after"]
 ```
 
+### 📄 `tests/test_workflow_engine_errors.py`
+
+**层级**：测试层 · **职责**：WorkflowEngine 失败语义测试。
+
+```python
+"""
+WorkflowEngine 失败语义测试。
+
+覆盖：
+
+1. 空异常消息不会丢失异常类型
+2. FAILED Checkpoint 恢复时重新执行失败节点
+3. 不破坏 PAUSED / WAITING_* 的原有 resume 语义
+"""
+
+import httpx
+import pytest
+
+from app.core.exceptions import (
+    NonRetryableError,
+)
+from app.workflow.checkpoint import (
+    CheckpointManager,
+)
+from app.workflow.context import (
+    WorkflowContext,
+)
+from app.workflow.engine import (
+    WorkflowEngine,
+)
+from app.workflow.node import BaseNode
+from app.workflow.nodes.end_node import (
+    EndNode,
+)
+from app.workflow.nodes.start_node import (
+    StartNode,
+)
+from app.workflow.state import (
+    WorkflowState,
+    WorkflowStatus,
+)
+from app.workflow.transition import (
+    Transition,
+)
+from app.workflow.workflow import (
+    Workflow,
+)
+
+
+class EmptyMessageNode(BaseNode):
+    """
+    抛出 str() 为空的异常。
+
+    httpx.ReadTimeout('') 就是这种情况：
+    str(error) == ''，args == ('',)。
+    """
+
+    name = "empty_error"
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+
+        raise httpx.ReadTimeout("")
+
+
+class MessageNode(BaseNode):
+    """抛出带消息的异常。"""
+
+    name = "message_error"
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+
+        raise ValueError("planner result missing")
+
+
+class FailOnceNode(BaseNode):
+    """第一次失败，之后成功（模拟瞬时网络故障）。"""
+
+    name = "plan_executor"
+
+    def __init__(
+        self,
+        name="plan_executor",
+    ):
+
+        self.name = name
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+
+        state.data["attempts"] = (
+            state.data.get("attempts", 0) + 1
+        )
+
+        if state.data["attempts"] == 1:
+
+            raise NonRetryableError("boom")
+
+        state.data.setdefault(
+            "visited",
+            [],
+        ).append(self.name)
+
+        return state
+
+
+class RecordNode(BaseNode):
+    """记录执行顺序的节点。"""
+
+    def __init__(
+        self,
+        name,
+    ):
+
+        self.name = name
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+
+        state.data.setdefault(
+            "visited",
+            [],
+        ).append(self.name)
+
+        return state
+
+
+class PauseGateNode(BaseNode):
+    """模拟 Design Gate：主动进入 WAITING_DESIGN。"""
+
+    name = "design_gate"
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+
+        state.data["pause_count"] = (
+            state.data.get("pause_count", 0) + 1
+        )
+
+        state.status = (
+            WorkflowStatus.WAITING_DESIGN
+        )
+
+        return state
+
+
+def build_workflow(
+    nodes,
+    transitions,
+):
+    """构建测试用 Workflow。"""
+
+    workflow = Workflow()
+
+    for node in nodes:
+
+        workflow.add_node(node)
+
+    for source, target in transitions:
+
+        workflow.add_transition(
+            Transition(source, target)
+        )
+
+    return workflow
+
+
+def build_context():
+    """构建测试用 Context。"""
+
+    return WorkflowContext(
+        agents={},
+        tools={},
+        skills={},
+        config={},
+    )
+
+
+@pytest.mark.asyncio
+async def test_empty_error_message_keeps_exception_type():
+    """
+    空异常消息必须降级为异常类型名。
+
+    修复前：errors == [""]
+    修复后：errors == ["ReadTimeout"]
+    """
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            EmptyMessageNode(),
+            EndNode(),
+        ],
+        [
+            ("start", "empty_error"),
+            ("empty_error", "end"),
+        ],
+    )
+
+    result = await WorkflowEngine().run(
+        workflow,
+        WorkflowState(run_id="wf-empty-error"),
+        build_context(),
+    )
+
+    assert result.status == "FAILED"
+
+    assert result.current_node == "empty_error"
+
+    assert result.errors == ["ReadTimeout"]
+
+
+@pytest.mark.asyncio
+async def test_non_empty_error_message_is_preserved():
+    """非空消息必须原样保留（保持既有格式）。"""
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            MessageNode(),
+            EndNode(),
+        ],
+        [
+            ("start", "message_error"),
+            ("message_error", "end"),
+        ],
+    )
+
+    result = await WorkflowEngine().run(
+        workflow,
+        WorkflowState(run_id="wf-message-error"),
+        build_context(),
+    )
+
+    assert result.status == "FAILED"
+
+    assert result.errors == [
+        "planner result missing"
+    ]
+
+
+@pytest.mark.asyncio
+async def test_failed_resume_reexecutes_failed_node():
+    """
+    FAILED 恢复必须重新执行失败节点，而不是跳到下一个节点。
+
+    修复前：current_node=plan_executor 会直接跳到 human_review，
+            5 个 Agent 一个都不会执行。
+    修复后：重新执行 plan_executor。
+    """
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            FailOnceNode(),
+            RecordNode("human_review"),
+            RecordNode("finalizer"),
+            EndNode(),
+        ],
+        [
+            ("start", "plan_executor"),
+            ("plan_executor", "human_review"),
+            ("human_review", "finalizer"),
+            ("finalizer", "end"),
+        ],
+    )
+
+    manager = CheckpointManager()
+
+    engine = WorkflowEngine(
+        checkpoint=manager
+    )
+
+    first = await engine.run(
+        workflow,
+        WorkflowState(run_id="wf-failed-resume"),
+        build_context(),
+    )
+
+    assert first.status == "FAILED"
+
+    assert first.current_node == "plan_executor"
+
+    assert first.errors == ["boom"]
+
+    assert first.data["attempts"] == 1
+
+    assert first.data.get("visited", []) == []
+
+    # 从 FAILED Checkpoint 恢复。
+    restored = await engine.run(
+        workflow,
+        WorkflowState(run_id="wf-failed-resume"),
+        build_context(),
+        resume_from="wf-failed-resume",
+    )
+
+    # 失败节点被重新执行。
+    assert restored.data["attempts"] == 2
+
+    assert restored.data["visited"] == [
+        "plan_executor",
+        "human_review",
+        "finalizer",
+    ]
+
+    # errors 被清空。
+    assert restored.errors == []
+
+    assert restored.status == "COMPLETED"
+
+
+@pytest.mark.asyncio
+async def test_pause_resume_still_skips_completed_node():
+    """
+    Pause / Human Gate 语义不能被破坏。
+
+    WAITING_DESIGN 表示 design_gate 已完成，
+    恢复时必须从下一个节点继续，而不是重跑 design_gate。
+    """
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            PauseGateNode(),
+            RecordNode("plan_executor"),
+            EndNode(),
+        ],
+        [
+            ("start", "design_gate"),
+            ("design_gate", "plan_executor"),
+            ("plan_executor", "end"),
+        ],
+    )
+
+    manager = CheckpointManager()
+
+    engine = WorkflowEngine(
+        checkpoint=manager
+    )
+
+    paused = await engine.run(
+        workflow,
+        WorkflowState(run_id="wf-pause-gate"),
+        build_context(),
+    )
+
+    assert paused.status == "WAITING_DESIGN"
+
+    assert paused.current_node == "design_gate"
+
+    assert paused.data["pause_count"] == 1
+
+    resumed = await engine.run(
+        workflow,
+        WorkflowState(run_id="wf-pause-gate"),
+        build_context(),
+        resume_from="wf-pause-gate",
+    )
+
+    # design_gate 没有被重新执行。
+    assert resumed.data["pause_count"] == 1
+
+    assert resumed.data["visited"] == [
+        "plan_executor"
+    ]
+
+    assert resumed.status == "COMPLETED"
+```
+
 ## 二十二、仓库根目录脚本
 
 文档生成脚本与 Agent Loop 实验草稿（未纳入 app/）
@@ -17926,4 +22111,4 @@ class RunMemory:
 
 ---
 
-*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **150 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*
+*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **163 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*

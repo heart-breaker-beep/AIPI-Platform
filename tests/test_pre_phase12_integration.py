@@ -557,6 +557,67 @@ async def test_critic_accepts_agent_output_keys():
         config={},
     )
 
+    # Phase 12: Critic 现在除了 key 存在性，
+    # 还校验字段是否真的带有数据，
+    # 因此这里提供真实形状的最小内容。
+    result = await critic.execute(
+        context,
+        {
+            "repository_analysis_agent": {
+                "repository": {
+                    "name": "test-project"
+                }
+            },
+            "architecture_analysis_agent": {
+                "files": ["app/main.py"],
+                "modules": [
+                    {
+                        "file_path": "app/main.py",
+                        "content": "class DemoApp: pass",
+                    }
+                ],
+                "directory_structure": {
+                    "available": True
+                },
+            },
+            "technology_analysis_agent": {
+                "technology_stack": {
+                    "frameworks": ["FastAPI"]
+                }
+            },
+            "project_structure": {
+                "available": True,
+                "basis": "readme+topics",
+                "dimensions": {},
+            },
+        },
+    )
+
+    assert result["passed"] is True
+    assert result["errors"] == []
+
+
+@pytest.mark.asyncio
+async def test_critic_rejects_empty_analysis():
+    """
+    Phase 12: 只有 key、没有数据的分析结果不能被判为通过。
+
+    旧实现只检查 key 是否存在，
+    因此 {"files": [], "modules": []} 也会 passed=True，
+    让「跑过了但什么都没产出」看起来是成功的。
+    """
+
+    critic = CriticAgent(
+        FakeSkillRegistry()
+    )
+
+    context = WorkflowContext(
+        agents={},
+        tools={},
+        skills={},
+        config={},
+    )
+
     result = await critic.execute(
         context,
         {
@@ -564,13 +625,30 @@ async def test_critic_accepts_agent_output_keys():
                 "repository": {}
             },
             "architecture_analysis_agent": {
-                "architecture": {}
+                "files": [],
+                "modules": [],
             },
             "technology_analysis_agent": {
-                "technology": {}
+                "technology_stack": {}
             },
         },
     )
 
-    assert result["passed"] is True
-    assert result["errors"] == []
+    assert result["passed"] is False
+
+    assert (
+        "architecture is empty" in result["errors"]
+    )
+
+    assert (
+        "repository is empty" in result["errors"]
+    )
+
+    assert (
+        "technology is empty" in result["errors"]
+    )
+
+    assert (
+        "project_structure missing"
+        in result["errors"]
+    )

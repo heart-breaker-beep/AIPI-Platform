@@ -15,8 +15,12 @@ from app.core.exceptions import (
     NonRetryableError,
     RetryableError,
 )
+from app.core.logging import get_logger
 from app.workflow.retry import RetryPolicy
 from app.workflow.state import WorkflowStatus
+
+
+logger = get_logger(__name__)
 
 
 class WorkflowEngine:
@@ -70,15 +74,31 @@ class WorkflowEngine:
                     f"Checkpoint not found: {resume_from}"
                 )
 
-            current_node = (
-                self._get_next_node(
-                    workflow,
-                    state,
-                    state.current_node,
+            if state.status == WorkflowStatus.FAILED:
+
+                # FAILED 表示当前节点没有执行完成，
+                # 因此必须重新执行该节点，
+                # 不能像 Pause / Human Gate 那样跳到下一个节点。
+                current_node = state.current_node
+
+            else:
+
+                # PAUSED / WAITING_DESIGN / WAITING_HUMAN：
+                # 当前节点已经执行完成，
+                # 从下一个节点继续。
+                current_node = (
+                    self._get_next_node(
+                        workflow,
+                        state,
+                        state.current_node,
+                    )
                 )
-            )
 
             state.resume()
+
+            # 重新执行意味着重新开始，
+            # 上一轮失败留下的错误不再保留。
+            state.errors = []
 
         elif (
             state is not None
@@ -129,8 +149,20 @@ class WorkflowEngine:
 
             except Exception as error:
 
+                # 记录完整 traceback。
+                #
+                # 部分异常（例如 httpx.ReadTimeout）
+                # 的 str() 为空字符串，
+                # 只记录 str(error) 会导致
+                # errors == [""] 而无法排查。
+                logger.exception(
+                    "Workflow node failed: %s",
+                    current_node,
+                )
+
                 state.errors.append(
                     str(error)
+                    or type(error).__name__
                 )
 
                 state.status = (

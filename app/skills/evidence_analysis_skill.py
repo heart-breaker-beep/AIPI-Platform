@@ -26,6 +26,9 @@ class EvidenceAnalysisSkill(
         "repository analysis results."
     )
 
+    # 单条源码证据最多保存多少字符。
+    MAX_EVIDENCE_CHARS = 1500
+
     async def execute(
         self,
         context,
@@ -231,8 +234,90 @@ class EvidenceAnalysisSkill(
                 }
             )
 
-        architecture = input_data.get(
-            "architecture"
+        modules = EvidenceAnalysisSkill._modules(
+            input_data
+        )
+
+        for module in modules:
+
+            if not isinstance(
+                module,
+                dict,
+            ):
+                continue
+
+            # 读取失败的模块不生成证据，
+            # 否则会把空内容当成源码证据。
+            if module.get("error"):
+                continue
+
+            file_path = module.get(
+                "file_path"
+            )
+
+            content = module.get(
+                "content"
+            )
+
+            if isinstance(
+                content,
+                dict,
+            ):
+                content = content.get(
+                    "content",
+                    "",
+                )
+
+            if not content:
+                continue
+
+            content = str(content)
+
+            # 限制单条证据长度：
+            # 源码文件可能有数万字符，
+            # 全部落库会让证据表迅速膨胀。
+            excerpt = content[
+                : EvidenceAnalysisSkill.MAX_EVIDENCE_CHARS
+            ]
+
+            evidence.append(
+                {
+                    "source_type": "github",
+                    "source_url": repo_url,
+                    "file_path": file_path,
+                    "line_start": 1,
+                    "line_end": len(
+                        excerpt.splitlines()
+                    ),
+                    "content": excerpt,
+                    "metadata": {},
+                }
+            )
+
+        return evidence
+
+    @staticmethod
+    def _modules(
+        input_data,
+    ) -> list:
+        """
+        取出架构分析产出的 modules。
+
+        修复点：
+
+        旧代码只读 input_data["architecture"]，
+        但真实数据结构里没有这个 key
+        （真实 key 是 architecture_analysis_agent，
+        且 PlanExecutorNode 会把结果拍平到顶层 modules），
+        因此这个分支以前从未执行过，
+        导致 Evidence 只有 README、没有源码。
+        """
+
+        architecture = (
+            input_data.get("architecture")
+            or input_data.get(
+                "architecture_analysis_agent"
+            )
         )
 
         if isinstance(
@@ -241,50 +326,15 @@ class EvidenceAnalysisSkill(
         ):
 
             modules = architecture.get(
-                "modules",
-                [],
+                "modules"
             )
 
-            for module in modules:
+            if isinstance(modules, list):
+                return modules
 
-                if not isinstance(
-                    module,
-                    dict,
-                ):
-                    continue
+        modules = input_data.get("modules")
 
-                file_path = module.get(
-                    "file_path"
-                )
+        if isinstance(modules, list):
+            return modules
 
-                content = module.get(
-                    "content"
-                )
-
-                if isinstance(
-                    content,
-                    dict,
-                ):
-                    content = content.get(
-                        "content",
-                        "",
-                    )
-
-                if not content:
-                    continue
-
-                evidence.append(
-                    {
-                        "source_type": "github",
-                        "source_url": repo_url,
-                        "file_path": file_path,
-                        "line_start": 1,
-                        "line_end": len(
-                            str(content).splitlines()
-                        ),
-                        "content": str(content),
-                        "metadata": {},
-                    }
-                )
-
-        return evidence
+        return []

@@ -21,6 +21,61 @@ class RepositoryAnalysisSkill(
         "Analyze github repository information"
     )
 
+    # GitHub REST API 返回 84 个字段，
+    # 其中 30 多个是各类 API URL（archive_url / blobs_url ...），
+    # 分析与报告都不使用。
+    #
+    # 该结构会被保存两份
+    # （state.data["repository_analysis_agent"] 与
+    #   PlanExecutorNode 拍平后的 state.data["repository"]），
+    # 全量保存会让 checkpoint.state_data 凭空多出约 30KB。
+    REPOSITORY_FIELDS = (
+        "id",
+        "name",
+        "full_name",
+        "owner",
+        "description",
+        "html_url",
+        "url",
+        "homepage",
+        "language",
+        "topics",
+        "default_branch",
+        "size",
+        "stargazers_count",
+        "forks_count",
+        "watchers_count",
+        "open_issues_count",
+        "subscribers_count",
+        "license",
+        "created_at",
+        "updated_at",
+        "pushed_at",
+        "archived",
+        "disabled",
+        "fork",
+        "visibility",
+    )
+
+    @classmethod
+    def _select_repository_fields(
+        cls,
+        repository,
+    ) -> dict:
+        """只保留分析真正使用的仓库字段。"""
+
+        if not isinstance(
+            repository,
+            dict,
+        ):
+            return repository
+
+        return {
+            key: repository[key]
+            for key in cls.REPOSITORY_FIELDS
+            if key in repository
+        }
+
     async def execute(
         self,
         context,
@@ -91,11 +146,13 @@ class RepositoryAnalysisSkill(
 
         result = {}
 
-        # 获取仓库基本信息
+        # 获取仓库基本信息（只保留分析使用的字段）
         result["repository"] = (
-            await github_tool.execute(
-                owner=owner,
-                name=repo,
+            self._select_repository_fields(
+                await github_tool.execute(
+                    owner=owner,
+                    name=repo,
+                )
             )
         )
 

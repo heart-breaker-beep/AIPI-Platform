@@ -12,7 +12,12 @@ FastAPI 应用入口。
 
 from fastapi import FastAPI
 
-from app.api.v1.analysis import router as analysis_router
+from app.api.v1.analysis import (
+    router as analysis_router,
+)
+from app.api.v1.comparison import (
+    router as comparison_router,
+)
 from app.core.config import get_settings
 from app.core.error_handlers import (
     application_error_handler,
@@ -31,7 +36,9 @@ settings = get_settings()
 # 应用启动时初始化全局日志。
 setup_logging()
 
-logger = get_logger(__name__)
+logger = get_logger(
+    __name__
+)
 
 
 app = FastAPI(
@@ -59,9 +66,16 @@ app.add_exception_handler(
 )
 
 
-# 注册 v1 API。
+# 注册 Analysis API。
 app.include_router(
     analysis_router,
+    prefix="/api/v1",
+)
+
+
+# 注册 Comparison API。
+app.include_router(
+    comparison_router,
     prefix="/api/v1",
 )
 

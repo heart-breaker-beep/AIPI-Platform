@@ -200,13 +200,17 @@ async def test_repository_analysis_skill_workflow():
         in result.data
     )
 
+    # Phase 12: RepositoryAnalysisSkill 现在只保留
+    # 真实 GitHub API 里存在的字段。
+    # 旧断言用的 "repo" 并不是 GitHub API 字段，
+    # 因此改用 name。
     assert (
         result.data[
             "repository_analysis"
         ][
             "repository"
         ][
-            "repo"
+            "name"
         ]
         ==
         "test-project"

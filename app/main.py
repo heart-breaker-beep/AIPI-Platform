@@ -10,13 +10,13 @@ FastAPI 应用入口。
 5. API 路由注册
 """
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 
 from app.api.v1.analysis import (
     router as analysis_router,
-)
-from app.api.v1.comparison import (
-    router as comparison_router,
 )
 from app.core.config import get_settings
 from app.core.error_handlers import (
@@ -73,13 +73,6 @@ app.include_router(
 )
 
 
-# 注册 Comparison API。
-app.include_router(
-    comparison_router,
-    prefix="/api/v1",
-)
-
-
 @app.get(
     "/health",
     tags=["System"],
@@ -101,11 +94,32 @@ async def health_check():
 )
 async def root():
     """
-    项目根路径。
+    根路径直接返回操作页面。
+
+    这是给人工跑一次分析用的最简前端：
+    单文件、无构建步骤，
+    只调用本服务已有的 /api/v1 接口。
+
+    文件缺失时退回 JSON，
+    保证 API 本身不受影响。
     """
+
+    index = (
+        Path(__file__).parent
+        / "static"
+        / "index.html"
+    )
+
+    if index.is_file():
+
+        return FileResponse(
+            index,
+            media_type="text/html",
+        )
 
     return {
         "name": settings.APP_NAME,
         "version": "0.1.0",
         "status": "running",
+        "ui": "app/static/index.html not found",
     }

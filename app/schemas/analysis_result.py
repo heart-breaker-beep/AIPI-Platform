@@ -7,7 +7,7 @@ Workflow执行结果
         ↓
 AnalysisResult
         ↓
-Report / Comparison
+Report
 """
 
 from typing import Any
@@ -85,8 +85,6 @@ class AnalysisResult(BaseModel):
     Workflow
         ↓
     Report
-        ↓
-    Comparison
 
     的统一数据契约。
     """

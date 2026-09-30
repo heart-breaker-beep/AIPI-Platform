@@ -7,9 +7,6 @@ Agent Registry。
 from app.agents.architecture_analysis_agent import (
     ArchitectureAnalysisAgent,
 )
-from app.agents.comparison_agent import (
-    ComparisonAgent,
-)
 from app.agents.critic_agent import (
     CriticAgent,
 )
@@ -82,9 +79,6 @@ def create_agent_registry(
             skill_registry
         ),
         CriticAgent(
-            skill_registry
-        ),
-        ComparisonAgent(
             skill_registry
         ),
     ]

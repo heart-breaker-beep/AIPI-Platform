@@ -8,10 +8,10 @@ Evidence Analysis Skill。
 3. Evidence MySQL 持久化
 """
 
-from app.skills.base import BaseSkill
 from app.services.evidence_service import (
     EvidenceService,
 )
+from app.skills.base import BaseSkill
 
 
 class EvidenceAnalysisSkill(
@@ -310,14 +310,30 @@ class EvidenceAnalysisSkill(
                 : EvidenceAnalysisSkill.MAX_EVIDENCE_CHARS
             ]
 
+            # 摘录可能跳过了开头的 import 段，
+            # 行号要跟着偏移，
+            # 否则会写成「file:1-30」但内容其实是第 30 行开始的。
+            start_line = module.get(
+                "start_line",
+                1,
+            )
+
+            if not isinstance(
+                start_line,
+                int,
+            ) or start_line < 1:
+                start_line = 1
+
             evidence.append(
                 {
                     "source_type": "github",
                     "source_url": repo_url,
                     "file_path": file_path,
-                    "line_start": 1,
-                    "line_end": len(
-                        excerpt.splitlines()
+                    "line_start": start_line,
+                    "line_end": (
+                        start_line
+                        + len(excerpt.splitlines())
+                        - 1
                     ),
                     "content": excerpt,
                     "metadata": {},

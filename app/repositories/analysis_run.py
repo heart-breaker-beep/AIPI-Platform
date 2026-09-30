@@ -54,6 +54,31 @@ class AnalysisRunRepository:
 
         return result.scalar_one_or_none()
 
+    async def list_recent(
+        self,
+        limit: int = 20,
+    ) -> list[AnalysisRun]:
+        """
+        按创建时间倒序列出最近的 Analysis Run。
+
+        给前端的历史列表用。
+
+        只读 analysis_runs 这张小表：
+        state_data 在 checkpoints 里，
+        这里不碰，避免大字段排序触发
+        1038 Out of sort memory。
+        """
+
+        result = await self.session.execute(
+            select(AnalysisRun)
+            .order_by(
+                AnalysisRun.created_at.desc()
+            )
+            .limit(limit)
+        )
+
+        return list(result.scalars().all())
+
     async def update_status(
         self,
         run: AnalysisRun,

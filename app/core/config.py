@@ -25,9 +25,23 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = 6333
 
     # LLM
+    #
+    # DeepSeek 提供 OpenAI 兼容接口，
+    # 因此 openai SDK 直连该 base_url 即可。
     LLM_PROVIDER: str = "deepseek"
     LLM_API_KEY: str = ""
     LLM_MODEL: str = "deepseek-chat"
+    LLM_BASE_URL: str = "https://api.deepseek.com"
+    LLM_TIMEOUT: float = 120.0
+
+    # 单次回复的最大 token 数。
+    #
+    # 必须显式设置：综合分析要输出
+    # 六个维度的判断段落 + 摘要，
+    # 用 API 默认值会被截断，
+    # 截断的 JSON 解析必然失败，
+    # 报告就会退化成「综合分析不可用」。
+    LLM_MAX_TOKENS: int = 8192
 
     # Embedding
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"

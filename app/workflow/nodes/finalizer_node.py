@@ -49,6 +49,18 @@ class FinalizerNode(BaseNode):
             f"{state.run_id}_analysis.md",
         )
 
+        # Phase 14.2：同时产出 markdown 与结构化 JSON。
+        #
+        # markdown 是给人读的主产物；
+        # JSON 是同一份数据的结构化形态，
+        # 供程序消费（导出、二次加工、比对）。
+        # 两者由 ReportService 从同一份文档派生，
+        # 不会各写各的导致漂移。
+        report_input.setdefault(
+            "format",
+            "both",
+        )
+
         result = await self.skill.execute(
             context=context,
             input_data=report_input,

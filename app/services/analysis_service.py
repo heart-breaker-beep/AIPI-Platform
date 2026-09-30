@@ -2,6 +2,7 @@
 
 from uuid import uuid4
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ValidationError
@@ -18,16 +19,21 @@ from app.repositories.repository_basic import (
 )
 from app.schemas.analysis import (
     AnalysisCreateRequest,
+    AnalysisDeepDiveResponse,
+    AnalysisJsonReportResponse,
     AnalysisReportResponse,
     AnalysisResponse,
+    LearningPathResponse,
 )
 from app.services.analysis_workflow import (
     AnalysisWorkflowRunner,
 )
+from app.skills.module_deep_dive_skill import (
+    ModuleDeepDiveSkill,
+)
 from app.tools.github.parser import (
     parse_github_url,
 )
-
 
 logger = get_logger(__name__)
 
@@ -387,6 +393,98 @@ class AnalysisService:
             run,
         )
 
+    async def learning_path(
+        self,
+        session: AsyncSession,
+        run_id: str,
+        goal: str | None = None,
+    ) -> LearningPathResponse:
+        """
+        生成项目的学习路线（Phase 14.1）。
+
+        只读不写：不修改原 run，
+        产物是独立的一份 markdown。
+        """
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(run_id)
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        result = await runner.learning_path(
+            run_id,
+            goal or run.question,
+        )
+
+        return LearningPathResponse(
+            run_id=run_id,
+            available=bool(
+                result.get("available")
+            ),
+            reason=result.get("reason"),
+            sections=result.get("sections") or {},
+            report=result.get("report"),
+            content=result.get("content") or "",
+        )
+
+    async def get_report_json(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisJsonReportResponse:
+        """
+        获取结构化报告（Phase 14.2）。
+
+        两条路：
+
+        1. 读 Finalizer 落盘的 .json（正常路径）
+        2. 文件不在了就用 ReportService
+           从 checkpoint 现场重建
+
+        第 2 条不只是兜底：
+        早期 run 没产出过 JSON，
+        现场重建让它们也能拿到结构化报告。
+        """
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(run_id)
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        document = await runner.get_json_report(
+            run_id
+        )
+
+        return AnalysisJsonReportResponse(
+            run_id=run_id,
+            status=run.status,
+            document=document,
+        )
+
     async def get_report(
         self,
         session: AsyncSession,
@@ -421,6 +519,136 @@ class AnalysisService:
             run_id=run.id,
             status=run.status,
             report=report,
+        )
+
+    async def list_analyses(
+        self,
+        session: AsyncSession,
+        limit: int = 20,
+    ) -> list[AnalysisResponse]:
+        """
+        列出最近的分析任务。
+
+        给前端的历史列表用：
+        前端只能看到「当前这一个 run」时，
+        关掉页面就找不回来了。
+        """
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        runs = await run_repo.list_recent(limit)
+
+        if not runs:
+            return []
+
+        # 一次把所有关联仓库取回来，
+        # 避免每个 run 查一次库。
+        repository_ids = {
+            run.repository_id
+            for run in runs
+        }
+
+        result = await session.execute(
+            select(Repository).where(
+                Repository.id.in_(repository_ids)
+            )
+        )
+
+        repositories = {
+            repository.id: repository
+            for repository in result.scalars().all()
+        }
+
+        responses = []
+
+        for run in runs:
+
+            repository = repositories.get(
+                run.repository_id
+            )
+
+            responses.append(
+                AnalysisResponse(
+                    run_id=run.id,
+                    status=run.status,
+                    repo_url=(
+                        repository.url
+                        if repository is not None
+                        else ""
+                    ),
+                    question=run.question,
+                    current_node=run.current_node,
+                    progress=self._progress(
+                        run.status,
+                        run.current_node,
+                    ),
+                    created_at=run.created_at,
+                )
+            )
+
+        return responses
+
+    async def deep_dive_module(
+        self,
+        session: AsyncSession,
+        run_id: str,
+        module: str,
+    ) -> AnalysisDeepDiveResponse:
+        """
+        对某个已完成 run 的单个模块做深挖。
+
+        默认报告每章只给要点；
+        用户想看某个模块的实现细节时走这里。
+        """
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        normalized = (
+            module or ""
+        ).strip().lower()
+
+        if normalized not in (
+            ModuleDeepDiveSkill.MODULES
+        ):
+            raise ValidationError(
+                f"Unsupported module: {module!r}. "
+                "Expected one of "
+                f"{', '.join(ModuleDeepDiveSkill.MODULES)}."
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        result = await runner.deep_dive_module(
+            run_id,
+            normalized,
+        )
+
+        return AnalysisDeepDiveResponse(
+            run_id=run_id,
+            module=normalized,
+            title=result.get("title"),
+            report=result.get("report"),
+            content=result.get("content"),
+            files_read=result.get("files_read")
+            or [],
+            details=result.get("details", 0),
         )
 
     async def _to_response(
@@ -478,6 +706,7 @@ class AnalysisService:
             "design_gate": 20,
             "plan_executor": 70,
             "human_review": 85,
+            "synthesis": 90,
             "finalizer": 95,
             "end": 100,
         }

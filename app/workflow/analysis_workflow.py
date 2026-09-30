@@ -13,6 +13,8 @@ Plan Executor
     ↓
 Human Review
     ↓
+Synthesis
+    ↓
 Finalizer
     ↓
 End
@@ -31,6 +33,9 @@ from app.workflow.nodes.plan_executor_node import (
     PlanExecutorNode,
 )
 from app.workflow.nodes.start_node import StartNode
+from app.workflow.nodes.synthesis_node import (
+    SynthesisNode,
+)
 from app.workflow.transition import Transition
 from app.workflow.workflow import Workflow
 
@@ -65,6 +70,15 @@ def build_analysis_workflow(
             "Report generation skill is not registered."
         )
 
+    synthesis_skill = context.skills.get(
+        "report_synthesis"
+    )
+
+    if synthesis_skill is None:
+        raise ValueError(
+            "Report synthesis skill is not registered."
+        )
+
     workflow.add_node(
         StartNode()
     )
@@ -86,6 +100,12 @@ def build_analysis_workflow(
 
     workflow.add_node(
         HumanNode()
+    )
+
+    workflow.add_node(
+        SynthesisNode(
+            skill=synthesis_skill,
+        )
     )
 
     workflow.add_node(
@@ -129,6 +149,13 @@ def build_analysis_workflow(
     workflow.add_transition(
         Transition(
             "human_review",
+            "synthesis",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "synthesis",
             "finalizer",
         )
     )

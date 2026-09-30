@@ -16,12 +16,16 @@ AnalysisRun
 真正连接起来。
 """
 
+import json
+from pathlib import Path
+
 from app.agents.agent_registry import (
     create_agent_registry,
 )
 from app.context.manager import (
     ContextManager,
 )
+from app.core.logging import get_logger
 from app.memory.manager import (
     MemoryManager,
 )
@@ -31,6 +35,9 @@ from app.repositories.analysis_run import (
 )
 from app.repositories.checkpoint import (
     CheckpointRepository,
+)
+from app.skills.registry import (
+    create_skill_registry,
 )
 from app.tools.dependency_analyzer_tool import (
     DependencyAnalyzerTool,
@@ -44,6 +51,9 @@ from app.tools.github.github_code_search_tool import (
 from app.tools.github.github_repository_tool import (
     GitHubRepositoryTool,
 )
+from app.tools.llm_chat_tool import (
+    LLMChatTool,
+)
 from app.tools.mysql_query_tool import (
     MySQLQueryTool,
 )
@@ -52,9 +62,6 @@ from app.tools.qdrant_search_tool import (
 )
 from app.tools.report_export_tool import (
     ReportExportTool,
-)
-from app.skills.registry import (
-    create_skill_registry,
 )
 from app.workflow.analysis_workflow import (
     build_analysis_workflow,
@@ -71,6 +78,8 @@ from app.workflow.engine import (
 from app.workflow.state import (
     WorkflowState,
 )
+
+logger = get_logger(__name__)
 
 
 class AnalysisWorkflowRunner:
@@ -138,6 +147,9 @@ class AnalysisWorkflowRunner:
 
             "report_export":
                 ReportExportTool(),
+
+            "llm_chat":
+                LLMChatTool(),
         }
 
         memory_manager = (
@@ -402,7 +414,302 @@ class AnalysisWorkflowRunner:
         self,
         run_id: str,
     ):
-        """获取最终报告。"""
+        """
+        获取最终报告。
+
+        两条路：
+
+        1. 从 checkpoint 读（正常路径）
+        2. 读不出来时退回磁盘上的报告文件
+
+        第 2 条是必需的，不是锦上添花：
+        checkpoint 的 state_data 一旦超过
+        asyncmy 的大字段读取上限，
+        这个 run 的 state 就永久读不回来了，
+        但报告正文其实早就写在
+        reports/{run_id}_analysis.md 里。
+        没有这条兜底的话，
+        「分析成功但报告 500」就会一直存在。
+        """
+
+        try:
+
+            state = await self.checkpoint.load(
+                run_id
+            )
+
+        except Exception as error:
+
+            # 读不出来不让请求挂掉，
+            # 交给文件兜底。
+            logger.warning(
+                "checkpoint load failed | run_id=%s | %s: %s",
+                run_id,
+                type(error).__name__,
+                error,
+            )
+
+            state = None
+
+        report = None
+
+        if state is not None:
+
+            report = state.data.get(
+                "final_report"
+            )
+
+        return self._report_from_disk(
+            run_id,
+            report,
+        )
+
+    async def learning_path(
+        self,
+        run_id: str,
+        goal: str | None = None,
+    ):
+        """
+        基于已有分析结果生成学习路线（Phase 14.1）。
+
+        不重新联网、不重新分析 ——
+        只用该 run 已经采集到的数据。
+        产物是独立的一份 markdown，
+        不修改原报告。
+        """
+
+        state = await self.checkpoint.load(run_id)
+
+        if state is None:
+            raise ValueError(
+                f"Checkpoint not found: {run_id}"
+            )
+
+        data = state.data or {}
+
+        context = self.build_context(
+            repository_id=data.get(
+                "repository_id"
+            )
+        )
+
+        skill = context.skills.get(
+            "learning_path"
+        )
+
+        if skill is None:
+            raise ValueError(
+                "Learning path skill is not "
+                "registered."
+            )
+
+        return await skill.execute(
+            context,
+            {
+                **data,
+                "run_id": run_id,
+                "goal": goal or data.get("question"),
+            },
+        )
+
+    async def get_json_report(
+        self,
+        run_id: str,
+    ):
+        """
+        获取结构化报告（Phase 14.2）。
+
+        优先读 Finalizer 落盘的 .json；
+        读不到就用 ReportService 从
+        checkpoint 的 state 现场重建。
+
+        现场重建让早期 run（没产出过 JSON）
+        也能拿到结构化报告。
+        """
+
+        state = None
+
+        try:
+
+            state = await self.checkpoint.load(
+                run_id
+            )
+
+        except Exception as error:
+
+            logger.warning(
+                "checkpoint load failed for json "
+                "report | run_id=%s | %s: %s",
+                run_id,
+                type(error).__name__,
+                error,
+            )
+
+        data = (
+            state.data
+            if state is not None
+            else {}
+        )
+
+        # 1. 落盘的 JSON
+        path = self._json_report_path(
+            run_id,
+            data,
+        )
+
+        if path is not None:
+
+            try:
+
+                return json.loads(
+                    Path(path).read_text(
+                        encoding="utf-8"
+                    )
+                )
+
+            except (OSError, ValueError):
+
+                # 文件损坏时继续走重建，
+                # 不把「读到坏文件」变成 500。
+                pass
+
+        # 2. 现场重建
+        if not data:
+
+            return None
+
+        from app.services.report_service import (
+            ReportService,
+        )
+
+        return ReportService.build_document(
+            data,
+            run_id=run_id,
+        )
+
+    @staticmethod
+    def _json_report_path(
+        run_id: str,
+        data: dict,
+    ):
+        """找出 JSON 报告文件路径。"""
+
+        final_report = (
+            data.get("final_report")
+            if isinstance(data, dict)
+            else None
+        )
+
+        if isinstance(final_report, dict):
+
+            json_report = final_report.get(
+                "json_report"
+            )
+
+            if isinstance(json_report, dict):
+
+                candidate = json_report.get("path")
+
+                if candidate and Path(candidate).is_file():
+
+                    return candidate
+
+        # 早期 run 没记录路径，
+        # 按命名约定猜一下。
+        fallback = (
+            Path("reports")
+            / f"{run_id}_analysis.json"
+        )
+
+        if fallback.is_file():
+            return str(fallback)
+
+        return None
+
+    @staticmethod
+    def _report_from_disk(
+        run_id: str,
+        report,
+    ):
+        """
+        用磁盘上的报告文件补齐 report。
+
+        两种情况都走这里：
+
+        - report 完全没有（checkpoint 读不出来）
+        - report 有路径但没有正文
+          （state 瘦身时丢掉了 content）
+        """
+
+        directory = Path("reports")
+
+        path = None
+
+        if isinstance(report, dict):
+
+            inner = report.get("report")
+
+            if isinstance(inner, dict):
+
+                path = inner.get("path")
+
+        candidates = []
+
+        if path:
+
+            candidates.append(Path(path))
+
+        candidates.append(
+            directory / f"{run_id}_analysis.md"
+        )
+
+        for candidate in candidates:
+
+            if not candidate.is_file():
+                continue
+
+            try:
+
+                content = candidate.read_text(
+                    encoding="utf-8"
+                )
+
+            except OSError:
+
+                continue
+
+            if isinstance(report, dict) and report.get(
+                "content"
+            ):
+
+                return report
+
+            return {
+                "report": {
+                    "path": str(candidate),
+                    "format": "markdown",
+                },
+                "content": content,
+            }
+
+        return report
+
+    async def deep_dive_module(
+        self,
+        run_id: str,
+        module: str,
+    ):
+        """
+        对某个已完成 run 的单个模块做深挖。
+
+        复用该 run 已保存的仓库信息
+        （owner / repo / branch / readme），
+        因此不需要重新解析 URL，
+        也不需要重跑整个分析流程。
+
+        深挖只读不写：不修改 checkpoint，
+        产物是单独一份 markdown。
+        """
 
         state = await self.checkpoint.load(
             run_id
@@ -413,8 +720,60 @@ class AnalysisWorkflowRunner:
                 f"Checkpoint not found: {run_id}"
             )
 
-        return state.data.get(
-            "final_report"
+        data = state.data or {}
+
+        owner = data.get("owner")
+
+        repo = data.get("repo")
+
+        if not owner or not repo:
+            raise ValueError(
+                "该 run 缺少 owner / repo，"
+                "无法定位仓库做深挖。"
+            )
+
+        repository = await self.session.get(
+            Repository,
+            data.get("repository_id"),
+        )
+
+        context = self.build_context(
+            repository_id=data.get(
+                "repository_id"
+            )
+        )
+
+        skill = context.skills.get(
+            "module_deep_dive"
+        )
+
+        if skill is None:
+            raise ValueError(
+                "Module deep dive skill "
+                "is not registered."
+            )
+
+        return await skill.execute(
+            context,
+            {
+                "run_id": run_id,
+                "module": module,
+                "owner": owner,
+                "repo": repo,
+                "branch": data.get(
+                    "branch",
+                    "main",
+                ),
+                "readme": data.get("readme"),
+                "repository": data.get(
+                    "repository"
+                ),
+                "repo_url": (
+                    repository.url
+                    if repository is not None
+                    else data.get("repo_url")
+                ),
+            },
         )
 
     async def _sync_run(

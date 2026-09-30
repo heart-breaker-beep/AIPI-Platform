@@ -38,6 +38,12 @@ import os
 import re
 
 from app.core.exceptions import ToolError
+from app.project_analysis.analysis_focus import (
+    AnalysisFocus,
+)
+from app.project_analysis.code_structure_extractor import (
+    CodeStructureExtractor,
+)
 from app.skills.base import BaseSkill
 
 
@@ -133,11 +139,40 @@ class ArchitectureAnalysisSkill(
         r"[A-Za-z][A-Za-z0-9_.\-*]{1,39}"
     )
 
+    # README 列表行的前缀。
+    #
+    # 列表行常被用来罗列能力，
+    # 而且多数写成普通文字（不加粗、不加反引号），
+    # 例如：
+    #
+    #     - supplier lookup, duplicate detection, categorization
+    #
+    # 仅靠粗体 / 反引号抽不到这类内容，
+    # 因此列表行的逗号分段也作为条目。
+    _BULLET_PATTERN = re.compile(
+        r"^\s*[-*]\s+(.*)$"
+    )
+
+    # 列表分段作为条目的最大长度。
+    #
+    # 超过这个长度的多半是整句话，
+    # 不适合当条目。
+    MAX_BULLET_ITEM_CHARS = 60
+
     # 每个维度最多记录的命中行数。
     MAX_EVIDENCE_LINES = 4
 
     # 每个维度最多记录的标识数。
     MAX_ITEMS = 12
+
+    # 代码证据与 README 自述合并后，
+    # 单个维度最多保留多少个条目。
+    #
+    # 略大于 MAX_ITEMS：
+    # 代码符号排在前面且通常先用满 12 个，
+    # 这里留出余量，让 README 补充的条目
+    # 不至于被全部挤掉。
+    MAX_MERGED_ITEMS = 16
 
     # 允许接纳「未命中关键词的代码标识」的维度。
     #
@@ -181,6 +216,17 @@ class ArchitectureAnalysisSkill(
 
     # 允许读取内容的文件类型（不含 .md，
     # README 已由 RepositoryAnalysisSkill 读取）。
+    #
+    # 刻意不含 .toml / .ini / .cfg / .yml / .json：
+    # 这些是配置文件，由 TechnologyAnalysisSkill
+    # 负责读取并抽取技术栈。
+    # 本 Skill 的「关键源码」只用来抽取
+    # Agent / Workflow / Tool 等代码结构，
+    # 再读一遍配置文件纯属浪费配额
+    # （旧版本 8 个配额里有 3-4 个是
+    #   docker-compose.yml / pyproject.toml 这类文件，
+    #   导致真正承载架构的 graph / nodes / tools
+    #   一个都没读到）。
     SOURCE_EXTENSIONS = (
         ".py",
         ".js",
@@ -197,12 +243,6 @@ class ArchitectureAnalysisSkill(
         ".kt",
         ".swift",
         ".vue",
-        ".toml",
-        ".cfg",
-        ".ini",
-        ".yml",
-        ".yaml",
-        ".json",
     )
 
     # 读取源码时优先挑选的入口文件。
@@ -222,18 +262,146 @@ class ArchitectureAnalysisSkill(
         "main.js",
         "app.ts",
         "app.js",
-        "docker-compose.yml",
-        "docker-compose.yaml",
-        "pyproject.toml",
-        "requirements.txt",
-        "package.json",
+    )
+
+    # 这些路径最后才考虑。
+    #
+    # 它们能命中架构关键词（tests/test_agents.py
+    # 名字里有 agent），但描述的是「项目怎么测自己」，
+    # 不是「项目怎么组织 Agent」，
+    # 放在最后避免挤掉真正的实现代码。
+    LOW_PRIORITY_PATH_PATTERNS = (
+        re.compile(r"(^|/)tests?/"),
+        re.compile(r"(^|/)test_[^/]*$"),
+        re.compile(r"_test\.[a-z]+$"),
+        re.compile(r"(^|/)migrations?/"),
+        re.compile(r"(^|/)alembic/versions/"),
+        re.compile(r"(^|/)(demo_data|examples?|samples?)/"),
+        re.compile(r"(^|/)scripts?/"),
     )
 
     # 最多读取多少个文件内容作为「关键源码」。
     #
     # 文件树可能有数百个文件，
     # 不限制会对 GitHub 发起数百次请求。
-    MAX_MODULES = 8
+    #
+    # 8 -> 12：不再把配额花在
+    # docker-compose.yml 这类配置文件上。
+    # 12 -> 20：改为按维度分配配额，
+    # 每个维度都要留够样本。
+    MAX_MODULES = 20
+
+    # 每个维度的样本配额。
+    #
+    # 旧做法是全局挑 20 个「路径命中最多信号」的文件，
+    # 结果取决于仓库目录结构：
+    # agents/ 下文件多就全是 agents，
+    # rag/ 只有 1 个文件就可能一个都进不来，
+    # 于是报告里每个模块的详略极不均匀。
+    #
+    # 现在每个维度有独立名额，
+    # 命中该维度的文件先按自己的配额挑，
+    # 一个维度内部的明细深浅不再由别的维度决定。
+    DIMENSION_QUOTAS = {
+        "workflow": 4,
+        "agents": 3,
+        "tools": 3,
+        "rag": 2,
+        "memory": 2,
+        "skills": 2,
+    }
+
+    # 重点维度与非重点维度的配额权重。
+    #
+    # 用户点名了重点时，配额按权重重新分配，
+    # 而不是把非重点维度降到 0 ——
+    # 报告里那些章节仍然要写，
+    # 只是给更少的样本。
+    #
+    # 以 MAX_MODULES=20 为例：
+    #
+    #     1 个重点  重点 10，其余各 2   -> 20
+    #     2 个重点  重点各 7，其余各 1   -> 18
+    #     3 个重点  重点各 5，其余各 1   -> 18
+    FOCUS_WEIGHT = 5
+
+    BASE_WEIGHT = 1
+
+    @classmethod
+    def _quotas_for(
+        cls,
+        focus=None,
+    ):
+        """
+        按本次重点算出各维度的采集配额。
+
+        返回的是**有序**字典：
+        重点维度排在前面，
+        这样 _read_candidates 会先把它们的
+        名额用满，不会被其它维度挤掉。
+
+        没有识别出重点时返回默认配额，
+        与旧行为完全一致。
+        """
+
+        if focus is None or not focus.is_focused:
+
+            return dict(cls.DIMENSION_QUOTAS)
+
+        weights = {}
+
+        for name in cls.DIMENSION_QUOTAS:
+
+            weights[name] = (
+                cls.FOCUS_WEIGHT
+                if focus.is_primary(name)
+                else cls.BASE_WEIGHT
+            )
+
+        total = sum(weights.values())
+
+        quotas = {}
+
+        # 重点维度在前，且内部按用户在问题里
+        # 提到的顺序排 —— 越靠前越重要。
+        ordered = sorted(
+            cls.DIMENSION_QUOTAS,
+            key=lambda name: (
+                0 if focus.is_primary(name) else 1,
+                focus.rank(name),
+                name,
+            ),
+        )
+
+        for name in ordered:
+
+            quotas[name] = max(
+                1,
+                cls.MAX_MODULES
+                * weights[name]
+                // total,
+            )
+
+        return quotas
+
+    # 落库时最多保留多少个**源码正文**。
+    #
+    # 与 MAX_MODULES 分开是刻意的：
+    #
+    #   MAX_MODULES       读几个文件喂给 AST
+    #   MAX_STORED_MODULES 存几个文件的正文进 state
+    #
+    # AST 抽取在内存里用全文，不受这个上限影响；
+    # 但 modules 正文要写进 checkpoint，
+    # 20 个文件 × 1200 字符 ≈ 24KB，
+    # 而报告第 11 章只渲染 8 个 ——
+    # 存 20 个有 12 个永远没人看。
+    #
+    # 真实事故：state_data 涨到 263KB，
+    # 越过 asyncmy 单字段 256KB 的缓冲区分片上限，
+    # 报告接口读 checkpoint 直接
+    # Lost connection to MySQL server。
+    MAX_STORED_MODULES = 8
 
     # 落库时最多保留多少个文件路径。
     #
@@ -339,8 +507,25 @@ class ArchitectureAnalysisSkill(
             ),
         }
 
+        # AST 抽取需要**未截断**的源码：
+        # 截断过的 Python 几乎必然语法错误，
+        # 因此这里单独收一份全文，
+        # 只在本次执行内使用，不写入 state
+        # （modules 里存的仍是截断后的内容）。
+        ast_sources = []
+
+        # 本次分析的重点维度。
+        #
+        # research_plan 由 DesignGateNode 提升到顶层，
+        # PlanExecutorNode 又把 state.data 整体
+        # 作为 agent_input 传进来，因此这里能读到。
+        focus = AnalysisFocus.from_plan(
+            input_data.get("research_plan")
+        )
+
         for file_path in self._read_candidates(
-            files
+            files,
+            self._quotas_for(focus),
         ):
 
             try:
@@ -370,21 +555,57 @@ class ArchitectureAnalysisSkill(
 
                 continue
 
-            architecture[
-                "modules"
-            ].append(
-                self._module_entry(
-                    file_path,
-                    content,
+            # 只存够报告展示的量。
+            # 全文已经喂给 AST 了，
+            # 多存的正文没有任何读取方。
+            if len(
+                architecture["modules"]
+            ) < self.MAX_STORED_MODULES:
+
+                architecture[
+                    "modules"
+                ].append(
+                    self._module_entry(
+                        file_path,
+                        content,
+                    )
                 )
+
+            ast_sources.append(
+                {
+                    "file_path": file_path,
+                    "content": content or "",
+                }
             )
+
+        # 从真实源码抽取结构信号。
+        #
+        # 除已读取的文件外，
+        # 额外把整棵文件树的路径交给抽取器：
+        # 配额只有 12 个，
+        # 但「存在 src/agents/ 目录」这条证据
+        # 不该因为该目录下的文件没被读到而丢失。
+        code_structure = (
+            CodeStructureExtractor.extract(
+                ast_sources,
+                extra_paths=[
+                    path
+                    for path in files
+                    if isinstance(path, str)
+                ],
+            )
+        )
 
         # Phase 12 → Phase 13 契约：
         # 产出被分析项目的自述结构。
+        #
+        # 现在由「代码证据」与「README 自述」共同构成，
+        # 代码为主、README 为辅。
         architecture[
             "project_structure"
         ] = self._extract_project_structure(
-            input_data
+            input_data,
+            code_structure,
         )
 
         return architecture
@@ -397,18 +618,40 @@ class ArchitectureAnalysisSkill(
         """
         构建单个源码条目。
 
-        内容按 MAX_MODULE_CHARS 截断，
-        避免大型文件把 state_data 撑爆。
+        两个处理：
+
+        1. 跳过开头的 import 段
+           否则摘录就是一堆 `import os`，
+           对理解项目毫无帮助。
+        2. 按 MAX_MODULE_CHARS 截断，
+           避免大型文件把 state_data 撑爆。
         """
 
         text = str(content or "")
 
+        start = CodeStructureExtractor.meaningful_start(
+            text
+        )
+
+        excerpt = text[
+            start: start + self.MAX_MODULE_CHARS
+        ]
+
         entry = {
             "file_path": file_path,
-            "content": text[: self.MAX_MODULE_CHARS],
+            "content": excerpt,
         }
 
-        if len(text) > self.MAX_MODULE_CHARS:
+        # 摘录从第几行开始 ——
+        # 证据层要用它标行号，
+        # 否则会写成「file:1-30」但内容是第 30 行开始的。
+        if start:
+
+            entry["start_line"] = (
+                text[:start].count("\n") + 1
+            )
+
+        if len(text) - start > self.MAX_MODULE_CHARS:
             entry["original_characters"] = len(text)
             entry["truncated"] = True
 
@@ -561,17 +804,53 @@ class ArchitectureAnalysisSkill(
     def _read_candidates(
         self,
         files,
+        quotas=None,
     ):
         """
         从文件列表里挑出要读取的关键源码。
 
         文件树可能有数百个文件，
         必须限制读取数量，
-        否则会对 GitHub 发起数百次请求。
+        否则会对 GitHub 发起数百次请求
+        （本 Skill 是逐个文件读的，
+        没有批量接口）。
+
+        挑选顺序：
+
+            1. 按维度配额挑路径命中该维度的文件
+               （每个维度有独立名额，见 DIMENSION_QUOTAS）
+            2. 入口文件（main.py / app.py ...）
+            3. 其余源码
+            4. 测试 / 迁移 / 示例（垫底）
+
+        同一档内浅层路径优先。
+
+        两次修正的由来：
+
+        - 第一版按固定文件名列表挑，
+          配额被 docker-compose.yml /
+          pyproject.toml 这类配置文件占满，
+          一个 88 个 .py 的项目
+          连一个 Agent 类都没读到；
+        - 第二版按「命中信号总数」全局排序，
+          但仓库目录结构会决定结果：
+          agents/ 文件多就挤掉 rag/，
+          各模块详略极不均匀。
         """
 
+        entry = []
         normal = []
-        prioritized = []
+        low = []
+
+        if not quotas:
+
+            quotas = self.DIMENSION_QUOTAS
+
+        # 维度名 -> 候选文件（浅层优先）。
+        by_dimension = {
+            name: []
+            for name in quotas
+        }
 
         seen = set()
 
@@ -606,39 +885,169 @@ class ArchitectureAnalysisSkill(
 
             seen.add(file_path)
 
-            if basename in self.PRIORITY_FILENAMES:
-                prioritized.append(file_path)
+            if self._is_low_priority_path(
+                file_path
+            ):
+
+                low.append(file_path)
+
+                continue
+
+            matched = (
+                CodeStructureExtractor
+                .dimensions_for_path(file_path)
+            )
+
+            if matched:
+
+                for dimension in matched:
+
+                    by_dimension[
+                        dimension
+                    ].append(file_path)
+
+            elif basename in self.PRIORITY_FILENAMES:
+
+                entry.append(file_path)
+
             else:
+
                 normal.append(file_path)
 
-        # 入口文件优先，且浅层路径优先：
-        # 顶层 main.py 比深层的同名文件更能代表项目入口。
-        prioritized.sort(
+        for bucket in (
+            entry,
+            normal,
+            low,
+            *by_dimension.values(),
+        ):
+
+            bucket.sort(
+                key=lambda path: (
+                    path.count("/"),
+                    path,
+                )
+            )
+
+        # 按维度配额取文件。
+        #
+        # 一个文件可能同时命中多个维度
+        # （例如 services/workflow_service.py
+        # 既像 workflow 又像 agents），
+        # 取第一个有余额的维度即可，
+        # 同一个文件不重复占名额。
+        ordered = []
+
+        taken = set()
+
+        for dimension, quota in quotas.items():
+
+            count = 0
+
+            for path in by_dimension[dimension]:
+
+                if count >= quota:
+                    break
+
+                if path in taken:
+                    continue
+
+                taken.add(path)
+
+                ordered.append(path)
+
+                count += 1
+
+        # 配额之外、但仍命中维度的文件。
+        #
+        # 必须回填：
+        # 如果一个仓库的源码全在 agents/ 下，
+        # 配额只取 3 个，
+        # 剩下 17 个名额就会空着，
+        # 白白浪费掉读取机会。
+        remaining_dimension = []
+
+        for paths in by_dimension.values():
+
+            for path in paths:
+
+                if path not in taken:
+
+                    remaining_dimension.append(path)
+
+        remaining_dimension.sort(
             key=lambda path: (
                 path.count("/"),
                 path,
             )
         )
 
-        return (
-            prioritized + normal
-        )[: self.MAX_MODULES]
+        for bucket in (
+            entry,
+            remaining_dimension,
+            normal,
+            low,
+        ):
+
+            for path in bucket:
+
+                if len(ordered) >= self.MAX_MODULES:
+                    break
+
+                if path in taken:
+                    continue
+
+                taken.add(path)
+
+                ordered.append(path)
+
+        return ordered[: self.MAX_MODULES]
+
+    def _is_low_priority_path(
+        self,
+        file_path,
+    ) -> bool:
+        """判断是否为测试 / 迁移 / 示例类路径。"""
+
+        normalized = str(file_path).lower()
+
+        return any(
+            pattern.search(normalized)
+            for pattern in (
+                self.LOW_PRIORITY_PATH_PATTERNS
+            )
+        )
 
     def _extract_project_structure(
         self,
         input_data,
+        code_structure=None,
     ):
         """
-        从被分析项目的 README 与 topics 中
-        确定性抽取项目自述结构。
+        抽取被分析项目的结构。
 
         数据来源（全部来自被分析项目本身）：
 
+            code_structure      真实源码的 AST 抽取结果
             readme              目标项目 README 全文
             repository.topics   GitHub 官方话题标签
             repository.description  项目描述
 
         不读取任何 AIPI 自身的执行数据。
+
+        代码为主、README 为辅：
+
+        - items 里代码符号排在前面，
+          README 条目补在后面；
+        - evidence 保持「README 命中行」的原有含义，
+          代码证据放在新增的 code_evidence 字段，
+          两个字段分开是因为两条证据的性质不同 ——
+          一个是「项目说自己有什么」，
+          一个是「项目代码里确实有什么」；
+        - declared_by 记录结论来自哪一侧。
+
+        保持 declared / items / topics / evidence / reason
+        这五个字段的原有含义与类型不变 ——
+        报告层按它们渲染各维度章。
         """
 
         readme = input_data.get(
@@ -675,22 +1084,54 @@ class ArchitectureAnalysisSkill(
         ):
             description = ""
 
-        # 没有 README 也没有 topics / description 时，
-        # 只能诚实声明无法抽取。
+        code_dimensions = {}
+
+        if isinstance(
+            code_structure,
+            dict,
+        ):
+
+            code_dimensions = (
+                code_structure.get("dimensions")
+                or {}
+            )
+
+            if not isinstance(
+                code_dimensions,
+                dict,
+            ):
+                code_dimensions = {}
+
+        # 既没有 README / topics / description，
+        # 也没有从代码里抽出任何信号时，
+        # 才能诚实声明无法抽取。
+        #
+        # 旧版本只看 README 三件套，
+        # 于是 README 为空的仓库
+        # 即使代码结构完整也拿不到任何维度。
         if (
             not isinstance(readme, str)
             and not topics
             and not description
+            and not self._has_code_signals(
+                code_dimensions
+            )
         ):
             return {
                 "available": False,
-                "basis": "readme+topics",
+                "basis": "code+readme+topics",
                 "reason": (
                     "被分析项目没有可用 README、"
                     "topics 或 description，"
-                    "无法抽取项目自述结构。"
+                    "也没有读取到任何源码，"
+                    "无法抽取项目结构。"
                 ),
                 "dimensions": {},
+                "code_extraction": (
+                    self._code_extraction_meta(
+                        code_structure
+                    )
+                ),
             }
 
         lines = (
@@ -705,20 +1146,203 @@ class ArchitectureAnalysisSkill(
             self.STRUCTURE_KEYWORDS.items()
         ):
             dimensions[dimension] = (
-                self._extract_dimension_signals(
+                self._merge_dimension(
                     dimension,
-                    keywords,
-                    lines,
-                    topics,
-                    description,
+                    self._extract_dimension_signals(
+                        dimension,
+                        keywords,
+                        lines,
+                        topics,
+                        description,
+                    ),
+                    code_dimensions.get(
+                        dimension
+                    ),
                 )
             )
 
         return {
             "available": True,
-            "basis": "readme+topics",
+            "basis": "code+readme+topics",
             "reason": None,
             "dimensions": dimensions,
+            "code_extraction": (
+                self._code_extraction_meta(
+                    code_structure
+                )
+            ),
+        }
+
+    @staticmethod
+    def _has_code_signals(
+        code_dimensions: dict,
+    ) -> bool:
+        """代码侧是否抽到了任何条目。"""
+
+        if not isinstance(
+            code_dimensions,
+            dict,
+        ):
+            return False
+
+        return any(
+            isinstance(entry, dict)
+            and entry.get("items")
+            for entry in code_dimensions.values()
+        )
+
+    @staticmethod
+    def _code_extraction_meta(
+        code_structure,
+    ) -> dict:
+        """
+        记录代码抽取的执行情况。
+
+        解析失败的文件必须如实带出来，
+        否则「没抽到东西」与
+        「文件根本没解析成功」会混为一谈。
+        """
+
+        if not isinstance(
+            code_structure,
+            dict,
+        ):
+            return {
+                "available": False,
+                "reason": "未执行代码结构抽取。",
+                "parsed_files": 0,
+                "unparsed": [],
+            }
+
+        return {
+            "available": bool(
+                code_structure.get("available")
+            ),
+            "parsed_files": (
+                code_structure.get(
+                    "parsed_files",
+                    0,
+                )
+            ),
+            "unparsed": list(
+                code_structure.get("unparsed")
+                or []
+            ),
+        }
+
+    def _merge_dimension(
+        self,
+        dimension: str,
+        readme_entry: dict,
+        code_entry,
+    ) -> dict:
+        """
+        合并「代码证据」与「README 自述」。
+
+        代码在前，README 在后。
+        """
+
+        if not isinstance(
+            code_entry,
+            dict,
+        ):
+            code_entry = {}
+
+        code_items = [
+            item
+            for item in (
+                code_entry.get("items") or []
+            )
+            if isinstance(item, str)
+        ]
+
+        code_evidence = [
+            item
+            for item in (
+                code_entry.get("evidence") or []
+            )
+            if isinstance(item, dict)
+        ]
+
+        readme_items = list(
+            readme_entry.get("items") or []
+        )
+
+        # 按小写去重，避免同一个符号
+        # 被代码与 README 各记一次。
+        seen = set()
+
+        items = []
+
+        for item in code_items + readme_items:
+
+            lowered = item.lower()
+
+            if lowered in seen:
+                continue
+
+            seen.add(lowered)
+
+            if len(items) >= self.MAX_MERGED_ITEMS:
+                break
+
+            items.append(item)
+
+        declared_by = None
+
+        if code_items:
+            declared_by = "code"
+
+        if readme_items or readme_entry.get(
+            "topics"
+        ) or readme_entry.get("evidence"):
+
+            declared_by = (
+                "code+readme"
+                if declared_by == "code"
+                else "readme"
+            )
+
+        declared = declared_by is not None
+
+        return {
+            # 原字段：类型与含义都不变。
+            "declared": declared,
+            "items": items,
+            "topics": readme_entry.get(
+                "topics"
+            )
+            or [],
+            "evidence": readme_entry.get(
+                "evidence"
+            )
+            or [],
+            "reason": (
+                None
+                if declared
+                else (
+                    "被分析项目的代码、README / "
+                    "topics / description 中"
+                    f"都没有 {dimension} 相关声明。"
+                )
+            ),
+
+            # 新增字段：不改变上面五个的含义，
+            # 只是把来源与代码证据显式带出来。
+            "declared_by": declared_by,
+            "code_evidence": code_evidence,
+            # 实现明细：函数签名 / 调用链 / 关键常量。
+            #
+            # 必须在这里透传，
+            # 否则抽取器辛苦解析出来的明细
+            # 会在合并这一步被丢掉。
+            "details": [
+                item
+                for item in (
+                    code_entry.get("details") or []
+                )
+                if isinstance(item, dict)
+            ],
         }
 
     def _extract_dimension_signals(
@@ -927,5 +1551,60 @@ class ArchitectureAnalysisSkill(
 
             if len(items) < self.MAX_ITEMS:
                 items.append(token)
+
+        if self._collect_bullet_phrases(
+            text,
+            items,
+            seen_items,
+        ):
+            collected = True
+
+        return collected
+
+    def _collect_bullet_phrases(
+        self,
+        text,
+        items,
+        seen_items,
+    ) -> bool:
+        """
+        把列表行的逗号分段作为条目。
+
+        只对以 "- " / "* " 开头的行生效，
+        因为这类行是 README 里最常见的
+        「罗列能力」写法。
+
+        条目是 README 原文的切片，
+        不加工、不改写。
+        """
+
+        bullet = self._BULLET_PATTERN.match(text)
+
+        if bullet is None:
+            return False
+
+        collected = False
+
+        for segment in bullet.group(1).split(","):
+
+            phrase = segment.strip()
+
+            if not phrase:
+                continue
+
+            if len(phrase) > self.MAX_BULLET_ITEM_CHARS:
+                continue
+
+            collected = True
+
+            lowered = phrase.lower()
+
+            if lowered in seen_items:
+                continue
+
+            seen_items.add(lowered)
+
+            if len(items) < self.MAX_ITEMS:
+                items.append(phrase)
 
         return collected

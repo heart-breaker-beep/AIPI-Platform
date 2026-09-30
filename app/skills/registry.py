@@ -42,6 +42,21 @@ from app.skills.report_generation_skill import (
 )
 
 
+from app.skills.report_synthesis_skill import (
+    ReportSynthesisSkill
+)
+
+
+from app.skills.module_deep_dive_skill import (
+    ModuleDeepDiveSkill
+)
+
+
+from app.skills.learning_path_skill import (
+    LearningPathSkill
+)
+
+
 
 
 class SkillRegistry:
@@ -138,6 +153,27 @@ def create_skill_registry():
 
     registry.register(
         ReportGenerationSkill()
+    )
+
+
+    # 注册报告综合分析Skill
+
+    registry.register(
+        ReportSynthesisSkill()
+    )
+
+
+    # 注册单模块深挖Skill
+
+    registry.register(
+        ModuleDeepDiveSkill()
+    )
+
+
+    # 注册学习路线Skill（Phase 14.1）
+
+    registry.register(
+        LearningPathSkill()
     )
 
 

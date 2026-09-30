@@ -19,3 +19,15 @@ env/
 
 a.py
 agent loop.py
+
+# 运行产物
+#
+# 这两个目录是分析结果的输出：
+# 每跑一次分析就会新增若干文件
+# （报告 md / 结构化 json / 深挖 / 学习路线）。
+# 入库会让仓库持续膨胀，
+# 而且 git diff 里全是运行噪声。
+#
+# 要留存某一份时用 `git add -f` 单独加。
+reports/
+test_reports/

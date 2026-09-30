@@ -14,6 +14,13 @@ AIPI Platform/
 │
 ├── .claude/
 │   └── settings.local.json
+├── .ruff_cache/
+│   ├── 0.16.8/
+│   │   ├── 16566685418715801329
+│   │   ├── 17936654776091991913
+│   │   └── 3370953332892493429
+│   ├── .gitignore
+│   └── CACHEDIR.TAG
 ├── alembic/                                                         # 数据库迁移（Alembic）
 │   ├── versions/                                                    # 迁移脚本
 │   │   ├── 479571222143_create_initial_analysis_tables.py
@@ -28,7 +35,6 @@ AIPI Platform/
 │   │   ├── agent_runtime.py
 │   │   ├── architecture_analysis_agent.py
 │   │   ├── base.py
-│   │   ├── comparison_agent.py
 │   │   ├── critic_agent.py
 │   │   ├── evidence_analysis_agent.py
 │   │   ├── planner_agent.py
@@ -38,8 +44,7 @@ AIPI Platform/
 │   ├── api/                                                         # ── API 层 ──
 │   │   ├── v1/                                                      # v1 路由
 │   │   │   ├── __init__.py                                          # (空)
-│   │   │   ├── analysis.py
-│   │   │   └── comparison.py
+│   │   │   └── analysis.py
 │   │   └── __init__.py                                              # (空)
 │   ├── context/
 │   │   ├── __init__.py
@@ -84,7 +89,9 @@ AIPI Platform/
 │   │   └── repository.py
 │   ├── project_analysis/                                            # ── 项目分析层 ──
 │   │   ├── __init__.py                                              # (空)
+│   │   ├── analysis_focus.py
 │   │   ├── code_chunker.py
+│   │   ├── code_structure_extractor.py
 │   │   ├── project_indexer.py
 │   │   └── repository_indexer.py
 │   ├── repositories/                                                # ── 数据访问层 ──
@@ -100,7 +107,6 @@ AIPI Platform/
 │   │   ├── __init__.py                                              # (空)
 │   │   ├── analysis.py
 │   │   ├── analysis_result.py
-│   │   ├── comparison.py
 │   │   ├── error.py
 │   │   └── evidence.py
 │   ├── services/                                                    # ── 业务服务层 ──
@@ -108,7 +114,6 @@ AIPI Platform/
 │   │   ├── analysis_result_service.py
 │   │   ├── analysis_service.py
 │   │   ├── analysis_workflow.py
-│   │   ├── comparison_service.py
 │   │   ├── evidence_service.py
 │   │   └── repository_service.py
 │   ├── skills/                                                      # ── Skill 能力层 ──
@@ -116,10 +121,15 @@ AIPI Platform/
 │   │   ├── architecture_analysis_skill.py
 │   │   ├── base.py
 │   │   ├── evidence_analysis_skill.py
+│   │   ├── json_output.py
+│   │   ├── module_deep_dive_skill.py
 │   │   ├── registry.py
 │   │   ├── report_generation_skill.py
+│   │   ├── report_synthesis_skill.py
 │   │   ├── repository_analysis_skill.py
 │   │   └── technology_analysis_skill.py
+│   ├── static/
+│   │   └── index.html
 │   ├── tools/                                                       # ── 工具层 ──
 │   │   ├── github/                                                  # GitHub API 工具
 │   │   │   ├── __init__.py                                          # (空)
@@ -130,6 +140,7 @@ AIPI Platform/
 │   │   ├── base.py
 │   │   ├── dependency_analyzer_tool.py
 │   │   ├── file_reader_tool.py
+│   │   ├── llm_chat_tool.py
 │   │   ├── mysql_query_tool.py
 │   │   ├── qdrant_search_tool.py
 │   │   └── report_export_tool.py
@@ -149,6 +160,7 @@ AIPI Platform/
 │   │   │   ├── plan_executor_node.py
 │   │   │   ├── skill_node.py
 │   │   │   ├── start_node.py
+│   │   │   ├── synthesis_node.py
 │   │   │   └── tool_node.py
 │   │   ├── __init__.py                                              # (空)
 │   │   ├── analysis_workflow.py
@@ -165,22 +177,60 @@ AIPI Platform/
 │   ├── __init__.py                                                  # (空)
 │   └── main.py
 ├── reports/
+│   ├── 3730e4e2-2014-43c8-91c3-382a65b2dab3_analysis.md
+│   ├── 375e3b6b-1b6f-4c2c-ad6e-d8557071a816_analysis.md
+│   ├── 478567aa-f3e4-4dd0-8190-02e529c7fa9b_analysis.md
+│   ├── 48319961-f784-4f02-9495-d918067dd72f_analysis.md
+│   ├── 5348dfc4-90be-40ed-b831-7a7c898e280c_analysis.md
+│   ├── 74955586-c729-404f-9a77-f9d35c2f914a_analysis.md
+│   ├── 773fa941-7723-4ae2-99f0-e1e000b2e63c_analysis.md
 │   ├── 799049b1-3d51-4c2f-bbe5-81930ce59a23_analysis.md
+│   ├── 839c0af3-75e8-4929-bc56-c7a3c7d61c16_analysis.md
+│   ├── 839c0af3-75e8-4929-bc56-c7a3c7d61c16_workflow_deep_dive.md
+│   ├── 892282e6-de22-4e8b-baad-dd67942f20a2_analysis.md
+│   ├── 8ac15b01-1fff-4000-861f-b394a5917324_analysis.md
+│   ├── 91353270-c6df-4be0-afd3-55da9838424c_analysis.md
 │   ├── a57edd4e-59b1-4aa9-a889-d4d10dfbc0d5_analysis.md
+│   ├── a670ec22-703a-4402-8392-a39900e72f3d_analysis.md
+│   ├── b3b3b6c2-97e4-47ea-a2b8-b3e9734e2f74_analysis.md
+│   ├── b3b3b6c2-97e4-47ea-a2b8-b3e9734e2f74_workflow_deep_dive.md
+│   ├── bd05a24f-c95e-4202-bcee-19af504f0c6c_analysis.md
+│   ├── bd842def-63fe-435c-91d2-939c2c43f202_analysis.md
+│   ├── c498a9a2-04e9-471c-aaea-678ea56fca9a_analysis.md
+│   ├── c7bcfb1d-fae3-4fba-aa3d-bf8d77284b44_analysis.md
 │   ├── caaaf822-e1ee-42f8-a52a-3b1eac1434bb_analysis.md
-│   └── d1d71c3e-a9b6-4073-8d3d-bbbfe0b11005_analysis.md
+│   ├── d1d71c3e-a9b6-4073-8d3d-bbbfe0b11005_analysis.md
+│   ├── e0400cf2-8671-47f3-8f50-414c1445e02d_analysis.md
+│   ├── focus_demo_analysis.md
+│   ├── real-run-2_workflow_deep_dive.md
+│   ├── real_run_application_analysis.md
+│   └── real_run_v2_analysis.md
 ├── test_reports/                                                    # 测试产生的报告输出目录
-│   └── test.md
+│   ├── _b.mjs
+│   ├── api_flow_run_id.txt
+│   ├── focus_run.txt
+│   ├── last_run.txt
+│   ├── latest_run.txt
+│   ├── preview.md
+│   ├── real_deep_dive.json
+│   ├── real_run_data.json
+│   ├── real_run_full.json
+│   ├── real_run_synthesis.json
+│   ├── real_run_v2_data.json
+│   ├── real_run_v2_synthesis.json
+│   ├── stuck_runs.txt
+│   ├── test.md
+│   └── verify_run.txt
 ├── tests/                                                           # ── 测试层 ──
 │   ├── test_agent_registry.py
 │   ├── test_agent_runtime.py
 │   ├── test_analysis_api.py
+│   ├── test_analysis_focus.py
 │   ├── test_analysis_result.py
+│   ├── test_architecture_code_evidence.py
+│   ├── test_checkpoint_size_guard.py
 │   ├── test_chunker.py
-│   ├── test_comparison_agent.py
-│   ├── test_comparison_api.py
-│   ├── test_comparison_real_runmemory_schema.py
-│   ├── test_comparison_service.py
+│   ├── test_code_structure_extractor.py
 │   ├── test_config.py
 │   ├── test_context_manager.py
 │   ├── test_context_retriever.py
@@ -200,7 +250,9 @@ AIPI Platform/
 │   ├── test_github_code_search_tool.py
 │   ├── test_github_parser.py
 │   ├── test_indexer.py
+│   ├── test_json_output.py
 │   ├── test_memory.py
+│   ├── test_module_deep_dive_skill.py
 │   ├── test_mysql_query_tool.py
 │   ├── test_phase10.py
 │   ├── test_phase12.py
@@ -209,6 +261,7 @@ AIPI Platform/
 │   ├── test_qdrant.py
 │   ├── test_qdrant_search_tool.py
 │   ├── test_report_export_tool.py
+│   ├── test_report_synthesis_skill.py
 │   ├── test_repository_analysis_workflow.py
 │   ├── test_repository_crud.py
 │   ├── test_repository_pipeline.py
@@ -345,13 +398,13 @@ FastAPI 应用入口。
 5. API 路由注册
 """
 
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 
 from app.api.v1.analysis import (
     router as analysis_router,
-)
-from app.api.v1.comparison import (
-    router as comparison_router,
 )
 from app.core.config import get_settings
 from app.core.error_handlers import (
@@ -408,13 +461,6 @@ app.include_router(
 )
 
 
-# 注册 Comparison API。
-app.include_router(
-    comparison_router,
-    prefix="/api/v1",
-)
-
-
 @app.get(
     "/health",
     tags=["System"],
@@ -436,13 +482,34 @@ async def health_check():
 )
 async def root():
     """
-    项目根路径。
+    根路径直接返回操作页面。
+
+    这是给人工跑一次分析用的最简前端：
+    单文件、无构建步骤，
+    只调用本服务已有的 /api/v1 接口。
+
+    文件缺失时退回 JSON，
+    保证 API 本身不受影响。
     """
+
+    index = (
+        Path(__file__).parent
+        / "static"
+        / "index.html"
+    )
+
+    if index.is_file():
+
+        return FileResponse(
+            index,
+            media_type="text/html",
+        )
 
     return {
         "name": settings.APP_NAME,
         "version": "0.1.0",
         "status": "running",
+        "ui": "app/static/index.html not found",
     }
 ```
 
@@ -457,12 +524,13 @@ HTTP 路由定义，负责接收请求、注入数据库 Session、调用 Servic
 ```python
 """Analysis API 路由。"""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.schemas.analysis import (
     AnalysisCreateRequest,
+    AnalysisDeepDiveResponse,
     AnalysisReportResponse,
     AnalysisResponse,
 )
@@ -490,6 +558,33 @@ async def create_analysis(
     return await analysis_service.create_analysis(
         session,
         request,
+    )
+
+
+@router.get(
+    "",
+    response_model=list[AnalysisResponse],
+)
+async def list_analyses(
+    limit: int = Query(
+        20,
+        ge=1,
+        le=100,
+        description="最多返回多少条",
+    ),
+    session: AsyncSession = Depends(get_db),
+) -> list[AnalysisResponse]:
+    """
+    列出最近的分析任务。
+
+    给前端的历史列表用 ——
+    没有这个接口时，页面关掉就找不回
+    之前跑过的分析了。
+    """
+
+    return await analysis_service.list_analyses(
+        session,
+        limit,
     )
 
 
@@ -587,6 +682,39 @@ async def get_analysis_report(
         session,
         run_id,
     )
+
+
+@router.post(
+    "/{run_id}/deep-dive",
+    response_model=AnalysisDeepDiveResponse,
+)
+async def deep_dive_module(
+    run_id: str,
+    module: str = Query(
+        ...,
+        description=(
+            "要深挖的模块：agents / workflow / "
+            "skills / tools / rag / memory"
+        ),
+    ),
+    session: AsyncSession = Depends(get_db),
+) -> AnalysisDeepDiveResponse:
+    """
+    对已完成 run 的单个模块做深挖。
+
+    默认报告每章只给要点与证据锚点；
+    想看某个模块的实现细节
+    （签名 / 调用链 / 关键常量 / 源码片段）时走这里。
+
+    该接口只读不写：不修改原 run，
+    产物是单独一份 markdown 报告。
+    """
+
+    return await analysis_service.deep_dive_module(
+        session,
+        run_id,
+        module,
+    )
 ```
 
 ### 📄 `app/api/__init__.py`
@@ -600,54 +728,6 @@ async def get_analysis_report(
 **层级**：API 层 · **职责**：（未标注）
 
 > 该文件为 **0 字节** 空文件，无源码内容。
-
-### 📄 `app/api/v1/comparison.py`
-
-**层级**：API 层 · **职责**：Comparison API 路由。
-
-```python
-"""Comparison API 路由。"""
-
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.session import get_db
-from app.schemas.comparison import (
-    ComparisonCreateRequest,
-    ComparisonResponse,
-)
-from app.services.comparison_service import (
-    comparison_service,
-)
-
-
-router = APIRouter(
-    prefix="/comparison",
-    tags=["Comparison"],
-)
-
-
-@router.post(
-    "",
-    response_model=ComparisonResponse,
-)
-async def create_comparison(
-    request: ComparisonCreateRequest,
-    session: AsyncSession = Depends(
-        get_db
-    ),
-) -> ComparisonResponse:
-    """
-    比较两个已经完成的项目分析结果。
-    """
-
-    return await (
-        comparison_service.create_comparison(
-            session,
-            request,
-        )
-    )
-```
 
 ## 四、数据契约层（Schemas）
 
@@ -707,6 +787,35 @@ class AnalysisReportResponse(BaseModel):
     status: str
 
     report: dict | None = None
+
+
+class AnalysisDeepDiveResponse(BaseModel):
+    """
+    单个模块的深挖报告。
+
+    默认报告每章只给要点；
+    这一份是某个模块的实现细节展开。
+    """
+
+    run_id: str
+
+    module: str
+
+    title: str | None = None
+
+    # 写入磁盘的报告文件信息（path / format）。
+    report: dict | None = None
+
+    # 报告正文，便于调用方直接展示。
+    content: str | None = None
+
+    # 本次深挖读取了哪些文件。
+    # 是「比默认报告看得多」的证据，
+    # 也让读者知道结论的覆盖面。
+    files_read: list[str] = []
+
+    # 展开了多少项实现明细。
+    details: int = 0
 ```
 
 ### 📄 `app/schemas/error.py`
@@ -846,14 +955,12 @@ class CitationResponse(BaseModel):
 Analysis Result 数据契约。
 
 Phase12:
-Workflow执行结果标准化。
 
-用于:
-    Workflow
+Workflow执行结果
         ↓
-    Report
+AnalysisResult
         ↓
-    Comparison
+Report
 """
 
 from typing import Any
@@ -861,9 +968,10 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+
 class ProjectOverview(BaseModel):
     """
-    项目概览。
+    项目基础信息。
     """
 
     name: str | None = None
@@ -899,18 +1007,21 @@ class TechnologyStack(BaseModel):
 
 
 
-class AgentResult(BaseModel):
+class AgentAnalysisResult(BaseModel):
     """
-    Agent分析结果。
+    单个 Agent 分析结果。
     """
 
     agent_name: str
 
+
     summary: str | None = None
+
 
     facts: list[str] = Field(
         default_factory=list
     )
+
 
     evidence_ids: list[str] = Field(
         default_factory=list
@@ -920,10 +1031,20 @@ class AgentResult(BaseModel):
 
 class AnalysisResult(BaseModel):
     """
-    Phase12标准分析结果。
+    Phase12 标准分析结果。
+
+    作为:
+
+    Workflow
+        ↓
+    Report
+
+    的统一数据契约。
     """
 
+
     run_id: str
+
 
 
     project_overview: ProjectOverview = Field(
@@ -931,14 +1052,17 @@ class AnalysisResult(BaseModel):
     )
 
 
+
     technology_stack: TechnologyStack = Field(
         default_factory=TechnologyStack
     )
 
 
-    agents: list[AgentResult] = Field(
+
+    agents: list[AgentAnalysisResult] = Field(
         default_factory=list
     )
+
 
 
     workflow: dict[str, Any] = Field(
@@ -946,9 +1070,11 @@ class AnalysisResult(BaseModel):
     )
 
 
+
     skills: list[str] = Field(
         default_factory=list
     )
+
 
 
     tools: list[str] = Field(
@@ -956,9 +1082,11 @@ class AnalysisResult(BaseModel):
     )
 
 
+
     rag: dict[str, Any] = Field(
         default_factory=dict
     )
+
 
 
     memory: dict[str, Any] = Field(
@@ -966,67 +1094,16 @@ class AnalysisResult(BaseModel):
     )
 
 
+
     database: dict[str, Any] = Field(
         default_factory=dict
     )
 
 
+
     evidence: list[Any] = Field(
         default_factory=list
     )
-```
-
-### 📄 `app/schemas/comparison.py`
-
-**层级**：数据契约层 · **职责**：Comparison API 数据契约。
-
-```python
-"""
-Comparison API 数据契约。
-"""
-
-from typing import Any
-
-from pydantic import BaseModel, Field
-
-
-class ComparisonCreateRequest(BaseModel):
-    """创建多项目比较请求。"""
-
-    run_ids: list[str] = Field(
-        ...,
-        min_length=2,
-        max_length=2,
-        description=(
-            "两个已经完成的 Analysis Run ID"
-        ),
-    )
-
-
-class ComparisonProjectResponse(BaseModel):
-    """比较项目摘要。"""
-
-    run_id: str
-    repository_id: int | None = None
-    repository_url: str | None = None
-    repository_name: str | None = None
-    status: str
-
-
-class ComparisonResponse(BaseModel):
-    """多项目比较结果。"""
-
-    comparison_id: str
-
-    status: str
-
-    evidence_based: bool
-
-    projects: list[
-        ComparisonProjectResponse
-    ]
-
-    comparison: dict[str, Any]
 ```
 
 ## 五、业务服务层（Services）
@@ -1042,6 +1119,7 @@ class ComparisonResponse(BaseModel):
 
 from uuid import uuid4
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ValidationError
@@ -1058,13 +1136,19 @@ from app.repositories.repository_basic import (
 )
 from app.schemas.analysis import (
     AnalysisCreateRequest,
+    AnalysisDeepDiveResponse,
     AnalysisReportResponse,
     AnalysisResponse,
 )
 from app.services.analysis_workflow import (
     AnalysisWorkflowRunner,
 )
-
+from app.skills.module_deep_dive_skill import (
+    ModuleDeepDiveSkill,
+)
+from app.tools.github.parser import (
+    parse_github_url,
+)
 
 logger = get_logger(__name__)
 
@@ -1130,6 +1214,44 @@ class AnalysisService:
                     name=name,
                 )
             )
+
+        elif (
+            repository.owner != owner
+            or repository.name != name
+        ):
+            # 自愈历史脏数据。
+            #
+            # 之前 _parse_github_url 不剥离 query string，
+            # 因此可能存在
+            #
+            #     name = "repo?utm_source=chatgpt.com"
+            #
+            # 这种行。它的危险之处在于不会报错：
+            #
+            #     api.github.com/repos/{owner}/{name}
+            #         → query 被服务端忽略，元数据仍然 200
+            #
+            #     raw.githubusercontent.com/{owner}/{name}/...
+            #         → "?" 被当成路径的一部分，全部 404
+            #
+            # 结果是 readme 为空、evidences 为 0、
+            # technology_stack 全空，
+            # 而 run 仍然被标记为 COMPLETED。
+            #
+            # 按 URL 命中已有行时会直接复用，
+            # 所以只修解析器救不了存量数据，
+            # 这里顺手把 owner / name 修正回来。
+            logger.warning(
+                "repairing repository row | "
+                "id=%s | name %r -> %r",
+                repository.id,
+                repository.name,
+                name,
+            )
+
+            repository.owner = owner
+
+            repository.name = name
 
         run_id = str(uuid4())
 
@@ -1422,6 +1544,136 @@ class AnalysisService:
             report=report,
         )
 
+    async def list_analyses(
+        self,
+        session: AsyncSession,
+        limit: int = 20,
+    ) -> list[AnalysisResponse]:
+        """
+        列出最近的分析任务。
+
+        给前端的历史列表用：
+        前端只能看到「当前这一个 run」时，
+        关掉页面就找不回来了。
+        """
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        runs = await run_repo.list_recent(limit)
+
+        if not runs:
+            return []
+
+        # 一次把所有关联仓库取回来，
+        # 避免每个 run 查一次库。
+        repository_ids = {
+            run.repository_id
+            for run in runs
+        }
+
+        result = await session.execute(
+            select(Repository).where(
+                Repository.id.in_(repository_ids)
+            )
+        )
+
+        repositories = {
+            repository.id: repository
+            for repository in result.scalars().all()
+        }
+
+        responses = []
+
+        for run in runs:
+
+            repository = repositories.get(
+                run.repository_id
+            )
+
+            responses.append(
+                AnalysisResponse(
+                    run_id=run.id,
+                    status=run.status,
+                    repo_url=(
+                        repository.url
+                        if repository is not None
+                        else ""
+                    ),
+                    question=run.question,
+                    current_node=run.current_node,
+                    progress=self._progress(
+                        run.status,
+                        run.current_node,
+                    ),
+                    created_at=run.created_at,
+                )
+            )
+
+        return responses
+
+    async def deep_dive_module(
+        self,
+        session: AsyncSession,
+        run_id: str,
+        module: str,
+    ) -> AnalysisDeepDiveResponse:
+        """
+        对某个已完成 run 的单个模块做深挖。
+
+        默认报告每章只给要点；
+        用户想看某个模块的实现细节时走这里。
+        """
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        normalized = (
+            module or ""
+        ).strip().lower()
+
+        if normalized not in (
+            ModuleDeepDiveSkill.MODULES
+        ):
+            raise ValidationError(
+                f"Unsupported module: {module!r}. "
+                "Expected one of "
+                f"{', '.join(ModuleDeepDiveSkill.MODULES)}."
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        result = await runner.deep_dive_module(
+            run_id,
+            normalized,
+        )
+
+        return AnalysisDeepDiveResponse(
+            run_id=run_id,
+            module=normalized,
+            title=result.get("title"),
+            report=result.get("report"),
+            content=result.get("content"),
+            files_read=result.get("files_read")
+            or [],
+            details=result.get("details", 0),
+        )
+
     async def _to_response(
         self,
         session: AsyncSession,
@@ -1477,6 +1729,7 @@ class AnalysisService:
             "design_gate": 20,
             "plan_executor": 70,
             "human_review": 85,
+            "synthesis": 90,
             "finalizer": 95,
             "end": 100,
         }
@@ -1490,31 +1743,42 @@ class AnalysisService:
     def _parse_github_url(
         repo_url: str,
     ) -> tuple[str, str]:
-        """解析 GitHub owner/repository。"""
+        """
+        解析 GitHub owner/repository。
 
-        path = (
-            repo_url
-            .rstrip("/")
-            .split("/")
-        )
+        复用 app.tools.github.parser.parse_github_url：
+        它基于 urlparse，会正确剥离 query string 与 fragment。
 
-        if len(path) < 2:
+        旧实现直接按 "/" 切分字符串，因此
+
+            https://github.com/owner/name?utm_source=chatgpt.com
+
+        会被解析成
+
+            name = "name?utm_source=chatgpt.com"
+
+        后果是一整条连锁失败：
+
+            repository.name 被污染
+                → README / 配置文件全部 404
+                → readme 为空
+                → evidences 为 0
+                → technology_stack 全空
+                → 报告多个章节「真实数据不存在」
+
+        而且该 run 仍然会被标记为 COMPLETED，
+        继续参与 Phase 13 的多项目比较。
+        """
+
+        try:
+
+            return parse_github_url(repo_url)
+
+        except ValueError as error:
+
             raise ValidationError(
                 "Invalid GitHub repository URL."
-            )
-
-        owner = path[-2]
-        name = path[-1]
-
-        if name.endswith(".git"):
-            name = name[:-4]
-
-        if not owner or not name:
-            raise ValidationError(
-                "Invalid GitHub repository URL."
-            )
-
-        return owner, name
+            ) from error
 
 
 analysis_service = AnalysisService()
@@ -1844,16 +2108,25 @@ class EvidenceService:
 """
 Analysis Result 构建服务。
 
-负责将 Workflow State
-转换成标准 AnalysisResult。
+职责：
+
+WorkflowState.data
+
+        ↓
+
+AnalysisResult
+
+
+Phase12新增。
 """
+
 
 from typing import Any
 
 
 from app.schemas.analysis_result import (
     AnalysisResult,
-    AgentResult,
+    AgentAnalysisResult,
     ProjectOverview,
     TechnologyStack,
 )
@@ -1862,8 +2135,9 @@ from app.schemas.analysis_result import (
 
 class AnalysisResultService:
     """
-    构建标准分析结果。
+    将 Workflow 数据转换成标准分析结果。
     """
+
 
 
     def build(
@@ -1872,9 +2146,7 @@ class AnalysisResultService:
         data: dict[str, Any],
     ) -> AnalysisResult:
         """
-        Workflow State
-        ->
-        AnalysisResult
+        构建 AnalysisResult。
         """
 
 
@@ -1884,6 +2156,31 @@ class AnalysisResultService:
                 {}
             )
         )
+
+
+
+        if not isinstance(
+            repository,
+            dict,
+        ):
+            repository = {}
+
+
+
+        technology_stack = (
+            data.get(
+                "technology_stack",
+                {}
+            )
+        )
+
+
+        if not isinstance(
+            technology_stack,
+            dict,
+        ):
+            technology_stack = {}
+
 
 
         agents = []
@@ -1897,71 +2194,78 @@ class AnalysisResultService:
         )
 
 
-        for name, output in (
-            agent_outputs.items()
+
+        if isinstance(
+            agent_outputs,
+            dict,
         ):
 
-            if not isinstance(
-                output,
-                dict,
+
+            for agent_name, output in (
+                agent_outputs.items()
             ):
-                continue
 
 
-            agents.append(
-                AgentResult(
-                    agent_name=name,
+                if not isinstance(
+                    output,
+                    dict,
+                ):
+                    continue
 
-                    summary=(
-                        output.get(
+
+
+                agents.append(
+
+                    AgentAnalysisResult(
+
+                        agent_name=agent_name,
+
+
+                        summary=output.get(
                             "summary"
-                        )
-                    ),
+                        ),
 
-                    facts=(
-                        output.get(
+
+                        facts=output.get(
                             "facts",
-                            []
-                        )
-                    ),
+                            [],
+                        ),
 
-                    evidence_ids=(
-                        output.get(
+
+                        evidence_ids=output.get(
                             "evidence_ids",
-                            []
-                        )
-                    ),
+                            [],
+                        ),
+                    )
                 )
-            )
 
-
-        technology = (
-            data.get(
-                "technology_stack",
-                {}
-            )
-        )
 
 
         return AnalysisResult(
 
+
             run_id=run_id,
 
 
+
             project_overview=
+
             ProjectOverview(
 
                 name=repository.get(
                     "name"
                 ),
 
+
                 description=repository.get(
                     "description"
                 ),
 
+
                 repository_url=repository.get(
                     "url"
                 ),
+
 
                 language=repository.get(
                     "language"
@@ -1969,79 +2273,111 @@ class AnalysisResultService:
             ),
 
 
+
             technology_stack=
+
             TechnologyStack(
 
                 languages=
-                technology.get(
+
+                technology_stack.get(
                     "languages",
-                    []
+                    [],
                 ),
+
 
                 frameworks=
-                technology.get(
+
+                technology_stack.get(
                     "frameworks",
-                    []
+                    [],
                 ),
+
 
                 databases=
-                technology.get(
+
+                technology_stack.get(
                     "databases",
-                    []
+                    [],
                 ),
 
+
                 tools=
-                technology.get(
+
+                technology_stack.get(
                     "tools",
-                    []
+                    [],
                 ),
             ),
+
 
 
             agents=agents,
 
 
-            workflow={
+
+            workflow=
+
+            {
+
                 "state":
-                    data.get(
-                        "workflow_state"
-                    )
+
+                data.get(
+                    "workflow_state"
+                ),
+
+
+                "tasks":
+
+                data.get(
+                    "task_results",
+                    [],
+                ),
             },
+
 
 
             skills=data.get(
                 "skills",
-                []
+                [],
             ),
+
 
 
             tools=data.get(
                 "tools",
-                []
+                [],
             ),
+
 
 
             rag=data.get(
                 "rag",
-                {}
+                {},
             ),
+
 
 
             memory=data.get(
                 "memory",
-                {}
+                {},
             ),
+
 
 
             database=data.get(
                 "database",
-                {}
+                {},
             ),
+
 
 
             evidence=data.get(
                 "evidences",
-                []
+                data.get(
+                    "evidence",
+                    [],
+                ),
             ),
         )
 
@@ -2075,12 +2411,15 @@ AnalysisRun
 真正连接起来。
 """
 
+from pathlib import Path
+
 from app.agents.agent_registry import (
     create_agent_registry,
 )
 from app.context.manager import (
     ContextManager,
 )
+from app.core.logging import get_logger
 from app.memory.manager import (
     MemoryManager,
 )
@@ -2090,6 +2429,9 @@ from app.repositories.analysis_run import (
 )
 from app.repositories.checkpoint import (
     CheckpointRepository,
+)
+from app.skills.registry import (
+    create_skill_registry,
 )
 from app.tools.dependency_analyzer_tool import (
     DependencyAnalyzerTool,
@@ -2103,6 +2445,9 @@ from app.tools.github.github_code_search_tool import (
 from app.tools.github.github_repository_tool import (
     GitHubRepositoryTool,
 )
+from app.tools.llm_chat_tool import (
+    LLMChatTool,
+)
 from app.tools.mysql_query_tool import (
     MySQLQueryTool,
 )
@@ -2111,9 +2456,6 @@ from app.tools.qdrant_search_tool import (
 )
 from app.tools.report_export_tool import (
     ReportExportTool,
-)
-from app.skills.registry import (
-    create_skill_registry,
 )
 from app.workflow.analysis_workflow import (
     build_analysis_workflow,
@@ -2130,6 +2472,8 @@ from app.workflow.engine import (
 from app.workflow.state import (
     WorkflowState,
 )
+
+logger = get_logger(__name__)
 
 
 class AnalysisWorkflowRunner:
@@ -2197,6 +2541,9 @@ class AnalysisWorkflowRunner:
 
             "report_export":
                 ReportExportTool(),
+
+            "llm_chat":
+                LLMChatTool(),
         }
 
         memory_manager = (
@@ -2461,7 +2808,140 @@ class AnalysisWorkflowRunner:
         self,
         run_id: str,
     ):
-        """获取最终报告。"""
+        """
+        获取最终报告。
+
+        两条路：
+
+        1. 从 checkpoint 读（正常路径）
+        2. 读不出来时退回磁盘上的报告文件
+
+        第 2 条是必需的，不是锦上添花：
+        checkpoint 的 state_data 一旦超过
+        asyncmy 的大字段读取上限，
+        这个 run 的 state 就永久读不回来了，
+        但报告正文其实早就写在
+        reports/{run_id}_analysis.md 里。
+        没有这条兜底的话，
+        「分析成功但报告 500」就会一直存在。
+        """
+
+        try:
+
+            state = await self.checkpoint.load(
+                run_id
+            )
+
+        except Exception as error:
+
+            # 读不出来不让请求挂掉，
+            # 交给文件兜底。
+            logger.warning(
+                "checkpoint load failed | run_id=%s | %s: %s",
+                run_id,
+                type(error).__name__,
+                error,
+            )
+
+            state = None
+
+        report = None
+
+        if state is not None:
+
+            report = state.data.get(
+                "final_report"
+            )
+
+        return self._report_from_disk(
+            run_id,
+            report,
+        )
+
+    @staticmethod
+    def _report_from_disk(
+        run_id: str,
+        report,
+    ):
+        """
+        用磁盘上的报告文件补齐 report。
+
+        两种情况都走这里：
+
+        - report 完全没有（checkpoint 读不出来）
+        - report 有路径但没有正文
+          （state 瘦身时丢掉了 content）
+        """
+
+        directory = Path("reports")
+
+        path = None
+
+        if isinstance(report, dict):
+
+            inner = report.get("report")
+
+            if isinstance(inner, dict):
+
+                path = inner.get("path")
+
+        candidates = []
+
+        if path:
+
+            candidates.append(Path(path))
+
+        candidates.append(
+            directory / f"{run_id}_analysis.md"
+        )
+
+        for candidate in candidates:
+
+            if not candidate.is_file():
+                continue
+
+            try:
+
+                content = candidate.read_text(
+                    encoding="utf-8"
+                )
+
+            except OSError:
+
+                continue
+
+            if isinstance(report, dict) and report.get(
+                "content"
+            ):
+
+                return report
+
+            return {
+                "report": {
+                    "path": str(candidate),
+                    "format": "markdown",
+                },
+                "content": content,
+            }
+
+        return report
+
+    async def deep_dive_module(
+        self,
+        run_id: str,
+        module: str,
+    ):
+        """
+        对某个已完成 run 的单个模块做深挖。
+
+        复用该 run 已保存的仓库信息
+        （owner / repo / branch / readme），
+        因此不需要重新解析 URL，
+        也不需要重跑整个分析流程。
+
+        深挖只读不写：不修改 checkpoint，
+        产物是单独一份 markdown。
+        """
 
         state = await self.checkpoint.load(
             run_id
@@ -2472,8 +2952,60 @@ class AnalysisWorkflowRunner:
                 f"Checkpoint not found: {run_id}"
             )
 
-        return state.data.get(
-            "final_report"
+        data = state.data or {}
+
+        owner = data.get("owner")
+
+        repo = data.get("repo")
+
+        if not owner or not repo:
+            raise ValueError(
+                "该 run 缺少 owner / repo，"
+                "无法定位仓库做深挖。"
+            )
+
+        repository = await self.session.get(
+            Repository,
+            data.get("repository_id"),
+        )
+
+        context = self.build_context(
+            repository_id=data.get(
+                "repository_id"
+            )
+        )
+
+        skill = context.skills.get(
+            "module_deep_dive"
+        )
+
+        if skill is None:
+            raise ValueError(
+                "Module deep dive skill "
+                "is not registered."
+            )
+
+        return await skill.execute(
+            context,
+            {
+                "run_id": run_id,
+                "module": module,
+                "owner": owner,
+                "repo": repo,
+                "branch": data.get(
+                    "branch",
+                    "main",
+                ),
+                "readme": data.get("readme"),
+                "repository": data.get(
+                    "repository"
+                ),
+                "repo_url": (
+                    repository.url
+                    if repository is not None
+                    else data.get("repo_url")
+                ),
+            },
         )
 
     async def _sync_run(
@@ -2506,198 +3038,6 @@ class AnalysisWorkflowRunner:
         await self.session.commit()
 
         return state
-```
-
-### 📄 `app/services/comparison_service.py`
-
-**层级**：业务服务层 · **职责**：多项目比较业务服务。
-
-```python
-"""
-多项目比较业务服务。
-
-职责：
-
-API
- ↓
-ComparisonService
- ↓
-AnalysisRun / RunMemory
- ↓
-ComparisonAgent
-"""
-from uuid import uuid4
-
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.agents.comparison_agent import (
-    ComparisonAgent,
-)
-from app.core.exceptions import ValidationError
-from app.memory.run_memory import RunMemory
-from app.repositories.analysis_run import (
-    AnalysisRunRepository,
-)
-from app.schemas.comparison import (
-    ComparisonCreateRequest,
-    ComparisonProjectResponse,
-    ComparisonResponse,
-)
-
-
-class ComparisonService:
-    """负责多项目分析结果比较。"""
-
-    comparison_agent_factory = (
-        ComparisonAgent
-    )
-
-    async def create_comparison(
-        self,
-        session: AsyncSession,
-        request: ComparisonCreateRequest,
-    ) -> ComparisonResponse:
-        """比较两个已经完成的 Analysis Run。"""
-
-        run_ids = [
-            run_id.strip()
-            for run_id in request.run_ids
-        ]
-
-        if len(run_ids) != 2:
-            raise ValidationError(
-                "Exactly two analysis run IDs "
-                "are required."
-            )
-
-        if run_ids[0] == run_ids[1]:
-            raise ValidationError(
-                "The two analysis runs "
-                "must be different."
-            )
-
-        run_repository = (
-            AnalysisRunRepository(
-                session
-            )
-        )
-
-        runs = []
-
-        for run_id in run_ids:
-            run = await (
-                run_repository.get_by_id(
-                    run_id
-                )
-            )
-
-            if run is None:
-                raise ValidationError(
-                    f"Analysis run not found: "
-                    f"{run_id}"
-                )
-
-            if run.status != "COMPLETED":
-                raise ValidationError(
-                    "Only completed analysis runs "
-                    "can be compared: "
-                    f"{run_id} "
-                    f"has status {run.status}."
-                )
-
-            runs.append(run)
-
-        if (
-            runs[0].repository_id
-            == runs[1].repository_id
-        ):
-            raise ValidationError(
-                "The two analysis runs "
-                "must belong to different repositories."
-            )
-
-        memory = RunMemory(
-            session
-        )
-
-        project_a = await memory.load(
-            runs[0].id
-        )
-
-        project_b = await memory.load(
-            runs[1].id
-        )
-
-        if project_a is None:
-            raise ValidationError(
-                f"Analysis memory not found: "
-                f"{runs[0].id}"
-            )
-
-        if project_b is None:
-            raise ValidationError(
-                f"Analysis memory not found: "
-                f"{runs[1].id}"
-            )
-
-        agent = (
-            self.comparison_agent_factory(
-                skill_registry=None
-            )
-        )
-
-        result = await agent.execute(
-            context=None,
-            input_data={
-                "project_a": project_a,
-                "project_b": project_b,
-            },
-        )
-
-        projects = [
-            ComparisonProjectResponse(
-                run_id=project.get(
-                    "run_id"
-                ),
-                repository_id=project.get(
-                    "repository_id"
-                ),
-                repository_url=project.get(
-                    "repository_url"
-                ),
-                repository_name=project.get(
-                    "repository_name"
-                ),
-                status=project.get(
-                    "status"
-                ),
-            )
-            for project in result.get(
-                "projects",
-                [],
-            )
-        ]
-
-        return ComparisonResponse(
-            comparison_id=str(
-                uuid4()
-            ),
-            status="COMPLETED",
-            evidence_based=bool(
-                result.get(
-                    "evidence_based",
-                    False,
-                )
-            ),
-            projects=projects,
-            comparison=result.get(
-                "comparison",
-                {},
-            ),
-        )
-
-
-comparison_service = ComparisonService()
 ```
 
 ## 六、数据访问层（Repositories）
@@ -2958,6 +3298,31 @@ class AnalysisRunRepository:
         )
 
         return result.scalar_one_or_none()
+
+    async def list_recent(
+        self,
+        limit: int = 20,
+    ) -> list[AnalysisRun]:
+        """
+        按创建时间倒序列出最近的 Analysis Run。
+
+        给前端的历史列表用。
+
+        只读 analysis_runs 这张小表：
+        state_data 在 checkpoints 里，
+        这里不碰，避免大字段排序触发
+        1038 Out of sort memory。
+        """
+
+        result = await self.session.execute(
+            select(AnalysisRun)
+            .order_by(
+                AnalysisRun.created_at.desc()
+            )
+            .limit(limit)
+        )
+
+        return list(result.scalars().all())
 
     async def update_status(
         self,
@@ -3268,15 +3633,65 @@ class CitationRepository:
 Workflow Checkpoint 数据访问层。
 """
 
+import json
+
 from sqlalchemy import (
     delete,
-    desc,
+    func,
     select,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.checkpoint import Checkpoint
 from app.workflow.state import WorkflowState
+
+# 单行 state_data 的安全上限（字节）。
+#
+# 为什么必须设：列类型是 JSON，而 asyncmy 驱动
+# 读取大字段时的缓冲区分片会失败，
+# 报错是客户端的
+#
+#     Lost connection to MySQL server during query
+#     (Existing exports of data: object cannot be re-sized)
+#
+# 实测临界点与 MySQL 的 sort_buffer_size
+# （默认 262,144 = 256KB）吻合：
+# 224KB 能读，264KB 读不了。
+#
+# 一旦写进去一个超限的 state_data，
+# **这个 run 就再也读不回来了** ——
+# 恢复、取报告、深挖全部 500。
+# 所以必须在写入前拦住，而不是读取时补救。
+#
+# 留足余量取 180KB。
+MAX_STATE_BYTES = 180_000
+
+# 超限时按「最不值得留」的顺序逐项瘦身。
+#
+# 顺序是有讲究的：
+#
+#   final_report.content  报告正文已经写到 reports/*.md，
+#                         存进 state 纯属重复，
+#                         而且它正好是压垮骆驼的最后一根稻草
+#                         （finalizer 那一步 +20KB）。
+#   readme                原始 README，已被抽取成结构，
+#                         保留开头足够人工核对。
+#   evidence              证据正文，报告第 12 章展示用。
+#   modules               源码片段，报告第 11 章展示用 ——
+#                         最后才动它，因为删了报告就空了。
+TRIM_ORDER = (
+    "final_report.content",
+    "readme",
+    "evidence",
+    "modules",
+)
+
+# 瘦身后各字段保留的规模。
+READ_README_CHARS = 4_000
+
+READ_EVIDENCE = 20
+
+READ_MODULES = 4
 
 
 class CheckpointRepository:
@@ -3293,7 +3708,23 @@ class CheckpointRepository:
         self,
         state: WorkflowState,
     ) -> Checkpoint:
-        """保存 WorkflowState 快照。"""
+        """
+        保存 WorkflowState 快照。
+
+        收进来的 state 是 CheckpointManager
+        deepcopy 过的快照，
+        因此这里瘦身不会影响内存里的运行状态。
+        """
+
+        data, trims = self._fit_state_data(
+            state.data
+        )
+
+        if trims:
+
+            # 下划线开头，FinalizerNode 组装报告输入时
+            # 会跳过这类键，不会污染报告。
+            data["_trimmed"] = trims
 
         checkpoint = Checkpoint(
             run_id=state.run_id,
@@ -3302,7 +3733,7 @@ class CheckpointRepository:
             ),
             status=state.status,
             current_node=state.current_node,
-            state_data=state.data,
+            state_data=data,
             outputs=state.outputs,
             errors=state.errors,
             retry_count=state.retry_count,
@@ -3318,21 +3749,211 @@ class CheckpointRepository:
 
         return checkpoint
 
+    @classmethod
+    def _fit_state_data(
+        cls,
+        data,
+    ):
+        """
+        把 state_data 压到安全上限以内。
+
+        返回 (可能被瘦身过的 data, 瘦身记录)。
+        """
+
+        if not isinstance(data, dict):
+            return data, {}
+
+        size = cls._size(data)
+
+        if size <= MAX_STATE_BYTES:
+            return data, {}
+
+        dropped = {}
+
+        for path in TRIM_ORDER:
+
+            before = cls._size(data)
+
+            cls._trim(data, path)
+
+            after = cls._size(data)
+
+            if after < before:
+
+                dropped[path] = (
+                    before - after
+                )
+
+            if after <= MAX_STATE_BYTES:
+                break
+
+        return data, {
+            "original_bytes": size,
+            "final_bytes": cls._size(data),
+            "limit_bytes": MAX_STATE_BYTES,
+            "dropped_bytes": dropped,
+        }
+
+    @staticmethod
+    def _size(value) -> int:
+        """按实际落库的序列化方式估算字节数。"""
+
+        try:
+
+            return len(
+                json.dumps(
+                    value,
+                    ensure_ascii=False,
+                    default=str,
+                ).encode("utf-8")
+            )
+
+        except (TypeError, ValueError):
+
+            return 0
+
+    @classmethod
+    def _trim(
+        cls,
+        data: dict,
+        path: str,
+    ) -> None:
+        """按路径瘦身一个字段。"""
+
+        if path == "final_report.content":
+
+            report = data.get("final_report")
+
+            if isinstance(report, dict):
+
+                # 报告正文已经写在 reports/*.md，
+                # 这里只留文件信息，
+                # 取报告时由 runner 回读文件。
+                report.pop("content", None)
+
+            return
+
+        if path == "readme":
+
+            readme = data.get("readme")
+
+            if isinstance(readme, str) and len(
+                readme
+            ) > READ_README_CHARS:
+
+                data["readme"] = (
+                    readme[:READ_README_CHARS]
+                )
+
+            return
+
+        if path == "evidence":
+
+            cls._trim_list(
+                data,
+                "evidence",
+                READ_EVIDENCE,
+                ("content",),
+            )
+
+            # evidence_analysis_agent 里是同一份数据。
+            cls._trim_list(
+                data,
+                "evidence_analysis_agent",
+                READ_EVIDENCE,
+                ("content",),
+                nested="evidence",
+            )
+
+            return
+
+        if path == "modules":
+
+            cls._trim_list(
+                data,
+                "modules",
+                READ_MODULES,
+                ("content",),
+            )
+
+    @staticmethod
+    def _trim_list(
+        data: dict,
+        key: str,
+        keep: int,
+        drop_keys,
+        nested=None,
+    ) -> None:
+        """截断一个列表字段，并去掉指定子字段。"""
+
+        value = data.get(key)
+
+        if nested and isinstance(value, dict):
+
+            value = value.get(nested)
+
+        if not isinstance(value, list):
+            return
+
+        if len(value) > keep:
+
+            del value[keep:]
+
+        for item in value:
+
+            if isinstance(item, dict):
+
+                for drop in drop_keys:
+                    item.pop(drop, None)
+
     async def get_latest(
         self,
         run_id: str,
     ) -> WorkflowState | None:
-        """获取指定 run 的最新 Checkpoint。"""
+        """
+        获取指定 run 的最新 Checkpoint。
+
+        实现说明：
+
+        不能用 ORDER BY checkpoint_version DESC LIMIT 1。
+
+        state_data 是可能达到数百 KB 的 JSON
+        （包含目录结构、关键源码、Evidence、报告），
+        MySQL 在对这种大行排序时会报：
+
+            OperationalError 1038
+            Out of sort memory,
+            consider increasing server sort buffer size
+
+        因此改成两步：
+
+            1. 只查最大版本号（只读整数列，不需要排序大行）
+            2. 按 (run_id, version) 精确取行（等值查询，不排序）
+        """
+
+        version_result = await self.session.execute(
+            select(
+                func.max(
+                    Checkpoint.checkpoint_version
+                )
+            ).where(
+                Checkpoint.run_id == run_id
+            )
+        )
+
+        latest_version = (
+            version_result.scalar_one_or_none()
+        )
+
+        if latest_version is None:
+            return None
 
         result = await self.session.execute(
             select(Checkpoint)
             .where(
-                Checkpoint.run_id == run_id
-            )
-            .order_by(
-                desc(
-                    Checkpoint.checkpoint_version
-                )
+                Checkpoint.run_id == run_id,
+                Checkpoint.checkpoint_version
+                == latest_version,
             )
             .limit(1)
         )
@@ -3994,6 +4615,8 @@ class Base(DeclarativeBase):
 ```python
 """数据库 Engine、Session 和 FastAPI 数据库依赖。"""
 
+import json
+
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -4011,6 +4634,23 @@ engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     pool_pre_ping=True,
+
+    # JSON 列默认使用 ensure_ascii=True 序列化，
+    # 中文会被转义成 \uXXXX，
+    # 一个汉字从 3 字节（utf8mb4）膨胀到 6 字节。
+    #
+    # checkpoints.state_data 里包含中文报告，
+    # 转义会让单行体积显著增大，
+    # 进而在读取时触发 asyncmy 驱动的
+    # 「BufferError: object cannot be re-sized」
+    # → Lost connection to MySQL server。
+    #
+    # 连接字符集是 utf8mb4，
+    # 直接写原文是安全的。
+    json_serializer=lambda value: json.dumps(
+        value,
+        ensure_ascii=False,
+    ),
 )
 
 AsyncSessionLocal = async_sessionmaker(
@@ -4069,9 +4709,23 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = 6333
 
     # LLM
+    #
+    # DeepSeek 提供 OpenAI 兼容接口，
+    # 因此 openai SDK 直连该 base_url 即可。
     LLM_PROVIDER: str = "deepseek"
     LLM_API_KEY: str = ""
     LLM_MODEL: str = "deepseek-chat"
+    LLM_BASE_URL: str = "https://api.deepseek.com"
+    LLM_TIMEOUT: float = 120.0
+
+    # 单次回复的最大 token 数。
+    #
+    # 必须显式设置：综合分析要输出
+    # 六个维度的判断段落 + 摘要，
+    # 用 API 默认值会被截断，
+    # 截断的 JSON 解析必然失败，
+    # 报告就会退化成「综合分析不可用」。
+    LLM_MAX_TOKENS: int = 8192
 
     # Embedding
     OLLAMA_BASE_URL: str = "http://127.0.0.1:11434"
@@ -5314,6 +5968,8 @@ Plan Executor
     ↓
 Human Review
     ↓
+Synthesis
+    ↓
 Finalizer
     ↓
 End
@@ -5332,6 +5988,9 @@ from app.workflow.nodes.plan_executor_node import (
     PlanExecutorNode,
 )
 from app.workflow.nodes.start_node import StartNode
+from app.workflow.nodes.synthesis_node import (
+    SynthesisNode,
+)
 from app.workflow.transition import Transition
 from app.workflow.workflow import Workflow
 
@@ -5366,6 +6025,15 @@ def build_analysis_workflow(
             "Report generation skill is not registered."
         )
 
+    synthesis_skill = context.skills.get(
+        "report_synthesis"
+    )
+
+    if synthesis_skill is None:
+        raise ValueError(
+            "Report synthesis skill is not registered."
+        )
+
     workflow.add_node(
         StartNode()
     )
@@ -5387,6 +6055,12 @@ def build_analysis_workflow(
 
     workflow.add_node(
         HumanNode()
+    )
+
+    workflow.add_node(
+        SynthesisNode(
+            skill=synthesis_skill,
+        )
     )
 
     workflow.add_node(
@@ -5430,6 +6104,13 @@ def build_analysis_workflow(
     workflow.add_transition(
         Transition(
             "human_review",
+            "synthesis",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "synthesis",
             "finalizer",
         )
     )
@@ -5911,37 +6592,30 @@ class DesignGateNode(BaseNode):
 
 ### 📄 `app/workflow/nodes/finalizer_node.py`
 
-**层级**：Workflow 节点层 · **职责**：最终报告生成节点。
+**层级**：Workflow 节点层 · **职责**：Finalizer Workflow Node。
 
 ```python
 """
-最终报告生成节点。
+Finalizer Workflow Node。
 
-Phase12:
-    Workflow State
-        ↓
-    AnalysisResult
-        ↓
-    ReportGenerationSkill
-        ↓
-    final_report
+负责：
+
+Human Review
+    ↓
+Finalizer
+    ↓
+ReportGenerationSkill
+    ↓
+Final Report
 """
-
 
 from .base import BaseNode
 
-from app.services.analysis_result_service import (
-    analysis_result_service,
-)
-
 
 class FinalizerNode(BaseNode):
-    """
-    最终报告生成节点。
-    """
+    """最终报告生成节点。"""
 
     name = "finalizer"
-
 
     def __init__(
         self,
@@ -5949,48 +6623,12 @@ class FinalizerNode(BaseNode):
     ):
         self.skill = skill
 
-
     async def execute(
         self,
         state,
         context,
     ):
-        """
-        生成最终项目分析报告。
-
-        Phase12新增:
-
-        state.data
-            ↓
-        AnalysisResult
-            ↓
-        Report
-        """
-
-
-        # ==========================
-        # 1. 构建标准 AnalysisResult
-        # ==========================
-
-        analysis_result = (
-            analysis_result_service.build(
-                run_id=state.run_id,
-                data=state.data,
-            )
-        )
-
-
-        # 保存结构化分析结果
-
-        state.data[
-            "analysis_result"
-        ] = analysis_result.model_dump()
-
-
-
-        # ==========================
-        # 2. 构造报告输入
-        # ==========================
+        """生成最终项目分析报告。"""
 
         report_input = {
             key: value
@@ -5998,42 +6636,24 @@ class FinalizerNode(BaseNode):
             if not key.startswith("_")
         }
 
-
         report_input.setdefault(
             "title",
             "GitHub Project Intelligence Report",
         )
-
 
         report_input.setdefault(
             "filename",
             f"{state.run_id}_analysis.md",
         )
 
-
-        # ==========================
-        # 3. 生成 Markdown 报告
-        # ==========================
-
         result = await self.skill.execute(
             context=context,
             input_data=report_input,
         )
 
+        state.data["final_report"] = result
 
-        # ==========================
-        # 4. 保留旧字段兼容
-        # ==========================
-
-        state.data[
-            "final_report"
-        ] = result
-
-
-        state.outputs.append(
-            result
-        )
-
+        state.outputs.append(result)
 
         return state
 ```
@@ -6167,10 +6787,35 @@ class PlanExecutorNode(BaseNode):
                 agent_input,
             )
 
-            # 保存 Agent 级别输出。
-            state.data[
-                agent_name
-            ] = result
+            # Agent 名键只保留还有读取方的部分。
+            #
+            # 原实现把同一份结果写三遍：
+            #
+            #     state.data[agent_name]   本段
+            #     state.data.update(...)   拍平到顶层
+            #     state.outputs.append(...) 再存一份
+            #
+            # 实测（被分析项目 Legal，17.8MB）：
+            # architecture 一份 57KB、evidence 29KB、
+            # repository 5KB，三写下来约 250KB 纯重复，
+            # 把 state_data 推到 263KB，
+            # 越过 asyncmy 单字段 256KB 的缓冲区分片上限，
+            # 报告接口读 checkpoint 直接
+            # Lost connection to MySQL server。
+            #
+            # 顶层拍平的那份是规范数据源
+            # （报告 / 综合分析 / 分析结果都读它），
+            # 因此这里只额外保留
+            # architecture_analysis_agent 的精简副本 ——
+            # CriticAgent 会按这个键读它。
+            slim = self._slim_agent_result(
+                agent_name,
+                result,
+            )
+
+            if slim is not None:
+
+                state.data[agent_name] = slim
 
             # 合并结构化输出。
             if isinstance(
@@ -6181,8 +6826,15 @@ class PlanExecutorNode(BaseNode):
                     result
                 )
 
+            # outputs 的正文没有任何业务读取方
+            # （只作为 agent_outputs 透出），
+            # 因此不再原样复制大对象，
+            # 只留一个可读的运行痕迹。
             state.outputs.append(
-                result
+                self._output_marker(
+                    agent_name,
+                    result,
+                )
             )
 
             executed_tasks.append(
@@ -6192,6 +6844,192 @@ class PlanExecutorNode(BaseNode):
         state.data[
             "executed_tasks"
         ] = executed_tasks
+
+        return state
+
+    # Agent 名键的精简规则。
+    #
+    # 顶层拍平的那份是规范数据源，
+    # Agent 名键只是兼容层，
+    # 因此按「有没有读取方」逐个决定：
+    #
+    #   SLIM_AGENT_FIELDS  有大读取方 -> 只留它需要的子字段
+    #   DROPPED_AGENT_KEYS 完全没有读取方 -> 不写
+    #   其余               原样保留
+    #
+    # 只对体积大的动手：
+    # critic_agent（30B）、technology_analysis_agent（193B）
+    # 留着也不占地方，但删了会破坏断言它们的测试。
+    SLIM_AGENT_FIELDS = {
+        # 读取方：CriticAgent 需要
+        # modules / directory_structure / files。
+        #
+        # 它不读 project_structure（顶层有），
+        # 而那一块恰好最大（33KB）。
+        "architecture_analysis_agent": (
+            "files",
+            "modules",
+            "directory_structure",
+        ),
+    }
+
+    # 体积大、且没有任何读取方的 Agent 名键。
+    #
+    # evidence_analysis_agent（29KB）的内容是
+    # {"evidence": [...], "count": N}，
+    # 而 evidence 与 count 都已经在顶层拍平，
+    # 全项目没有任何地方按这个键去读 state.data。
+    DROPPED_AGENT_KEYS = (
+        "evidence_analysis_agent",
+    )
+
+    @classmethod
+    def _slim_agent_result(
+        cls,
+        agent_name,
+        result,
+    ):
+        """
+        决定 Agent 名键写什么。
+
+        返回 None 表示「不写这个键」。
+        """
+
+        if agent_name in cls.DROPPED_AGENT_KEYS:
+            return None
+
+        fields = cls.SLIM_AGENT_FIELDS.get(
+            agent_name
+        )
+
+        if not fields:
+            # 其余 Agent 原样保留。
+            return result
+
+        if not isinstance(result, dict):
+            return result
+
+        return {
+            key: result[key]
+            for key in fields
+            if key in result
+        }
+
+    @staticmethod
+    def _output_marker(
+        agent_name,
+        result,
+    ) -> dict:
+        """
+        生成 outputs 里的一条运行痕迹。
+
+        保留 Agent 名与产出规模，
+        便于排查「这一步到底有没有产出」，
+        但不复制正文 —— 正文在 state.data 里。
+        """
+
+        marker = {
+            "agent": agent_name,
+            "type": type(result).__name__,
+        }
+
+        if isinstance(result, dict):
+
+            marker["fields"] = sorted(
+                result.keys()
+            )
+
+        return marker
+```
+
+### 📄 `app/workflow/nodes/synthesis_node.py`
+
+**层级**：Workflow 节点层 · **职责**：Report Synthesis Workflow Node。
+
+```python
+"""
+Report Synthesis Workflow Node。
+
+负责：
+
+Human Review
+    ↓
+SynthesisNode
+    ↓
+ReportSynthesisSkill
+    ↓
+state.data["synthesis"]
+
+位置在 Human Review 之后、Finalizer 之前：
+
+- 放在 Human Review 之后，
+  是为了让综合分析跑在人工批准之后，
+  不占用人工等待期间的资源；
+- 放在 Finalizer 之前，
+  是因为 Finalizer 会把 state.data 中
+  所有非 "_" 开头的键转发给报告 Skill，
+  因此本节点写入的 "synthesis"
+  会被报告自动带上，无需额外接线。
+"""
+
+from .base import BaseNode
+
+
+class SynthesisNode(BaseNode):
+    """报告综合分析节点。"""
+
+    name = "synthesis"
+
+    def __init__(
+        self,
+        skill,
+    ):
+        self.skill = skill
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+        """生成综合分析结论。"""
+
+        synthesis_input = {
+            key: value
+            for key, value in state.data.items()
+            if not key.startswith("_")
+        }
+
+        try:
+
+            result = await self.skill.execute(
+                context=context,
+                input_data=synthesis_input,
+            )
+
+        # 综合分析只是报告的增强章节。
+        #
+        # 真实事故的防线：
+        # 报告中任何一个环节抛异常
+        # 都会让整个 Workflow 变成 FAILED
+        # （此前一个 README 请求超时
+        # 就让 5-Agent 计划整体失败），
+        # 因此这里必须降级而不是冒泡。
+        except Exception as error:
+
+            result = {
+                "available": False,
+                "reason": (
+                    "综合分析执行失败："
+                    f"{type(error).__name__}: "
+                    f"{error}"
+                ),
+                "summary": {},
+                "dimensions": {},
+            }
+
+        state.data["synthesis"] = result
+
+        state.outputs.append(result)
 
         return state
 ```
@@ -6342,9 +7180,51 @@ Planner Agent。
 负责：
 
 根据用户需求生成项目分析计划。
+
+关于「计划」
+============
+
+任务表仍是固定的 5 个 agent ——
+这不是偷懒，而是刻意的：
+
+    这份报告的 01-11 章是文档 15.3 规定的契约，
+    每个 agent 对应其中若干章的原始数据。
+    少跑一个 agent 就会让对应章节变成
+    「真实数据不存在」，
+    CriticAgent 也会报字段缺失。
+
+所以 question 驱动的不是「跑不跑」，
+而是**重点在哪**：
+
+    focus.dimensions  本次重点关注的维度（有序）
+
+它同时驱动两件事：
+
+    采集层  ArchitectureAnalysisSkill 把更多文件配额
+            给到重点维度
+    报告层  ReportGenerationSkill 展开重点章节、
+            压缩其余章节
+
+焦点怎么定
+==========
+
+    1. 先让 LLM 从 question 里解析（理解自然语言意图）
+    2. LLM 不可用或返回非法时退回关键词匹配
+    3. 都认不出重点时 focus 为空 ——
+       此时报告保持全量等深，与旧行为一致
+
+第 3 条很重要：识别不出重点 ≠ 没有重点。
+前者保持现状，不让用户因为一句
+「分析项目架构」就丢掉别的章节。
 """
 
 from app.agents.base import BaseAgent
+from app.project_analysis.analysis_focus import (
+    AnalysisFocus,
+)
+from app.skills.json_output import (
+    parse_json_object,
+)
 
 
 class PlannerAgent(
@@ -6359,30 +7239,54 @@ class PlannerAgent(
         "project analysis."
     )
 
+    # 固定的分析任务表。
+    #
+    # 顺序即执行顺序：
+    # repository 提供 README，
+    # architecture 依赖它抽取项目自述结构，
+    # 因此必须排在最前。
+    TASKS = (
+        "repository_analysis_agent",
+        "architecture_analysis_agent",
+        "technology_analysis_agent",
+        "evidence_analysis_agent",
+        "critic_agent",
+    )
+
+    # 计划版本。
+    #
+    # 2 = 增加 focus 字段。
+    # 读取方（AnalysisFocus.from_plan）对
+    # 没有 focus 的旧计划有回退，
+    # 因此历史 run 仍然可读。
+    PLAN_VERSION = 2
+
     async def execute(
         self,
         context,
         input_data,
     ):
-        """生成第一版项目分析计划。"""
+        """生成项目分析计划。"""
 
-        tasks = [
-            "repository_analysis_agent",
-            "architecture_analysis_agent",
-            "technology_analysis_agent",
-            "evidence_analysis_agent",
-            "critic_agent",
-        ]
+        question = input_data.get(
+            "question"
+        )
+
+        tasks = list(self.TASKS)
+
+        focus = await self._resolve_focus(
+            context,
+            question,
+        )
 
         research_plan = {
-            "plan_version": 1,
+            "plan_version": self.PLAN_VERSION,
             "analysis_type": (
                 "github_agent_project"
             ),
-            "question": input_data.get(
-                "question"
-            ),
+            "question": question,
             "tasks": tasks,
+            "focus": focus.to_dict(),
             "evidence_required": True,
         }
 
@@ -6390,6 +7294,155 @@ class PlannerAgent(
             "tasks": tasks,
             "research_plan": research_plan,
         }
+
+    # ------------------------------------------------------------------
+    # 焦点解析
+    # ------------------------------------------------------------------
+
+    async def _resolve_focus(
+        self,
+        context,
+        question,
+    ) -> AnalysisFocus:
+        """
+        解析本次分析的重点维度。
+
+        LLM 优先，关键词兜底，
+        都认不出时返回空焦点。
+        """
+
+        if not isinstance(
+            question,
+            str,
+        ) or not question.strip():
+
+            return AnalysisFocus.none()
+
+        via_llm = await self._focus_via_llm(
+            context,
+            question,
+        )
+
+        if via_llm is not None:
+            return via_llm
+
+        return AnalysisFocus.from_question(
+            question
+        )
+
+    async def _focus_via_llm(
+        self,
+        context,
+        question: str,
+    ):
+        """
+        让 LLM 判断用户在问哪些模块。
+
+        任何一步失败都返回 None，
+        由调用方退回关键词匹配 ——
+        规划失败不该让整个分析失败。
+        """
+
+        tool = context.tools.get("llm_chat")
+
+        if tool is None:
+            return None
+
+        try:
+
+            result = await tool.execute(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            self._system_prompt()
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": question,
+                    },
+                ]
+            )
+
+        except Exception:
+
+            return None
+
+        if not result.get("available"):
+            return None
+
+        parsed = parse_json_object(
+            result.get("content") or ""
+        )
+
+        if parsed is None:
+            return None
+
+        dimensions = AnalysisFocus._normalize(
+            parsed.get("dimensions")
+        )
+
+        if not dimensions:
+
+            # 模型明确说「没有特定重点」。
+            # 这与解析失败不同：
+            # 前者是判断结果，不必再走关键词。
+            if isinstance(
+                parsed.get("dimensions"),
+                list,
+            ):
+                return AnalysisFocus.none()
+
+            return None
+
+        notes = parsed.get("notes")
+
+        return AnalysisFocus(
+            dimensions=dimensions,
+            notes=(
+                notes
+                if isinstance(notes, str)
+                else ""
+            ),
+            source="llm",
+        )
+
+    @staticmethod
+    def _system_prompt() -> str:
+        """系统提示词。"""
+
+        return (
+            "你在为一个 GitHub 项目分析任务判断重点。\n"
+            "\n"
+            "可选的模块只有这六个（名字必须原样使用）：\n"
+            "\n"
+            "    agents    Agent 架构：智能体、角色划分、"
+            "多智能体协作、自治边界\n"
+            "    workflow  工作流：编排、状态机、图、"
+            "节点与路由、执行流程\n"
+            "    skills    技能层：可复用的能力封装\n"
+            "    tools     工具层：函数调用、外部集成、MCP\n"
+            "    rag       检索增强：向量库、检索、召回、"
+            "知识库\n"
+            "    memory    记忆：会话状态、检查点、持久化\n"
+            "\n"
+            "规则：\n"
+            "\n"
+            "1. 只输出用户问题里**明确指向**的模块。\n"
+            "   用户只是泛泛地说「分析这个项目」时，\n"
+            "   返回空数组，不要猜。\n"
+            "2. 最多 3 个，按重要性排序。\n"
+            "3. 输出 JSON，不要 markdown 包裹，"
+            "不要解释文字：\n"
+            "\n"
+            '{"dimensions": ["agents"], '
+            '"notes": "一句话说明用户关心什么"}\n'
+            "\n"
+            "没有明确重点时：\n"
+            "\n"
+            '{"dimensions": [], "notes": ""}\n'
+        )
 ```
 
 ### 📄 `app/agents/repository_analysis_agent.py`
@@ -6690,7 +7743,26 @@ class EvidenceAnalysisAgent(
 Critic Agent。
 
 负责检查分析结果是否完整。
+
+Phase 12 校验要求
+=================
+
+文档 15.2 把 Critic 作为分析闭环中的验证步骤，
+因此它必须能发现「分析其实没有产出数据」，
+而不只是检查 key 是否存在。
+
+旧实现只检查 3 个 key 是否存在，
+于是下面这种「跑过了但什么都没产出」的输入
+也会被判为 passed=True：
+
+    architecture_analysis_agent = {"files": [], "modules": []}
+
+新实现分两层校验：
+
+1. 存在性：分析步骤是否产出对应字段
+2. 内容：该字段是否真的有数据
 """
+
 
 from app.agents.base import BaseAgent
 
@@ -6708,6 +7780,31 @@ class CriticAgent(
         "Validate repository analysis results"
     )
 
+    # 逻辑字段 -> 可接受的别名
+    REQUIRED_FIELDS = {
+        "repository": (
+            "repository",
+            "repository_analysis",
+            "repository_analysis_agent",
+        ),
+        "architecture": (
+            "architecture",
+            "architecture_analysis",
+            "architecture_analysis_agent",
+        ),
+        "technology": (
+            "technology",
+            "technology_analysis",
+            "technology_analysis_agent",
+            "technology_stack",
+        ),
+        # Phase 12 的「Agent / Workflow / Skill / Tool Analysis」
+        # 步骤产出被分析项目的自述结构。
+        "project_structure": (
+            "project_structure",
+        ),
+    }
+
     async def execute(
         self,
         context,
@@ -6715,40 +7812,136 @@ class CriticAgent(
     ):
         errors = []
 
-        required_fields = {
-            "repository": [
-                "repository",
-                "repository_analysis",
-                "repository_analysis_agent",
-            ],
-            "architecture": [
-                "architecture",
-                "architecture_analysis",
-                "architecture_analysis_agent",
-            ],
-            "technology": [
-                "technology",
-                "technology_analysis",
-                "technology_analysis_agent",
-                "technology_stack",
-            ],
-        }
-
         for logical_name, aliases in (
-            required_fields.items()
+            self.REQUIRED_FIELDS.items()
         ):
-            if not any(
-                alias in input_data
-                for alias in aliases
-            ):
+
+            actual_key = next(
+                (
+                    alias
+                    for alias in aliases
+                    if alias in input_data
+                ),
+                None,
+            )
+
+            if actual_key is None:
                 errors.append(
                     f"{logical_name} missing"
+                )
+
+                continue
+
+            if not self._has_content(
+                logical_name,
+                input_data.get(actual_key),
+            ):
+                errors.append(
+                    f"{logical_name} is empty"
                 )
 
         return {
             "passed": not errors,
             "errors": errors,
         }
+
+    @classmethod
+    def _has_content(
+        cls,
+        logical_name,
+        value,
+    ) -> bool:
+        """
+        判断字段是否真的带有数据。
+
+        注意两点：
+
+        1. Agent 输出通常是包装结构
+           （例如 {"repository": {...}}），
+           真正的数据在内层字段，
+           因此先做一层解包再判断。
+
+        2. project_structure 与 technology_stack
+           允许「诚实的空」——
+           例如项目没有 README 时
+           project_structure.available 就是 False，
+           这属于真实结论，不是分析失败。
+           因此只要求该字段存在且结构正确。
+        """
+
+        if not isinstance(value, dict):
+            return False
+
+        value = cls._unwrap(
+            logical_name,
+            value,
+        )
+
+        if logical_name == "repository":
+
+            return bool(value)
+
+        if logical_name == "architecture":
+
+            modules = value.get("modules")
+
+            if isinstance(modules, list) and modules:
+                return True
+
+            directory_structure = value.get(
+                "directory_structure"
+            )
+
+            if (
+                isinstance(directory_structure, dict)
+                and directory_structure.get("available")
+            ):
+                return True
+
+            # 兼容只有 files 的旧结构。
+            files = value.get("files")
+
+            return bool(files)
+
+        if logical_name == "technology":
+
+            return bool(value)
+
+        return True
+
+    @classmethod
+    def _unwrap(
+        cls,
+        logical_name,
+        value,
+    ):
+        """
+        把 Agent 输出的包装结构解开一层。
+
+        例如 repository_analysis_agent 的值是
+
+            {"repository": {...}, "readme": "..."}
+
+        真正的判据在内层 repository 上，
+        因此在包装层直接判断 non-empty
+        会把「内层为空」误判成有数据。
+        """
+
+        for alias in cls.REQUIRED_FIELDS.get(
+            logical_name,
+            (),
+        ):
+
+            inner = value.get(alias)
+
+            if isinstance(
+                inner,
+                (dict, list),
+            ):
+
+                return inner
+
+        return value
 ```
 
 ### 📄 `app/agents/agent_registry.py`
@@ -6764,9 +7957,6 @@ Agent Registry。
 
 from app.agents.architecture_analysis_agent import (
     ArchitectureAnalysisAgent,
-)
-from app.agents.comparison_agent import (
-    ComparisonAgent,
 )
 from app.agents.critic_agent import (
     CriticAgent,
@@ -6840,9 +8030,6 @@ def create_agent_registry(
             skill_registry
         ),
         CriticAgent(
-            skill_registry
-        ),
-        ComparisonAgent(
             skill_registry
         ),
     ]
@@ -6960,775 +8147,6 @@ class AgentRuntime:
 **层级**：Agent 层（Agents） · **职责**：**空文件**（0 字节），预留的研究 Agent 占位
 
 > 该文件为 **0 字节** 空文件，无源码内容。
-
-### 📄 `app/agents/comparison_agent.py`
-
-**层级**：Agent 层 · **职责**：Comparison Agent。
-
-```python
-"""
-Comparison Agent。
-
-负责基于两个已经完成的 Analysis Run
-以及对应 Evidence，生成多项目比较结果。
-
-Phase 13 不让 LLM 凭空生成结论，
-只比较 Analysis Result 中已经存在的结构化事实。
-
-真实数据来源（RunMemory.load() 的顶层结构）：
-
-    run_id / status / current_node / question
-    repository / research_plan / final_report
-    agent_outputs / task_results / evidences / workflow_state
-
-注意：
-
-    project["analysis"] 这个结构在真实数据中并不存在，
-    因此所有维度都必须从上面这些真实字段读取。
-
-各维度真实数据来源：
-
-    agent            workflow_state.data.executed_tasks
-    workflow         workflow_state.data.research_plan
-    rag              workflow_state.data.technology_stack.embedding
-    database         workflow_state.data.technology_stack.database
-    deployment       workflow_state.data.technology_stack.deployment
-    code_complexity  workflow_state.data.repository（language / size）
-                     + architecture_analysis_agent（files / modules）
-                     + technology_stack.source_files
-
-    skill / tool / memory / extension：
-
-        当前 Analysis Workflow 并未提取被分析项目的
-        对应结构，真实数据不存在，
-        因此返回 NOT_AVAILABLE 并给出明确原因，
-        而不是因为字段名写错而“看起来没有数据”。
-
-Evidence：
-
-    引用必须来自 project["evidences"][*]["id"]（真实 Evidence ID）。
-    归因规则是确定性的：
-
-        维度值中的字符串叶子值会被拆成 token，
-        若某个 token 出现在某条 Evidence 的 content 中，
-        则该 Evidence 被引用。
-
-    只取字符串叶子值、不取 dict key，
-    是为了避免 JSON 结构名（tasks / question 等）
-    与 Evidence 内容产生巧合匹配。
-
-    该规则不会生成、不会猜测、不会以下标冒充 Evidence ID。
-"""
-
-import re
-
-from dataclasses import dataclass
-from typing import Any
-
-from app.agents.base import BaseAgent
-
-
-@dataclass(frozen=True)
-class DimensionExtraction:
-    """单个项目在某个维度上的真实数据提取结果。"""
-
-    # 维度值
-    value: Any = None
-
-    # 真实来源字段路径，便于审计
-    source: str | None = None
-
-    # 真实数据是否存在
-    available: bool = False
-
-    # 不可用原因（available 为 False 时说明是数据缺失）
-    reason: str | None = None
-
-
-class ComparisonAgent(BaseAgent):
-    """多项目比较 Agent。"""
-
-    name = "comparison_agent"
-
-    description = (
-        "Compare multiple GitHub project "
-        "analysis results using evidence."
-    )
-
-    DIMENSIONS = (
-        "agent",
-        "workflow",
-        "skill",
-        "tool",
-        "rag",
-        "memory",
-        "database",
-        "deployment",
-        "code_complexity",
-        "extension",
-    )
-
-    # 维度值中可参与 Evidence 归因的 token。
-    #
-    # 至少 4 个字符，避免过短的通用词造成巧合匹配。
-    _TOKEN_PATTERN = re.compile(
-        r"[A-Za-z][A-Za-z0-9_.\-]{3,}"
-    )
-
-    async def execute(
-        self,
-        context,
-        input_data,
-    ) -> dict[str, Any]:
-        """
-        比较两个项目。
-
-        input_data:
-            {
-                "project_a": {...},
-                "project_b": {...}
-            }
-
-        其中 project 必须是 RunMemory.load() 的真实返回结构。
-        """
-
-        project_a = input_data.get(
-            "project_a"
-        )
-
-        project_b = input_data.get(
-            "project_b"
-        )
-
-        if not isinstance(project_a, dict):
-            raise ValueError(
-                "project_a must be a dictionary."
-            )
-
-        if not isinstance(project_b, dict):
-            raise ValueError(
-                "project_b must be a dictionary."
-            )
-
-        comparison = {}
-
-        for dimension in self.DIMENSIONS:
-            comparison[dimension] = (
-                self._compare_dimension(
-                    project_a,
-                    project_b,
-                    dimension,
-                )
-            )
-
-        return {
-            "comparison": comparison,
-            "projects": [
-                self._project_summary(
-                    project_a
-                ),
-                self._project_summary(
-                    project_b
-                ),
-            ],
-            # 只有比较结果确实引用了真实 Evidence 时
-            # evidence_based 才为 True。
-            "evidence_based": (
-                self._is_evidence_based(
-                    comparison
-                )
-            ),
-        }
-
-    @staticmethod
-    def _is_evidence_based(
-        comparison: dict[str, Any],
-    ) -> bool:
-        """
-        根据实际 Evidence 引用情况计算 evidence_based。
-
-        不能因为 API 成功返回而置 True，
-        也不能因为有 dimensions 而置 True。
-        """
-
-        for result in comparison.values():
-
-            if not isinstance(result, dict):
-                continue
-
-            for side in (
-                "project_a",
-                "project_b",
-            ):
-
-                value = result.get(side)
-
-                if not isinstance(value, dict):
-                    continue
-
-                if value.get("evidence_ids"):
-                    return True
-
-        return False
-
-    @classmethod
-    def _compare_dimension(
-        cls,
-        project_a: dict[str, Any],
-        project_b: dict[str, Any],
-        dimension: str,
-    ) -> dict[str, Any]:
-        """比较单个维度。"""
-
-        extraction_a = cls._extract_dimension(
-            project_a,
-            dimension,
-        )
-
-        extraction_b = cls._extract_dimension(
-            project_b,
-            dimension,
-        )
-
-        if (
-            not extraction_a.available
-            and not extraction_b.available
-        ):
-            relation = "NOT_AVAILABLE"
-
-        elif (
-            not extraction_a.available
-            or not extraction_b.available
-        ):
-            relation = "ONE_SIDE_UNAVAILABLE"
-
-        elif extraction_a.value == extraction_b.value:
-            relation = "SAME"
-
-        else:
-            relation = "DIFFERENT"
-
-        return {
-            "relation": relation,
-
-            # 真实来源字段，便于确认数据不是凭空产生的。
-            "source": (
-                extraction_a.source
-                or extraction_b.source
-            ),
-
-            "project_a": cls._build_side(
-                project_a,
-                extraction_a,
-            ),
-
-            "project_b": cls._build_side(
-                project_b,
-                extraction_b,
-            ),
-        }
-
-    @classmethod
-    def _build_side(
-        cls,
-        project: dict[str, Any],
-        extraction: DimensionExtraction,
-    ) -> dict[str, Any]:
-        """构建单侧比较结果。"""
-
-        evidence_ids: list[str] = []
-
-        if extraction.available:
-            evidence_ids = (
-                cls._attribute_evidence_ids(
-                    project,
-                    extraction.value,
-                )
-            )
-
-        return {
-            "value": extraction.value,
-            "evidence_ids": evidence_ids,
-            "available": extraction.available,
-            "unavailable_reason": (
-                extraction.reason
-            ),
-        }
-
-    @classmethod
-    def _extract_dimension(
-        cls,
-        project: dict[str, Any],
-        dimension: str,
-    ) -> DimensionExtraction:
-        """
-        从真实 Analysis Result 中提取某个维度。
-
-        不进行主观推断：
-        只读取真实存在的字段，
-        读不到就返回 available=False 并说明原因。
-        """
-
-        data = cls._workflow_data(
-            project
-        )
-
-        technology = data.get(
-            "technology_stack"
-        )
-
-        if not isinstance(
-            technology,
-            dict,
-        ):
-            technology = None
-
-        if dimension == "agent":
-            return cls._extract_agent(data)
-
-        if dimension == "workflow":
-            return cls._extract_workflow(data)
-
-        if dimension in {
-            "rag",
-            "database",
-            "deployment",
-        }:
-            return cls._extract_technology(
-                technology,
-                dimension,
-            )
-
-        if dimension == "code_complexity":
-            return cls._extract_code_complexity(
-                data,
-                technology,
-            )
-
-        return cls._unavailable_dimension(
-            dimension
-        )
-
-    @staticmethod
-    def _workflow_data(
-        project: dict[str, Any],
-    ) -> dict[str, Any]:
-        """读取 workflow_state.data（真实业务数据所在位置）。"""
-
-        workflow_state = project.get(
-            "workflow_state"
-        )
-
-        if not isinstance(
-            workflow_state,
-            dict,
-        ):
-            return {}
-
-        data = workflow_state.get(
-            "data"
-        )
-
-        if not isinstance(
-            data,
-            dict,
-        ):
-            return {}
-
-        return data
-
-    @staticmethod
-    def _extract_agent(
-        data: dict[str, Any],
-    ) -> DimensionExtraction:
-        """Agent 维度：真实 Agent 执行列表。"""
-
-        executed_tasks = data.get(
-            "executed_tasks"
-        )
-
-        if (
-            not isinstance(
-                executed_tasks,
-                list,
-            )
-            or not executed_tasks
-        ):
-            return DimensionExtraction(
-                available=False,
-                reason=(
-                    "真实 Analysis Workflow 未产生 "
-                    "executed_tasks。"
-                ),
-            )
-
-        return DimensionExtraction(
-            value={
-                "count": len(executed_tasks),
-                "agents": list(executed_tasks),
-            },
-            source=(
-                "workflow_state.data."
-                "executed_tasks"
-            ),
-            available=True,
-        )
-
-    @staticmethod
-    def _extract_workflow(
-        data: dict[str, Any],
-    ) -> DimensionExtraction:
-        """Workflow 维度：真实 Research Plan。"""
-
-        research_plan = data.get(
-            "research_plan"
-        )
-
-        if research_plan is None:
-            return DimensionExtraction(
-                available=False,
-                reason=(
-                    "真实 Analysis Workflow 未产生 "
-                    "research_plan。"
-                ),
-            )
-
-        # research_plan["question"] 是本次分析请求，
-        # 属于 Run 元数据，不是被分析项目的属性。
-        # 若不剔除，两个项目只要提问不同
-        # 就会让 workflow 维度被判为 DIFFERENT。
-        plan = research_plan
-
-        if isinstance(
-            research_plan,
-            dict,
-        ):
-            plan = {
-                key: value
-                for key, value in (
-                    research_plan.items()
-                )
-                if key != "question"
-            }
-
-        # 只使用 research_plan 本身。
-        #
-        # 不把 workflow_state.status / current_node
-        # 放进维度值：它们是本次 Run 的执行状态，
-        # 不是被分析项目的属性。
-        # 例如 status="COMPLETED" 会让 token "completed"
-        # 与 README Evidence 巧合匹配，
-        # 从而产生看起来合理、实际无意义的 Evidence 引用。
-        return DimensionExtraction(
-            value=plan,
-            source=(
-                "workflow_state.data."
-                "research_plan"
-            ),
-            available=True,
-        )
-
-    @staticmethod
-    def _extract_technology(
-        technology: dict[str, Any] | None,
-        dimension: str,
-    ) -> DimensionExtraction:
-        """
-        技术栈相关维度。
-
-        rag 使用 technology_stack.embedding：
-        该字段是 TechnologyAnalysisSkill 对
-        向量库 / Embedding（qdrant / chromadb）
-        的真实检测结果，是当前真实数据中
-        与 RAG 最直接对应的字段。
-        """
-
-        key = {
-            "rag": "embedding",
-            "database": "database",
-            "deployment": "deployment",
-        }[dimension]
-
-        if (
-            technology is None
-            or key not in technology
-        ):
-            return DimensionExtraction(
-                available=False,
-                reason=(
-                    "真实 Analysis Workflow 未产生 "
-                    f"technology_stack.{key}。"
-                ),
-            )
-
-        return DimensionExtraction(
-            value=technology.get(key),
-            source=(
-                "workflow_state.data."
-                f"technology_stack.{key}"
-            ),
-            available=True,
-        )
-
-    @staticmethod
-    def _extract_code_complexity(
-        data: dict[str, Any],
-        technology: dict[str, Any] | None,
-    ) -> DimensionExtraction:
-        """代码复杂度维度：仓库规模与架构分析结果。"""
-
-        repository = data.get(
-            "repository"
-        )
-
-        if not isinstance(
-            repository,
-            dict,
-        ):
-            repository = None
-
-        architecture = data.get(
-            "architecture_analysis_agent"
-        )
-
-        if not isinstance(
-            architecture,
-            dict,
-        ):
-            architecture = {}
-
-        if (
-            repository is None
-            and not architecture
-        ):
-            return DimensionExtraction(
-                available=False,
-                reason=(
-                    "真实 Analysis Workflow 未产生 "
-                    "repository 与 "
-                    "architecture_analysis_agent 数据。"
-                ),
-            )
-
-        files = architecture.get(
-            "files"
-        )
-
-        modules = architecture.get(
-            "modules"
-        )
-
-        source_files = None
-
-        if technology is not None:
-            source_files = technology.get(
-                "source_files"
-            )
-
-        return DimensionExtraction(
-            value={
-                "language": (
-                    repository or {}
-                ).get("language"),
-                "size_kb": (
-                    repository or {}
-                ).get("size"),
-                "file_count": (
-                    len(files)
-                    if isinstance(
-                        files,
-                        list,
-                    )
-                    else None
-                ),
-                "module_count": (
-                    len(modules)
-                    if isinstance(
-                        modules,
-                        list,
-                    )
-                    else None
-                ),
-                "source_files": source_files,
-            },
-            source=(
-                "workflow_state.data.repository + "
-                "architecture_analysis_agent + "
-                "technology_stack.source_files"
-            ),
-            available=True,
-        )
-
-    @staticmethod
-    def _unavailable_dimension(
-        dimension: str,
-    ) -> DimensionExtraction:
-        """
-        真实数据不存在时的显式结果。
-
-        与“字段名写错导致读不到”区分开：
-        这里是当前 Analysis Workflow
-        确实没有提取被分析项目的该结构。
-        """
-
-        return DimensionExtraction(
-            available=False,
-            reason=(
-                "当前 Analysis Workflow 未提取"
-                "被分析项目的 "
-                f"{dimension} 结构，"
-                "真实数据不存在。"
-            ),
-        )
-
-    @classmethod
-    def _attribute_evidence_ids(
-        cls,
-        project: dict[str, Any],
-        value: Any,
-    ) -> list[str]:
-        """
-        把真实 Evidence 归因到维度值。
-
-        Evidence ID 只能来自 project["evidences"][*]["id"]。
-        """
-
-        evidences = project.get(
-            "evidences"
-        )
-
-        if not isinstance(
-            evidences,
-            list,
-        ):
-            return []
-
-        tokens = cls._specific_tokens(
-            value
-        )
-
-        if not tokens:
-            return []
-
-        evidence_ids: list[str] = []
-
-        for evidence in evidences:
-
-            if not isinstance(
-                evidence,
-                dict,
-            ):
-                continue
-
-            evidence_id = evidence.get("id")
-
-            content = evidence.get("content")
-
-            if (
-                not isinstance(
-                    evidence_id,
-                    str,
-                )
-                or not evidence_id
-            ):
-                continue
-
-            if not isinstance(content, str):
-                continue
-
-            if evidence_id in evidence_ids:
-                continue
-
-            lowered = content.lower()
-
-            if any(
-                token in lowered
-                for token in tokens
-            ):
-                evidence_ids.append(
-                    evidence_id
-                )
-
-        return evidence_ids
-
-    @classmethod
-    def _specific_tokens(
-        cls,
-        value: Any,
-    ) -> set[str]:
-        """
-        提取维度值中的字面量 token。
-
-        只取字符串叶子值，不取 dict key，
-        避免 JSON 结构名（tasks / question 等）
-        与 Evidence 内容产生巧合匹配。
-        """
-
-        tokens: set[str] = set()
-
-        def visit(item: Any) -> None:
-
-            if isinstance(item, dict):
-
-                for child in item.values():
-                    visit(child)
-
-            elif isinstance(
-                item,
-                (list, tuple),
-            ):
-
-                for child in item:
-                    visit(child)
-
-            elif isinstance(item, str):
-
-                for token in (
-                    cls._TOKEN_PATTERN
-                    .findall(item)
-                ):
-                    tokens.add(
-                        token.lower()
-                    )
-
-        visit(value)
-
-        return tokens
-
-    @staticmethod
-    def _project_summary(
-        project: dict[str, Any],
-    ) -> dict[str, Any]:
-        """生成项目基本信息摘要。"""
-
-        repository = project.get(
-            "repository"
-        )
-
-        if not isinstance(
-            repository,
-            dict,
-        ):
-            repository = {}
-
-        return {
-            "run_id": project.get(
-                "run_id"
-            ),
-            "repository_id": repository.get(
-                "id"
-            ),
-            "repository_url": repository.get(
-                "url"
-            ),
-            "repository_name": repository.get(
-                "name"
-            ),
-            "status": project.get(
-                "status"
-            ),
-        }
-```
 
 ## 十三、Skill 层（Skills）
 
@@ -7855,6 +8273,7 @@ Repository Analysis Skill。
 - 分析项目依赖
 """
 
+from app.core.exceptions import ToolError
 from app.skills.base import BaseSkill
 
 
@@ -7868,6 +8287,61 @@ class RepositoryAnalysisSkill(
     description = (
         "Analyze github repository information"
     )
+
+    # GitHub REST API 返回 84 个字段，
+    # 其中 30 多个是各类 API URL（archive_url / blobs_url ...），
+    # 分析与报告都不使用。
+    #
+    # 该结构会被保存两份
+    # （state.data["repository_analysis_agent"] 与
+    #   PlanExecutorNode 拍平后的 state.data["repository"]），
+    # 全量保存会让 checkpoint.state_data 凭空多出约 30KB。
+    REPOSITORY_FIELDS = (
+        "id",
+        "name",
+        "full_name",
+        "owner",
+        "description",
+        "html_url",
+        "url",
+        "homepage",
+        "language",
+        "topics",
+        "default_branch",
+        "size",
+        "stargazers_count",
+        "forks_count",
+        "watchers_count",
+        "open_issues_count",
+        "subscribers_count",
+        "license",
+        "created_at",
+        "updated_at",
+        "pushed_at",
+        "archived",
+        "disabled",
+        "fork",
+        "visibility",
+    )
+
+    @classmethod
+    def _select_repository_fields(
+        cls,
+        repository,
+    ) -> dict:
+        """只保留分析真正使用的仓库字段。"""
+
+        if not isinstance(
+            repository,
+            dict,
+        ):
+            return repository
+
+        return {
+            key: repository[key]
+            for key in cls.REPOSITORY_FIELDS
+            if key in repository
+        }
 
     async def execute(
         self,
@@ -7939,26 +8413,46 @@ class RepositoryAnalysisSkill(
 
         result = {}
 
-        # 获取仓库基本信息
+        # 获取仓库基本信息（只保留分析使用的字段）
         result["repository"] = (
-            await github_tool.execute(
-                owner=owner,
-                name=repo,
+            self._select_repository_fields(
+                await github_tool.execute(
+                    owner=owner,
+                    name=repo,
+                )
             )
         )
 
         # 获取 README
-        result["readme"] = (
-            await file_reader.execute(
-                owner=owner,
-                name=repo,
-                file_path="README.md",
-                branch=input_data.get(
-                    "branch",
-                    "main",
-                ),
+        #
+        # README 读取失败（超时 / 网络抖动）
+        # 不应中断整个分析。
+        #
+        # 这里曾经的真实事故：
+        # 一个 README 请求超时
+        # → 第一个 Agent 抛异常
+        # → 整个 5-Agent 计划 FAILED。
+        try:
+
+            result["readme"] = (
+                await file_reader.execute(
+                    owner=owner,
+                    name=repo,
+                    file_path="README.md",
+                    branch=input_data.get(
+                        "branch",
+                        "main",
+                    ),
+                )
             )
-        )
+
+        except ToolError as error:
+
+            result["readme"] = ""
+
+            result["readme_error"] = (
+                str(error) or type(error).__name__
+            )
 
         # 有本地项目目录时才执行依赖分析
         if project_path:
@@ -7989,8 +8483,42 @@ Architecture Analysis Skill。
     File Reader
         ↓
     Architecture information
+
+Phase 12 → Phase 13 数据契约补充
+================================
+
+除了 files / modules，
+本 Skill 还会产出 project_structure：
+从「被分析项目」的 README 与 GitHub topics 中
+确定性抽取该项目自述的：
+
+    agents / workflow / skills / tools
+    rag / memory / extension
+
+抽取规则：
+
+- 纯字符串匹配 + README 行号定位
+- 不使用 LLM，不做语义推断
+- 每条结果都带 README 行号与原文片段，
+  可以逐条人工复核
+- 没匹配到就 declared=False 并给出原因，
+  不编造数据
+
+这样 Phase 13 的比较多的是
+「被分析项目自述的结构」，
+而不是 AIPI 自己的执行状态。
 """
 
+import os
+import re
+
+from app.core.exceptions import ToolError
+from app.project_analysis.analysis_focus import (
+    AnalysisFocus,
+)
+from app.project_analysis.code_structure_extractor import (
+    CodeStructureExtractor,
+)
 from app.skills.base import BaseSkill
 
 
@@ -8006,6 +8534,365 @@ class ArchitectureAnalysisSkill(
     description = (
         "Analyze repository architecture"
     )
+
+    # 项目自述结构的关键词表。
+    #
+    # 命中行会被原样记录（含行号），
+    # 因此宁可多留证据，也不做二次推断。
+    STRUCTURE_KEYWORDS = {
+        "agents": (
+            "agent",
+            "planner",
+            "executor",
+            "critic",
+            "synthesizer",
+            "researcher",
+            "supervisor",
+            "orchestrator",
+            "coordinator",
+            "router",
+        ),
+        "workflow": (
+            "workflow",
+            "stategraph",
+            "state graph",
+            "state machine",
+            "pipeline",
+            "langgraph",
+            "langchain",
+            "interrupt",
+            "graph",
+        ),
+        "skills": (
+            "skill",
+            "capability",
+            "abilities",
+        ),
+        "tools": (
+            "tool call",
+            "tool calls",
+            "tools",
+            "function call",
+        ),
+        "rag": (
+            "rag",
+            "retrieval",
+            "retrieve",
+            "embedding",
+            "pgvector",
+            "vector",
+            "corpus",
+            "semantic search",
+        ),
+        "memory": (
+            "memory",
+            "checkpoint",
+            "persist",
+            "session state",
+        ),
+        "extension": (
+            "plugin",
+            "extension",
+            "pluggable",
+            "extensible",
+            "mcp",
+            "adapter",
+        ),
+    }
+
+    # 从一个命中行里抽取「标识」：
+    # README 中的 `反引号` 与 **粗体** 内容。
+    _IDENTIFIER_PATTERN = re.compile(
+        r"`([^`\n]+)`"
+        r"|\*\*([^*\n]+)\*\*"
+    )
+
+    # 只有单个 token 的标识才作为 item，
+    # 避免把 **fails closed** 这类短语
+    # 当成结构化条目。
+    _SINGLE_TOKEN_PATTERN = re.compile(
+        r"[A-Za-z][A-Za-z0-9_.\-*]{1,39}"
+    )
+
+    # README 列表行的前缀。
+    #
+    # 列表行常被用来罗列能力，
+    # 而且多数写成普通文字（不加粗、不加反引号），
+    # 例如：
+    #
+    #     - supplier lookup, duplicate detection, categorization
+    #
+    # 仅靠粗体 / 反引号抽不到这类内容，
+    # 因此列表行的逗号分段也作为条目。
+    _BULLET_PATTERN = re.compile(
+        r"^\s*[-*]\s+(.*)$"
+    )
+
+    # 列表分段作为条目的最大长度。
+    #
+    # 超过这个长度的多半是整句话，
+    # 不适合当条目。
+    MAX_BULLET_ITEM_CHARS = 60
+
+    # 每个维度最多记录的命中行数。
+    MAX_EVIDENCE_LINES = 4
+
+    # 每个维度最多记录的标识数。
+    MAX_ITEMS = 12
+
+    # 代码证据与 README 自述合并后，
+    # 单个维度最多保留多少个条目。
+    #
+    # 略大于 MAX_ITEMS：
+    # 代码符号排在前面且通常先用满 12 个，
+    # 这里留出余量，让 README 补充的条目
+    # 不至于被全部挤掉。
+    MAX_MERGED_ITEMS = 16
+
+    # 允许接纳「未命中关键词的代码标识」的维度。
+    #
+    # 工具名通常以函数 / API 形式出现
+    # （例如 read_webpage），
+    # 无法预先写进关键词表，
+    # 因此只有 tools 维度接受这类标识。
+    #
+    # 其余维度只接受命中本维度关键词的标识，
+    # 避免 StateGraph / MODEL_* 这类
+    # 其他维度的标识被重复计入。
+    DIMENSIONS_ACCEPTING_CODE_IDENTIFIERS = (
+        "tools",
+    )
+
+    # 目录结构：按扩展名 / 顶层目录统计的展示上限。
+    MAX_EXTENSIONS = 12
+
+    MAX_TOP_LEVEL_DIRS = 15
+
+    MAX_KEY_FILES = 20
+
+    # 关键文件：这些文件最能说明项目如何构建与部署。
+    KEY_FILE_NAMES = (
+        "README.md",
+        "requirements.txt",
+        "pyproject.toml",
+        "setup.py",
+        "package.json",
+        "tsconfig.json",
+        "go.mod",
+        "pom.xml",
+        "Cargo.toml",
+        "Gemfile",
+        "Makefile",
+        "Dockerfile",
+        "docker-compose.yml",
+        "docker-compose.yaml",
+        ".env.example",
+    )
+
+    # 允许读取内容的文件类型（不含 .md，
+    # README 已由 RepositoryAnalysisSkill 读取）。
+    #
+    # 刻意不含 .toml / .ini / .cfg / .yml / .json：
+    # 这些是配置文件，由 TechnologyAnalysisSkill
+    # 负责读取并抽取技术栈。
+    # 本 Skill 的「关键源码」只用来抽取
+    # Agent / Workflow / Tool 等代码结构，
+    # 再读一遍配置文件纯属浪费配额
+    # （旧版本 8 个配额里有 3-4 个是
+    #   docker-compose.yml / pyproject.toml 这类文件，
+    #   导致真正承载架构的 graph / nodes / tools
+    #   一个都没读到）。
+    SOURCE_EXTENSIONS = (
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".mjs",
+        ".go",
+        ".java",
+        ".rs",
+        ".rb",
+        ".php",
+        ".cs",
+        ".kt",
+        ".swift",
+        ".vue",
+    )
+
+    # 读取源码时优先挑选的入口文件。
+    #
+    # 刻意不包含 __init__.py：
+    # 它通常只是空的包声明，
+    # 而且会命中很深的目录。
+    PRIORITY_FILENAMES = (
+        "main.py",
+        "app.py",
+        "server.py",
+        "manage.py",
+        "cli.py",
+        "index.ts",
+        "index.js",
+        "main.ts",
+        "main.js",
+        "app.ts",
+        "app.js",
+    )
+
+    # 这些路径最后才考虑。
+    #
+    # 它们能命中架构关键词（tests/test_agents.py
+    # 名字里有 agent），但描述的是「项目怎么测自己」，
+    # 不是「项目怎么组织 Agent」，
+    # 放在最后避免挤掉真正的实现代码。
+    LOW_PRIORITY_PATH_PATTERNS = (
+        re.compile(r"(^|/)tests?/"),
+        re.compile(r"(^|/)test_[^/]*$"),
+        re.compile(r"_test\.[a-z]+$"),
+        re.compile(r"(^|/)migrations?/"),
+        re.compile(r"(^|/)alembic/versions/"),
+        re.compile(r"(^|/)(demo_data|examples?|samples?)/"),
+        re.compile(r"(^|/)scripts?/"),
+    )
+
+    # 最多读取多少个文件内容作为「关键源码」。
+    #
+    # 文件树可能有数百个文件，
+    # 不限制会对 GitHub 发起数百次请求。
+    #
+    # 8 -> 12：不再把配额花在
+    # docker-compose.yml 这类配置文件上。
+    # 12 -> 20：改为按维度分配配额，
+    # 每个维度都要留够样本。
+    MAX_MODULES = 20
+
+    # 每个维度的样本配额。
+    #
+    # 旧做法是全局挑 20 个「路径命中最多信号」的文件，
+    # 结果取决于仓库目录结构：
+    # agents/ 下文件多就全是 agents，
+    # rag/ 只有 1 个文件就可能一个都进不来，
+    # 于是报告里每个模块的详略极不均匀。
+    #
+    # 现在每个维度有独立名额，
+    # 命中该维度的文件先按自己的配额挑，
+    # 一个维度内部的明细深浅不再由别的维度决定。
+    DIMENSION_QUOTAS = {
+        "workflow": 4,
+        "agents": 3,
+        "tools": 3,
+        "rag": 2,
+        "memory": 2,
+        "skills": 2,
+    }
+
+    # 重点维度与非重点维度的配额权重。
+    #
+    # 用户点名了重点时，配额按权重重新分配，
+    # 而不是把非重点维度降到 0 ——
+    # 报告里那些章节仍然要写，
+    # 只是给更少的样本。
+    #
+    # 以 MAX_MODULES=20 为例：
+    #
+    #     1 个重点  重点 10，其余各 2   -> 20
+    #     2 个重点  重点各 7，其余各 1   -> 18
+    #     3 个重点  重点各 5，其余各 1   -> 18
+    FOCUS_WEIGHT = 5
+
+    BASE_WEIGHT = 1
+
+    @classmethod
+    def _quotas_for(
+        cls,
+        focus=None,
+    ):
+        """
+        按本次重点算出各维度的采集配额。
+
+        返回的是**有序**字典：
+        重点维度排在前面，
+        这样 _read_candidates 会先把它们的
+        名额用满，不会被其它维度挤掉。
+
+        没有识别出重点时返回默认配额，
+        与旧行为完全一致。
+        """
+
+        if focus is None or not focus.is_focused:
+
+            return dict(cls.DIMENSION_QUOTAS)
+
+        weights = {}
+
+        for name in cls.DIMENSION_QUOTAS:
+
+            weights[name] = (
+                cls.FOCUS_WEIGHT
+                if focus.is_primary(name)
+                else cls.BASE_WEIGHT
+            )
+
+        total = sum(weights.values())
+
+        quotas = {}
+
+        # 重点维度在前，且内部按用户在问题里
+        # 提到的顺序排 —— 越靠前越重要。
+        ordered = sorted(
+            cls.DIMENSION_QUOTAS,
+            key=lambda name: (
+                0 if focus.is_primary(name) else 1,
+                focus.rank(name),
+                name,
+            ),
+        )
+
+        for name in ordered:
+
+            quotas[name] = max(
+                1,
+                cls.MAX_MODULES
+                * weights[name]
+                // total,
+            )
+
+        return quotas
+
+    # 落库时最多保留多少个**源码正文**。
+    #
+    # 与 MAX_MODULES 分开是刻意的：
+    #
+    #   MAX_MODULES       读几个文件喂给 AST
+    #   MAX_STORED_MODULES 存几个文件的正文进 state
+    #
+    # AST 抽取在内存里用全文，不受这个上限影响；
+    # 但 modules 正文要写进 checkpoint，
+    # 20 个文件 × 1200 字符 ≈ 24KB，
+    # 而报告第 11 章只渲染 8 个 ——
+    # 存 20 个有 12 个永远没人看。
+    #
+    # 真实事故：state_data 涨到 263KB，
+    # 越过 asyncmy 单字段 256KB 的缓冲区分片上限，
+    # 报告接口读 checkpoint 直接
+    # Lost connection to MySQL server。
+    MAX_STORED_MODULES = 8
+
+    # 落库时最多保留多少个文件路径。
+    #
+    # 真实文件树可能有数百个文件，
+    # 全部写入 checkpoint 会让
+    # state_data 膨胀到数百 KB，
+    # 进而撑爆 MySQL 的排序缓冲区
+    # （OperationalError 1038 Out of sort memory）。
+    # 真实总数见 directory_structure.total_files。
+    MAX_FILE_PATHS = 60
+
+    # 单个源码文件最多写入多少字符。
+    #
+    # 大型配置文件的全文（例如 28KB 的 CI 配置）
+    # 同样会让 state_data 膨胀。
+    MAX_MODULE_CHARS = 1200
 
     async def execute(
         self,
@@ -8053,53 +8940,1149 @@ class ArchitectureAnalysisSkill(
             "class",
         )
 
-        files = await code_search.execute(
-            keyword=keyword,
-            repo=repository,
-        )
-
-        architecture = {
-            "files": files,
-            "modules": [],
-        }
-
         branch = input_data.get(
             "branch",
             "main",
         )
 
+        files = await code_search.execute(
+            keyword=keyword,
+            repo=repository,
+        )
+
+        # GitHub Code Search 的 repo: 限定符
+        # 对多数仓库返回 0 条结果，
+        # 因此真实的目录结构必须来自 Git Trees API。
+        tree = await self._load_tree(
+            context,
+            owner,
+            repo,
+            branch,
+        )
+
+        if not files and tree:
+
+            # Code Search 没有结果时，
+            # 用真实文件树补全文件列表。
+            files = [
+                item.get("path")
+                for item in tree
+                if item.get("type") == "blob"
+                and item.get("path")
+            ]
+
+        architecture = {
+            # 只保留采样，真实总数见 directory_structure。
+            "files": list(files)[: self.MAX_FILE_PATHS],
+            "modules": [],
+            "directory_structure": (
+                self._build_directory_structure(
+                    tree
+                )
+            ),
+        }
+
+        # AST 抽取需要**未截断**的源码：
+        # 截断过的 Python 几乎必然语法错误，
+        # 因此这里单独收一份全文，
+        # 只在本次执行内使用，不写入 state
+        # （modules 里存的仍是截断后的内容）。
+        ast_sources = []
+
+        # 本次分析的重点维度。
+        #
+        # research_plan 由 DesignGateNode 提升到顶层，
+        # PlanExecutorNode 又把 state.data 整体
+        # 作为 agent_input 传进来，因此这里能读到。
+        focus = AnalysisFocus.from_plan(
+            input_data.get("research_plan")
+        )
+
+        for file_path in self._read_candidates(
+            files,
+            self._quotas_for(focus),
+        ):
+
+            try:
+
+                content = await file_reader.execute(
+                    owner=owner,
+                    name=repo,
+                    file_path=file_path,
+                    branch=branch,
+                )
+
+            except ToolError as error:
+
+                # 单个文件读取失败（超时 / 网络抖动）
+                # 不应该让整个分析失败：
+                # 记录失败原因后继续读其它文件。
+                architecture[
+                    "modules"
+                ].append(
+                    {
+                        "file_path": file_path,
+                        "content": "",
+                        "error": str(error)
+                        or type(error).__name__,
+                    }
+                )
+
+                continue
+
+            # 只存够报告展示的量。
+            # 全文已经喂给 AST 了，
+            # 多存的正文没有任何读取方。
+            if len(
+                architecture["modules"]
+            ) < self.MAX_STORED_MODULES:
+
+                architecture[
+                    "modules"
+                ].append(
+                    self._module_entry(
+                        file_path,
+                        content,
+                    )
+                )
+
+            ast_sources.append(
+                {
+                    "file_path": file_path,
+                    "content": content or "",
+                }
+            )
+
+        # 从真实源码抽取结构信号。
+        #
+        # 除已读取的文件外，
+        # 额外把整棵文件树的路径交给抽取器：
+        # 配额只有 12 个，
+        # 但「存在 src/agents/ 目录」这条证据
+        # 不该因为该目录下的文件没被读到而丢失。
+        code_structure = (
+            CodeStructureExtractor.extract(
+                ast_sources,
+                extra_paths=[
+                    path
+                    for path in files
+                    if isinstance(path, str)
+                ],
+            )
+        )
+
+        # Phase 12 → Phase 13 契约：
+        # 产出被分析项目的自述结构。
+        #
+        # 现在由「代码证据」与「README 自述」共同构成，
+        # 代码为主、README 为辅。
+        architecture[
+            "project_structure"
+        ] = self._extract_project_structure(
+            input_data,
+            code_structure,
+        )
+
+        return architecture
+
+    def _module_entry(
+        self,
+        file_path,
+        content,
+    ):
+        """
+        构建单个源码条目。
+
+        两个处理：
+
+        1. 跳过开头的 import 段
+           否则摘录就是一堆 `import os`，
+           对理解项目毫无帮助。
+        2. 按 MAX_MODULE_CHARS 截断，
+           避免大型文件把 state_data 撑爆。
+        """
+
+        text = str(content or "")
+
+        start = CodeStructureExtractor.meaningful_start(
+            text
+        )
+
+        excerpt = text[
+            start: start + self.MAX_MODULE_CHARS
+        ]
+
+        entry = {
+            "file_path": file_path,
+            "content": excerpt,
+        }
+
+        # 摘录从第几行开始 ——
+        # 证据层要用它标行号，
+        # 否则会写成「file:1-30」但内容是第 30 行开始的。
+        if start:
+
+            entry["start_line"] = (
+                text[:start].count("\n") + 1
+            )
+
+        if len(text) - start > self.MAX_MODULE_CHARS:
+            entry["original_characters"] = len(text)
+            entry["truncated"] = True
+
+        return entry
+
+    @staticmethod
+    async def _load_tree(
+        context,
+        owner,
+        name,
+        branch,
+    ):
+        """
+        获取仓库文件树。
+
+        目录结构属于增强信息，
+        拿不到时返回空列表，
+        不应因此中断整个分析流程。
+        """
+
+        tool = context.tools.get(
+            "github_repository"
+        )
+
+        if tool is None:
+            return []
+
+        get_tree = getattr(
+            tool,
+            "get_tree",
+            None,
+        )
+
+        if not callable(get_tree):
+            return []
+
+        try:
+
+            tree = await get_tree(
+                owner=owner,
+                name=name,
+                branch=branch,
+            )
+
+        except ToolError:
+
+            return []
+
+        if not isinstance(tree, list):
+            return []
+
+        return tree
+
+    def _build_directory_structure(
+        self,
+        tree,
+    ):
+        """
+        从真实文件树构建目录结构。
+
+        只做计数与归类，不做推断。
+        """
+
+        blobs = [
+            item
+            for item in tree
+            if isinstance(item, dict)
+            and item.get("type") == "blob"
+            and item.get("path")
+        ]
+
+        if not blobs:
+
+            return {
+                "available": False,
+                "reason": (
+                    "未获取到仓库文件树，"
+                    "无法生成目录结构。"
+                ),
+                "total_files": 0,
+                "by_extension": {},
+                "top_level_dirs": [],
+                "key_files": [],
+            }
+
+        by_extension = {}
+        top_level = {}
+        key_files = []
+
+        for blob in blobs:
+
+            path = blob["path"]
+
+            extension = (
+                os.path.splitext(path)[1].lower()
+                or "(无扩展名)"
+            )
+
+            by_extension[extension] = (
+                by_extension.get(extension, 0) + 1
+            )
+
+            head = (
+                path.split("/", 1)[0]
+                if "/" in path
+                else "(根目录)"
+            )
+
+            top_level[head] = (
+                top_level.get(head, 0) + 1
+            )
+
+            if os.path.basename(path) in self.KEY_FILE_NAMES:
+                key_files.append(path)
+
+        return {
+            "available": True,
+            "source": "github git trees api",
+            "total_files": len(blobs),
+            "by_extension": dict(
+                sorted(
+                    by_extension.items(),
+                    key=lambda item: -item[1],
+                )[: self.MAX_EXTENSIONS]
+            ),
+            "top_level_dirs": [
+                {
+                    "name": name,
+                    "file_count": count,
+                }
+                for name, count in sorted(
+                    top_level.items(),
+                    key=lambda item: -item[1],
+                )[: self.MAX_TOP_LEVEL_DIRS]
+            ],
+            "key_files": sorted(
+                key_files
+            )[: self.MAX_KEY_FILES],
+        }
+
+    @staticmethod
+    def _normalize_path(item):
+        """文件列表项可能是 dict 或纯字符串。"""
+
+        if isinstance(item, dict):
+            return item.get("path")
+
+        return str(item)
+
+    def _read_candidates(
+        self,
+        files,
+        quotas=None,
+    ):
+        """
+        从文件列表里挑出要读取的关键源码。
+
+        文件树可能有数百个文件，
+        必须限制读取数量，
+        否则会对 GitHub 发起数百次请求
+        （本 Skill 是逐个文件读的，
+        没有批量接口）。
+
+        挑选顺序：
+
+            1. 按维度配额挑路径命中该维度的文件
+               （每个维度有独立名额，见 DIMENSION_QUOTAS）
+            2. 入口文件（main.py / app.py ...）
+            3. 其余源码
+            4. 测试 / 迁移 / 示例（垫底）
+
+        同一档内浅层路径优先。
+
+        两次修正的由来：
+
+        - 第一版按固定文件名列表挑，
+          配额被 docker-compose.yml /
+          pyproject.toml 这类配置文件占满，
+          一个 88 个 .py 的项目
+          连一个 Agent 类都没读到；
+        - 第二版按「命中信号总数」全局排序，
+          但仓库目录结构会决定结果：
+          agents/ 文件多就挤掉 rag/，
+          各模块详略极不均匀。
+        """
+
+        entry = []
+        normal = []
+        low = []
+
+        if not quotas:
+
+            quotas = self.DIMENSION_QUOTAS
+
+        # 维度名 -> 候选文件（浅层优先）。
+        by_dimension = {
+            name: []
+            for name in quotas
+        }
+
+        seen = set()
+
         for item in files:
 
-            if isinstance(
-                item,
-                dict,
-            ):
-                file_path = item.get(
-                    "path"
-                )
-            else:
-                file_path = str(item)
+            file_path = self._normalize_path(
+                item
+            )
 
             if not file_path:
                 continue
 
-            content = await file_reader.execute(
-                owner=owner,
-                name=repo,
-                file_path=file_path,
-                branch=branch,
+            if file_path in seen:
+                continue
+
+            if not file_path.lower().endswith(
+                self.SOURCE_EXTENSIONS
+            ):
+                continue
+
+            basename = os.path.basename(
+                file_path
+            ).lower()
+
+            # __init__.py 绝大多数只是空文件或转出声明，
+            # 作为「关键源码」没有意义。
+            #
+            # 实测空的 __init__.py 还会让证据层
+            # 因为「纯空白内容」而报错。
+            if basename == "__init__.py":
+                continue
+
+            seen.add(file_path)
+
+            if self._is_low_priority_path(
+                file_path
+            ):
+
+                low.append(file_path)
+
+                continue
+
+            matched = (
+                CodeStructureExtractor
+                .dimensions_for_path(file_path)
             )
 
-            architecture[
-                "modules"
-            ].append(
+            if matched:
+
+                for dimension in matched:
+
+                    by_dimension[
+                        dimension
+                    ].append(file_path)
+
+            elif basename in self.PRIORITY_FILENAMES:
+
+                entry.append(file_path)
+
+            else:
+
+                normal.append(file_path)
+
+        for bucket in (
+            entry,
+            normal,
+            low,
+            *by_dimension.values(),
+        ):
+
+            bucket.sort(
+                key=lambda path: (
+                    path.count("/"),
+                    path,
+                )
+            )
+
+        # 按维度配额取文件。
+        #
+        # 一个文件可能同时命中多个维度
+        # （例如 services/workflow_service.py
+        # 既像 workflow 又像 agents），
+        # 取第一个有余额的维度即可，
+        # 同一个文件不重复占名额。
+        ordered = []
+
+        taken = set()
+
+        for dimension, quota in quotas.items():
+
+            count = 0
+
+            for path in by_dimension[dimension]:
+
+                if count >= quota:
+                    break
+
+                if path in taken:
+                    continue
+
+                taken.add(path)
+
+                ordered.append(path)
+
+                count += 1
+
+        # 配额之外、但仍命中维度的文件。
+        #
+        # 必须回填：
+        # 如果一个仓库的源码全在 agents/ 下，
+        # 配额只取 3 个，
+        # 剩下 17 个名额就会空着，
+        # 白白浪费掉读取机会。
+        remaining_dimension = []
+
+        for paths in by_dimension.values():
+
+            for path in paths:
+
+                if path not in taken:
+
+                    remaining_dimension.append(path)
+
+        remaining_dimension.sort(
+            key=lambda path: (
+                path.count("/"),
+                path,
+            )
+        )
+
+        for bucket in (
+            entry,
+            remaining_dimension,
+            normal,
+            low,
+        ):
+
+            for path in bucket:
+
+                if len(ordered) >= self.MAX_MODULES:
+                    break
+
+                if path in taken:
+                    continue
+
+                taken.add(path)
+
+                ordered.append(path)
+
+        return ordered[: self.MAX_MODULES]
+
+    def _is_low_priority_path(
+        self,
+        file_path,
+    ) -> bool:
+        """判断是否为测试 / 迁移 / 示例类路径。"""
+
+        normalized = str(file_path).lower()
+
+        return any(
+            pattern.search(normalized)
+            for pattern in (
+                self.LOW_PRIORITY_PATH_PATTERNS
+            )
+        )
+
+    def _extract_project_structure(
+        self,
+        input_data,
+        code_structure=None,
+    ):
+        """
+        抽取被分析项目的结构。
+
+        数据来源（全部来自被分析项目本身）：
+
+            code_structure      真实源码的 AST 抽取结果
+            readme              目标项目 README 全文
+            repository.topics   GitHub 官方话题标签
+            repository.description  项目描述
+
+        不读取任何 AIPI 自身的执行数据。
+
+        代码为主、README 为辅：
+
+        - items 里代码符号排在前面，
+          README 条目补在后面；
+        - evidence 保持「README 命中行」的原有含义，
+          代码证据放在新增的 code_evidence 字段，
+          两个字段分开是因为两条证据的性质不同 ——
+          一个是「项目说自己有什么」，
+          一个是「项目代码里确实有什么」；
+        - declared_by 记录结论来自哪一侧。
+
+        保持 declared / items / topics / evidence / reason
+        这五个字段的原有含义与类型不变 ——
+        报告层按它们渲染各维度章。
+        """
+
+        readme = input_data.get(
+            "readme"
+        )
+
+        repository = input_data.get(
+            "repository"
+        )
+
+        if not isinstance(
+            repository,
+            dict,
+        ):
+            repository = {}
+
+        topics = repository.get(
+            "topics"
+        )
+
+        if not isinstance(
+            topics,
+            list,
+        ):
+            topics = []
+
+        description = repository.get(
+            "description"
+        )
+
+        if not isinstance(
+            description,
+            str,
+        ):
+            description = ""
+
+        code_dimensions = {}
+
+        if isinstance(
+            code_structure,
+            dict,
+        ):
+
+            code_dimensions = (
+                code_structure.get("dimensions")
+                or {}
+            )
+
+            if not isinstance(
+                code_dimensions,
+                dict,
+            ):
+                code_dimensions = {}
+
+        # 既没有 README / topics / description，
+        # 也没有从代码里抽出任何信号时，
+        # 才能诚实声明无法抽取。
+        #
+        # 旧版本只看 README 三件套，
+        # 于是 README 为空的仓库
+        # 即使代码结构完整也拿不到任何维度。
+        if (
+            not isinstance(readme, str)
+            and not topics
+            and not description
+            and not self._has_code_signals(
+                code_dimensions
+            )
+        ):
+            return {
+                "available": False,
+                "basis": "code+readme+topics",
+                "reason": (
+                    "被分析项目没有可用 README、"
+                    "topics 或 description，"
+                    "也没有读取到任何源码，"
+                    "无法抽取项目结构。"
+                ),
+                "dimensions": {},
+                "code_extraction": (
+                    self._code_extraction_meta(
+                        code_structure
+                    )
+                ),
+            }
+
+        lines = (
+            readme.splitlines()
+            if isinstance(readme, str)
+            else []
+        )
+
+        dimensions = {}
+
+        for dimension, keywords in (
+            self.STRUCTURE_KEYWORDS.items()
+        ):
+            dimensions[dimension] = (
+                self._merge_dimension(
+                    dimension,
+                    self._extract_dimension_signals(
+                        dimension,
+                        keywords,
+                        lines,
+                        topics,
+                        description,
+                    ),
+                    code_dimensions.get(
+                        dimension
+                    ),
+                )
+            )
+
+        return {
+            "available": True,
+            "basis": "code+readme+topics",
+            "reason": None,
+            "dimensions": dimensions,
+            "code_extraction": (
+                self._code_extraction_meta(
+                    code_structure
+                )
+            ),
+        }
+
+    @staticmethod
+    def _has_code_signals(
+        code_dimensions: dict,
+    ) -> bool:
+        """代码侧是否抽到了任何条目。"""
+
+        if not isinstance(
+            code_dimensions,
+            dict,
+        ):
+            return False
+
+        return any(
+            isinstance(entry, dict)
+            and entry.get("items")
+            for entry in code_dimensions.values()
+        )
+
+    @staticmethod
+    def _code_extraction_meta(
+        code_structure,
+    ) -> dict:
+        """
+        记录代码抽取的执行情况。
+
+        解析失败的文件必须如实带出来，
+        否则「没抽到东西」与
+        「文件根本没解析成功」会混为一谈。
+        """
+
+        if not isinstance(
+            code_structure,
+            dict,
+        ):
+            return {
+                "available": False,
+                "reason": "未执行代码结构抽取。",
+                "parsed_files": 0,
+                "unparsed": [],
+            }
+
+        return {
+            "available": bool(
+                code_structure.get("available")
+            ),
+            "parsed_files": (
+                code_structure.get(
+                    "parsed_files",
+                    0,
+                )
+            ),
+            "unparsed": list(
+                code_structure.get("unparsed")
+                or []
+            ),
+        }
+
+    def _merge_dimension(
+        self,
+        dimension: str,
+        readme_entry: dict,
+        code_entry,
+    ) -> dict:
+        """
+        合并「代码证据」与「README 自述」。
+
+        代码在前，README 在后。
+        """
+
+        if not isinstance(
+            code_entry,
+            dict,
+        ):
+            code_entry = {}
+
+        code_items = [
+            item
+            for item in (
+                code_entry.get("items") or []
+            )
+            if isinstance(item, str)
+        ]
+
+        code_evidence = [
+            item
+            for item in (
+                code_entry.get("evidence") or []
+            )
+            if isinstance(item, dict)
+        ]
+
+        readme_items = list(
+            readme_entry.get("items") or []
+        )
+
+        # 按小写去重，避免同一个符号
+        # 被代码与 README 各记一次。
+        seen = set()
+
+        items = []
+
+        for item in code_items + readme_items:
+
+            lowered = item.lower()
+
+            if lowered in seen:
+                continue
+
+            seen.add(lowered)
+
+            if len(items) >= self.MAX_MERGED_ITEMS:
+                break
+
+            items.append(item)
+
+        declared_by = None
+
+        if code_items:
+            declared_by = "code"
+
+        if readme_items or readme_entry.get(
+            "topics"
+        ) or readme_entry.get("evidence"):
+
+            declared_by = (
+                "code+readme"
+                if declared_by == "code"
+                else "readme"
+            )
+
+        declared = declared_by is not None
+
+        return {
+            # 原字段：类型与含义都不变。
+            "declared": declared,
+            "items": items,
+            "topics": readme_entry.get(
+                "topics"
+            )
+            or [],
+            "evidence": readme_entry.get(
+                "evidence"
+            )
+            or [],
+            "reason": (
+                None
+                if declared
+                else (
+                    "被分析项目的代码、README / "
+                    "topics / description 中"
+                    f"都没有 {dimension} 相关声明。"
+                )
+            ),
+
+            # 新增字段：不改变上面五个的含义，
+            # 只是把来源与代码证据显式带出来。
+            "declared_by": declared_by,
+            "code_evidence": code_evidence,
+            # 实现明细：函数签名 / 调用链 / 关键常量。
+            #
+            # 必须在这里透传，
+            # 否则抽取器辛苦解析出来的明细
+            # 会在合并这一步被丢掉。
+            "details": [
+                item
+                for item in (
+                    code_entry.get("details") or []
+                )
+                if isinstance(item, dict)
+            ],
+        }
+
+    def _extract_dimension_signals(
+        self,
+        dimension,
+        keywords,
+        lines,
+        topics,
+        description,
+    ):
+        """
+        抽取单个维度的自述信号。
+
+        返回：
+
+            declared   是否在项目自述中被提到
+            items      命中的标识（反引号 / 粗体单 token）
+            topics     命中的 GitHub topics
+            evidence   命中行（含行号与原文）
+            reason     declared=False 时的说明
+        """
+
+        matched_topics = [
+            topic
+            for topic in topics
+            if isinstance(topic, str)
+            and self._line_matches(topic, keywords)
+        ]
+
+        items = []
+        seen_items = set()
+
+        # 先找出所有命中行。
+        hits = [
+            (index, line)
+            for index, line in enumerate(lines, start=1)
+            if line.strip()
+            and self._line_matches(line, keywords)
+        ]
+
+        # 产生了标识的行优先作为证据。
+        #
+        # 否则 README 开头的徽章 / 标题行
+        # 会把证据额度占满，
+        # 真正带信息的行反而抽不到。
+        identified = []
+        plain = []
+
+        for index, line in hits:
+
+            if self._collect_items(
+                line,
+                keywords,
+                items,
+                seen_items,
+                dimension=dimension,
+            ):
+                identified.append((index, line))
+            else:
+                plain.append((index, line))
+
+        evidence = []
+
+        for index, line in (
+            identified + plain
+        )[: self.MAX_EVIDENCE_LINES]:
+
+            evidence.append(
                 {
-                    "file_path": file_path,
-                    "content": content,
+                    "file_path": "README.md",
+                    "line_start": index,
+                    "line_end": index,
+                    "text": line.strip()[:200],
                 }
             )
 
-        return architecture
+        # description 也是项目自述，
+        # 但没有 README 行号，
+        # 因此只用来补充 items，
+        # 不计入 evidence 行。
+        if description and self._line_matches(
+            description,
+            keywords,
+        ):
+
+            self._collect_items(
+                description,
+                keywords,
+                items,
+                seen_items,
+                dimension=dimension,
+            )
+
+        declared = bool(
+            evidence
+            or items
+            or matched_topics
+        )
+
+        return {
+            "declared": declared,
+            "items": items,
+            "topics": matched_topics,
+            "evidence": evidence,
+            "reason": (
+                None
+                if declared
+                else (
+                    "被分析项目的 README / topics / "
+                    f"description 中没有 {dimension} "
+                    "相关声明。"
+                )
+            ),
+        }
+
+    @staticmethod
+    def _line_matches(
+        text,
+        keywords,
+    ):
+        """判断文本是否命中关键词（词边界匹配）。"""
+
+        lowered = text.lower()
+
+        return any(
+            re.search(
+                r"\b" + re.escape(keyword) + r"\b",
+                lowered,
+            )
+            for keyword in keywords
+        )
+
+    def _collect_items(
+        self,
+        text,
+        keywords,
+        items,
+        seen_items,
+        dimension,
+    ):
+        """
+        从命中行里收集标识。
+
+        规则（避免维度之间互相泄漏）：
+
+        - **粗体** token 必须自身命中本维度关键词，
+          避免把 **Executor** 这类角色名记进 tools 维度
+        - `反引号` token 同样必须命中本维度关键词；
+          只有 DIMENSIONS_ACCEPTING_CODE_IDENTIFIERS
+          里的维度（tools）例外，
+          因为它需要保留工具调用名
+
+        返回是否收集到任何标识。
+        """
+
+        accept_code_identifiers = (
+            dimension
+            in self.DIMENSIONS_ACCEPTING_CODE_IDENTIFIERS
+        )
+
+        collected = False
+
+        for match in (
+            self._IDENTIFIER_PATTERN
+            .finditer(text)
+        ):
+
+            code_token = match.group(1)
+
+            bold_token = match.group(2)
+
+            token = (
+                code_token
+                or bold_token
+                or ""
+            ).strip()
+
+            if not self._SINGLE_TOKEN_PATTERN.fullmatch(
+                token
+            ):
+                continue
+
+            matches_keywords = self._line_matches(
+                token,
+                keywords,
+            )
+
+            if not matches_keywords:
+
+                # 粗体 token 一律要求命中关键词。
+                if bold_token is not None:
+                    continue
+
+                # 代码 token 只有特定维度例外。
+                if not accept_code_identifiers:
+                    continue
+
+            lowered = token.lower()
+
+            collected = True
+
+            if lowered in seen_items:
+                continue
+
+            seen_items.add(lowered)
+
+            if len(items) < self.MAX_ITEMS:
+                items.append(token)
+
+        if self._collect_bullet_phrases(
+            text,
+            items,
+            seen_items,
+        ):
+            collected = True
+
+        return collected
+
+    def _collect_bullet_phrases(
+        self,
+        text,
+        items,
+        seen_items,
+    ) -> bool:
+        """
+        把列表行的逗号分段作为条目。
+
+        只对以 "- " / "* " 开头的行生效，
+        因为这类行是 README 里最常见的
+        「罗列能力」写法。
+
+        条目是 README 原文的切片，
+        不加工、不改写。
+        """
+
+        bullet = self._BULLET_PATTERN.match(text)
+
+        if bullet is None:
+            return False
+
+        collected = False
+
+        for segment in bullet.group(1).split(","):
+
+            phrase = segment.strip()
+
+            if not phrase:
+                continue
+
+            if len(phrase) > self.MAX_BULLET_ITEM_CHARS:
+                continue
+
+            collected = True
+
+            lowered = phrase.lower()
+
+            if lowered in seen_items:
+                continue
+
+            seen_items.add(lowered)
+
+            if len(items) < self.MAX_ITEMS:
+                items.append(phrase)
+
+        return collected
 ```
 
 ### 📄 `app/skills/technology_analysis_skill.py`
@@ -8116,6 +10099,7 @@ Technology Analysis Skill。
 2. GitHub Repository 远程文件分析
 """
 
+from app.core.exceptions import ToolError
 from app.skills.base import BaseSkill
 
 
@@ -8212,14 +10196,30 @@ class TechnologyAnalysisSkill(
 
         contents = {}
 
+        failures = {}
+
         for file_path in target_files:
 
-            content = await file_reader.execute(
-                owner=owner,
-                name=repo,
-                file_path=file_path,
-                branch=branch,
-            )
+            # 单个配置文件读取失败（超时 / 网络抖动）
+            # 不应中断整个分析：
+            # 跳过该文件并记录原因，
+            # 技术栈仍然基于读到的其它文件得出。
+            try:
+
+                content = await file_reader.execute(
+                    owner=owner,
+                    name=repo,
+                    file_path=file_path,
+                    branch=branch,
+                )
+
+            except ToolError as error:
+
+                failures[file_path] = (
+                    str(error) or type(error).__name__
+                )
+
+                continue
 
             if content:
                 contents[file_path] = content
@@ -8276,17 +10276,22 @@ class TechnologyAnalysisSkill(
         if "docker" in all_content:
             deployment.append("Docker")
 
+        technology_stack = {
+            "frameworks": frameworks,
+            "database": databases,
+            "llm": llms,
+            "embedding": embeddings,
+            "deployment": deployment,
+            "source_files": list(
+                contents.keys()
+            ),
+        }
+
+        if failures:
+            technology_stack["read_failures"] = failures
+
         return {
-            "technology_stack": {
-                "frameworks": frameworks,
-                "database": databases,
-                "llm": llms,
-                "embedding": embeddings,
-                "deployment": deployment,
-                "source_files": list(
-                    contents.keys()
-                ),
-            }
+            "technology_stack": technology_stack
         }
 ```
 
@@ -8305,10 +10310,10 @@ Evidence Analysis Skill。
 3. Evidence MySQL 持久化
 """
 
-from app.skills.base import BaseSkill
 from app.services.evidence_service import (
     EvidenceService,
 )
+from app.skills.base import BaseSkill
 
 
 class EvidenceAnalysisSkill(
@@ -8322,6 +10327,9 @@ class EvidenceAnalysisSkill(
         "Extract traceable evidence from "
         "repository analysis results."
     )
+
+    # 单条源码证据最多保存多少字符。
+    MAX_EVIDENCE_CHARS = 1500
 
     async def execute(
         self,
@@ -8387,6 +10395,8 @@ class EvidenceAnalysisSkill(
 
         )
 
+        persist_failures = []
+
         if (
             session is not None
             and repository_id is not None
@@ -8399,32 +10409,52 @@ class EvidenceAnalysisSkill(
 
             for item in unique:
 
-                record = (
-                    await service.create_evidence(
-                        repository_id=repository_id,
-                        source_type=item[
-                            "source_type"
-                        ],
-                        source_url=item.get(
-                            "source_url"
-                        ),
-                        file_path=item.get(
-                            "file_path"
-                        ),
-                        line_start=item.get(
-                            "line_start"
-                        ),
-                        line_end=item.get(
-                            "line_end"
-                        ),
-                        content=item[
-                            "content"
-                        ],
-                        verification_status=(
-                            "UNVERIFIED"
-                        ),
+                # 单条证据落库失败不应中断整个分析：
+                # 记录原因后继续处理其它证据。
+                try:
+
+                    record = (
+                        await service.create_evidence(
+                            repository_id=repository_id,
+                            source_type=item[
+                                "source_type"
+                            ],
+                            source_url=item.get(
+                                "source_url"
+                            ),
+                            file_path=item.get(
+                                "file_path"
+                            ),
+                            line_start=item.get(
+                                "line_start"
+                            ),
+                            line_end=item.get(
+                                "line_end"
+                            ),
+                            content=item[
+                                "content"
+                            ],
+                            verification_status=(
+                                "UNVERIFIED"
+                            ),
+                        )
                     )
-                )
+
+                except Exception as error:
+
+                    persist_failures.append(
+                        {
+                            "file_path": item.get(
+                                "file_path"
+                            ),
+                            "error": (
+                                str(error)
+                                or type(error).__name__
+                            ),
+                        }
+                    )
+
+                    continue
 
                 item = dict(item)
 
@@ -8439,6 +10469,7 @@ class EvidenceAnalysisSkill(
         return {
             "evidence": unique,
             "count": len(unique),
+            "persist_failures": persist_failures,
         }
 
     async def _from_qdrant(
@@ -8528,8 +10559,113 @@ class EvidenceAnalysisSkill(
                 }
             )
 
-        architecture = input_data.get(
-            "architecture"
+        modules = EvidenceAnalysisSkill._modules(
+            input_data
+        )
+
+        for module in modules:
+
+            if not isinstance(
+                module,
+                dict,
+            ):
+                continue
+
+            # 读取失败的模块不生成证据，
+            # 否则会把空内容当成源码证据。
+            if module.get("error"):
+                continue
+
+            file_path = module.get(
+                "file_path"
+            )
+
+            content = module.get(
+                "content"
+            )
+
+            if isinstance(
+                content,
+                dict,
+            ):
+                content = content.get(
+                    "content",
+                    "",
+                )
+
+            # 纯空白也算「没有内容」。
+            #
+            # 真实事故：空的 __init__.py 只有 1 个换行符，
+            # 通过 `if not content` 检查后
+            # 被证据存储层以
+            # "Evidence content cannot be empty." 拒绝，
+            # 异常冒泡导致整个 5-Agent 计划 FAILED。
+            content = str(content)
+
+            if not content.strip():
+                continue
+
+            # 限制单条证据长度：
+            # 源码文件可能有数万字符，
+            # 全部落库会让证据表迅速膨胀。
+            excerpt = content[
+                : EvidenceAnalysisSkill.MAX_EVIDENCE_CHARS
+            ]
+
+            # 摘录可能跳过了开头的 import 段，
+            # 行号要跟着偏移，
+            # 否则会写成「file:1-30」但内容其实是第 30 行开始的。
+            start_line = module.get(
+                "start_line",
+                1,
+            )
+
+            if not isinstance(
+                start_line,
+                int,
+            ) or start_line < 1:
+                start_line = 1
+
+            evidence.append(
+                {
+                    "source_type": "github",
+                    "source_url": repo_url,
+                    "file_path": file_path,
+                    "line_start": start_line,
+                    "line_end": (
+                        start_line
+                        + len(excerpt.splitlines())
+                        - 1
+                    ),
+                    "content": excerpt,
+                    "metadata": {},
+                }
+            )
+
+        return evidence
+
+    @staticmethod
+    def _modules(
+        input_data,
+    ) -> list:
+        """
+        取出架构分析产出的 modules。
+
+        修复点：
+
+        旧代码只读 input_data["architecture"]，
+        但真实数据结构里没有这个 key
+        （真实 key 是 architecture_analysis_agent，
+        且 PlanExecutorNode 会把结果拍平到顶层 modules），
+        因此这个分支以前从未执行过，
+        导致 Evidence 只有 README、没有源码。
+        """
+
+        architecture = (
+            input_data.get("architecture")
+            or input_data.get(
+                "architecture_analysis_agent"
+            )
         )
 
         if isinstance(
@@ -8538,53 +10674,18 @@ class EvidenceAnalysisSkill(
         ):
 
             modules = architecture.get(
-                "modules",
-                [],
+                "modules"
             )
 
-            for module in modules:
+            if isinstance(modules, list):
+                return modules
 
-                if not isinstance(
-                    module,
-                    dict,
-                ):
-                    continue
+        modules = input_data.get("modules")
 
-                file_path = module.get(
-                    "file_path"
-                )
+        if isinstance(modules, list):
+            return modules
 
-                content = module.get(
-                    "content"
-                )
-
-                if isinstance(
-                    content,
-                    dict,
-                ):
-                    content = content.get(
-                        "content",
-                        "",
-                    )
-
-                if not content:
-                    continue
-
-                evidence.append(
-                    {
-                        "source_type": "github",
-                        "source_url": repo_url,
-                        "file_path": file_path,
-                        "line_start": 1,
-                        "line_end": len(
-                            str(content).splitlines()
-                        ),
-                        "content": str(content),
-                        "metadata": {},
-                    }
-                )
-
-        return evidence
+        return []
 ```
 
 ### 📄 `app/skills/report_generation_skill.py`
@@ -8593,378 +10694,2105 @@ class EvidenceAnalysisSkill(
 
 ````python
 """
-报告生成 Skill。
+Report Generation Skill。
 
-负责：
+负责生成 Project Intelligence Report。
 
-AnalysisResult
-    ↓
-Markdown Report
+Phase 12 文档 15.3 要求报告至少包含：
+
+    项目概览 / 技术栈 / 目录结构 / Agent架构 / Workflow
+    / Skill / Tool / RAG / Memory / 数据库 / 关键源码 / Evidence
+
+实际产出调整为：
+
+    00 结论摘要 + 01-11 章
+
+改动与原因：
+
+  关键源码章已移除
+      它展示的是每个文件开头的固定字符数，
+      而 Python 文件开头必然是 import 块，
+      渲染出来只有一堆 import，对理解项目没有帮助。
+
+  04-09 章跟随「本次重点」展开或压缩
+      用户在问题里点名了某个模块时
+      （例如「分析项目的 agent」），
+      重点章展开实现明细，
+      其余章压成一行要点并注明未展开 ——
+      否则把每章都铺开写一遍，重点就被淹没了。
+
+各章末尾的「综合判断」来自 ReportSynthesisSkill
+（由 LLM 基于已采集事实归纳，只归纳不推测）。
+
+渲染方式
+========
+
+01-12 章由本 Skill 确定性地渲染成 markdown
+（表格 / 列表 / 带语言标注的代码块），
+不再把中间数据结构 dump 成 JSON。
+
+这样做的好处：
+
+- 数值仍是一字不改的真实数据，可逐条复核；
+- 不经过 LLM，
+  因此 LLM 不可用时报告依然完整可读，
+  也不存在幻觉面。
+
+每个字段的取值都来自各 Agent 的真实产出，
+渲染层只负责排版，不补充、不推断任何信息。
+
+本 Skill 的硬性约束：
+
+- 所有章节内容都来自被分析项目的真实分析结果
+- 取不到的章节必须明确写「真实数据不存在」并给出原因
+- 不使用任何硬编码占位内容
+  （旧版本曾把 AIPI 自己的 Tool 列表和
+   {"context_enabled": true} 写进报告，
+   那会让报告看起来完整但内容是假的）
+- 「综合判断」不可用时静默省略，
+  原始数据章节必须完整保留
 """
 
-
 import json
+import re
 
-
+from app.project_analysis.analysis_focus import (
+    AnalysisFocus,
+)
 from app.skills.base import BaseSkill
-
 
 
 class ReportGenerationSkill(
     BaseSkill
 ):
-    """
-    生成项目分析报告。
-    """
-
+    """项目智能分析报告生成能力。"""
 
     name = "report_generation"
 
-
     description = (
-        "Generate final GitHub "
-        "project intelligence report."
+        "Generate final GitHub project "
+        "intelligence report."
     )
 
+    # 维度章节 -> 综合分析里的维度名。
+    #
+    # 章标题里的名字（Agent 架构 / Skill）
+    # 与综合分析里的名字（agents / skills）
+    # 不一致，且顺序需要显式固定，
+    # 因此用一张表对应起来。
+    DIMENSION_SECTIONS = (
+        ("04 Agent 架构", "agents"),
+        ("05 Workflow", "workflow"),
+        ("06 Skill", "skills"),
+        ("07 Tool", "tools"),
+        ("08 RAG", "rag"),
+        ("09 Memory", "memory"),
+    )
 
+    # 结论摘要各小节的展示名。
+    SUMMARY_FIELDS = (
+        ("core_design", "核心设计"),
+        ("technology_choices", "技术选型"),
+        ("highlights", "亮点"),
+        ("risks", "风险与缺口"),
+        ("use_cases", "适用场景"),
+    )
 
     async def execute(
         self,
         context,
         input_data: dict,
     ):
-        """
-        生成 Markdown 报告。
-        """
-
-
         exporter = context.tools.get(
             "report_export"
         )
 
-
         title = input_data.get(
             "title",
-            "GitHub Project Intelligence Report",
+            "Repository Analysis Report",
         )
-
 
         filename = input_data.get(
             "filename",
             "repository_analysis.md",
         )
 
-
-        # =========================
-        # Phase12:
-        # 使用标准 AnalysisResult
-        # =========================
-
-        report_data = (
-            input_data.get(
-                "analysis_result"
-            )
-            or input_data
+        content = self._build_report(
+            input_data
         )
 
-
-        content = (
-            self._build_markdown(
-                report_data
-            )
-        )
-
-
-
-        # =========================
-        # 优先使用 ReportExportTool
-        # =========================
-
-        if exporter is not None:
-
-            report = await exporter.execute(
-                title=title,
-                content=content,
-                filename=filename,
-            )
-
-
+        if exporter is None:
             return {
-
-                "report":
-                    report,
-
-                "content":
-                    content,
+                "report": {
+                    "format": "markdown",
+                    "content": content,
+                }
             }
 
-
-
-        # fallback
+        report = await exporter.execute(
+            title=title,
+            content=content,
+            filename=filename,
+        )
 
         return {
-
-            "report": {
-
-                "format":
-                    "markdown",
-
-                "content":
-                    content,
-            },
-
-            "content":
-                content,
+            "report": report,
+            "content": content,
         }
 
-
-
-    @staticmethod
-    def _build_markdown(
+    @classmethod
+    def _build_report(
+        cls,
         data: dict,
-    ):
+    ) -> str:
         """
-        构造 Markdown。
+        按 Phase 12 文档 15.3 生成报告。
+
+        章节顺序与文档一致，内容全部来自真实数据。
         """
 
+        technology_stack = data.get(
+            "technology_stack"
+        )
 
-        sections = []
+        if not isinstance(
+            technology_stack,
+            dict,
+        ):
+            technology_stack = {}
 
+        architecture = (
+            data.get("architecture")
+            or data.get(
+                "architecture_analysis_agent"
+            )
+        )
 
+        if not isinstance(
+            architecture,
+            dict,
+        ):
+            architecture = {}
 
-        # =====================
-        # 01 项目概览
-        # =====================
+        project_structure = data.get(
+            "project_structure"
+        )
 
-        sections.append(
+        if not isinstance(
+            project_structure,
+            dict,
+        ):
+            project_structure = {}
 
-            ReportGenerationSkill._section(
+        # 综合分析结论。
+        #
+        # 不可用时为 None，
+        # 此时 00 章仍会渲染，
+        # 但内容明确写「综合分析不可用」与原因，
+        # 而不是让这一章凭空消失
+        # （消失会让人误以为报告本来就没有结论层）。
+        synthesis = data.get("synthesis")
 
+        if not isinstance(
+            synthesis,
+            dict,
+        ):
+            synthesis = {}
+
+        # 用于在各章末尾给出深挖接口的调用地址。
+        # 拿不到时渲染成 {run_id} 占位。
+        run_id = data.get("run_id")
+
+        # 本次分析的重点维度。
+        #
+        # research_plan 里带 focus；
+        # 旧 run 没有该字段时 from_plan 会退回
+        # 用 question 做关键词匹配。
+        focus = AnalysisFocus.from_plan(
+            data.get("research_plan")
+        )
+
+        sections = [
+            cls._summary_section(
+                synthesis,
+                question=data.get("question"),
+                focus=focus,
+            ),
+
+            cls._section(
                 "01 项目概览",
-
-                data.get(
-                    "project_overview",
-                    {},
+                cls._overview_markdown(
+                    cls._project_overview(data)
                 ),
-            )
-        )
+            ),
 
-
-
-        # =====================
-        # 02 技术栈
-        # =====================
-
-        sections.append(
-
-            ReportGenerationSkill._section(
-
+            cls._section(
                 "02 技术栈",
-
-                data.get(
-                    "technology_stack",
-                    {},
+                cls._technology_markdown(
+                    technology_stack
                 ),
-            )
-        )
+            ),
 
-
-
-        # =====================
-        # 03 Agent 架构
-        # =====================
-
-        sections.append(
-
-            ReportGenerationSkill._section(
-
-                "03 Agent 架构",
-
-                data.get(
-                    "agents",
-                    [],
+            cls._section(
+                "03 目录结构",
+                cls._directory_markdown(
+                    # PlanExecutorNode 会把
+                    # architecture 的产出拍平到顶层，
+                    # 因此两个位置都要看。
+                    architecture.get(
+                        "directory_structure"
+                    )
+                    or data.get(
+                        "directory_structure"
+                    )
                 ),
-            )
-        )
+            ),
 
-
-
-        # =====================
-        # 04 Workflow
-        # =====================
-
-        sections.append(
-
-            ReportGenerationSkill._section(
-
-                "04 Workflow",
-
-                data.get(
-                    "workflow",
-                    {},
+            cls._section_with_judgment(
+                "04 Agent 架构",
+                cls._dimension_markdown(
+                    cls._structure_dimension(
+                        project_structure,
+                        "agents",
+                    ),
+                    dimension="agents",
+                    run_id=run_id,
+                    focus=focus,
                 ),
-            )
-        )
+                synthesis,
+                "agents",
+            ),
 
-
-
-        # =====================
-        # 05 Skill
-        # =====================
-
-        sections.append(
-
-            ReportGenerationSkill._section(
-
-                "05 Skill",
-
-                data.get(
-                    "skills",
-                    [],
+            cls._section_with_judgment(
+                "05 Workflow",
+                cls._dimension_markdown(
+                    cls._structure_dimension(
+                        project_structure,
+                        "workflow",
+                    ),
+                    dimension="workflow",
+                    run_id=run_id,
+                    focus=focus,
                 ),
-            )
-        )
+                synthesis,
+                "workflow",
+            ),
 
-
-
-        # =====================
-        # 06 Tool
-        # =====================
-
-        sections.append(
-
-            ReportGenerationSkill._section(
-
-                "06 Tool",
-
-                data.get(
-                    "tools",
-                    [],
+            cls._section_with_judgment(
+                "06 Skill",
+                cls._dimension_markdown(
+                    cls._structure_dimension(
+                        project_structure,
+                        "skills",
+                    ),
+                    dimension="skills",
+                    run_id=run_id,
+                    focus=focus,
                 ),
-            )
-        )
+                synthesis,
+                "skills",
+            ),
 
-
-
-        # =====================
-        # 07 RAG / Evidence
-        # =====================
-
-        sections.append(
-
-            ReportGenerationSkill._section(
-
-                "07 RAG / Evidence",
-
-                {
-
-                    "rag":
-                        data.get(
-                            "rag",
-                            {},
-                        ),
-
-                    "evidence":
-                        data.get(
-                            "evidence",
-                            [],
-                        ),
-                },
-            )
-        )
-
-
-
-        # =====================
-        # 08 Memory
-        # =====================
-
-        sections.append(
-
-            ReportGenerationSkill._section(
-
-                "08 Memory / Context",
-
-                {
-
-                    "memory":
-                        data.get(
-                            "memory",
-                            {},
-                        ),
-                },
-            )
-        )
-
-
-
-        # =====================
-        # 09 Database
-        # =====================
-
-        sections.append(
-
-            ReportGenerationSkill._section(
-
-                "09 Database",
-
-                data.get(
-                    "database",
-                    {},
+            cls._section_with_judgment(
+                "07 Tool",
+                cls._dimension_markdown(
+                    cls._structure_dimension(
+                        project_structure,
+                        "tools",
+                    ),
+                    dimension="tools",
+                    run_id=run_id,
+                    focus=focus,
                 ),
-            )
-        )
+                synthesis,
+                "tools",
+            ),
 
+            cls._section_with_judgment(
+                "08 RAG",
+                cls._dimension_markdown(
+                    cls._rag_dimension(
+                        project_structure,
+                        technology_stack,
+                    ),
+                    dimension="rag",
+                    run_id=run_id,
+                    focus=focus,
+                ),
+                synthesis,
+                "rag",
+            ),
 
+            cls._section_with_judgment(
+                "09 Memory",
+                cls._dimension_markdown(
+                    cls._structure_dimension(
+                        project_structure,
+                        "memory",
+                    ),
+                    dimension="memory",
+                    run_id=run_id,
+                    focus=focus,
+                ),
+                synthesis,
+                "memory",
+            ),
+
+            cls._section(
+                "10 数据库",
+                cls._database_markdown(
+                    technology_stack
+                ),
+            ),
+
+            # 「关键源码」章已移除。
+            #
+            # 它展示的是每个文件开头的固定字符数，
+            # 而 Python 文件开头必然是 import 块 ——
+            # 实际渲染出来就是一堆
+            # `import sqlite3` / `from decimal import Decimal`，
+            # 对理解项目没有任何帮助。
+            # 想看真实实现请看各模块章的「证据锚点」，
+            # 或对该模块做深挖。
+
+            cls._section(
+                "11 Evidence",
+                cls._evidence_markdown(
+                    data.get("evidence")
+                ),
+            ),
+        ]
 
         return "\n\n".join(
             sections
         )
 
+    # ------------------------------------------------------------------
+    # 通用渲染工具
+    # ------------------------------------------------------------------
 
+    @staticmethod
+    def _text(value) -> str:
+        """把任意标量渲染成表格里的一个值。"""
+
+        if value is None:
+            return "—"
+
+        if isinstance(value, bool):
+            return "是" if value else "否"
+
+        if isinstance(
+            value,
+            (list, tuple),
+        ):
+            items = [
+                str(item).strip()
+                for item in value
+                if str(item).strip()
+            ]
+
+            return ", ".join(items) if items else "—"
+
+        text = str(value).strip()
+
+        return text or "—"
+
+    @staticmethod
+    def _table(
+        headers: list,
+        rows: list,
+    ) -> str:
+        """渲染 markdown 表格。"""
+
+        lines = [
+            "| "
+            + " | ".join(headers)
+            + " |",
+            "| "
+            + " | ".join(
+                "---" for _ in headers
+            )
+            + " |",
+        ]
+
+        for row in rows:
+
+            lines.append(
+                "| "
+                + " | ".join(
+                    str(cell) for cell in row
+                )
+                + " |"
+            )
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _bullets(items: list) -> str:
+        """渲染 markdown 无序列表。"""
+
+        return "\n".join(
+            f"- {item}" for item in items
+        )
+
+    @staticmethod
+    def _is_missing(value) -> bool:
+        """判断是否为 _missing() 产出的「数据不存在」标记。"""
+
+        return (
+            isinstance(value, dict)
+            and value.get("available") is False
+            and "reason" in value
+        )
+
+    @classmethod
+    def _missing_text(
+        cls,
+        reason: str,
+    ) -> str:
+        """
+        渲染「数据不存在」。
+
+        原因文本原样输出：
+        它是报告里唯一说明「为什么没有」的线索。
+        """
+
+        return reason
+
+    # ------------------------------------------------------------------
+    # 各章渲染
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def _overview_markdown(
+        cls,
+        overview: dict,
+    ) -> str:
+        """01 项目概览：字段表格。"""
+
+        if cls._is_missing(overview):
+            return cls._missing_text(
+                overview["reason"]
+            )
+
+        rows = [
+            (
+                "项目全名",
+                cls._text(
+                    overview.get("full_name")
+                ),
+            ),
+            (
+                "描述",
+                cls._text(
+                    overview.get("description")
+                ),
+            ),
+            (
+                "主语言",
+                cls._text(
+                    overview.get("language")
+                ),
+            ),
+            (
+                "Topics",
+                cls._text(
+                    overview.get("topics")
+                ),
+            ),
+            (
+                "Stars / Forks",
+                (
+                    f"{cls._text(overview.get('stars'))}"
+                    " / "
+                    f"{cls._text(overview.get('forks'))}"
+                ),
+            ),
+            (
+                "Open Issues",
+                cls._text(
+                    overview.get("open_issues")
+                ),
+            ),
+            (
+                "License",
+                cls._text(
+                    overview.get("license")
+                ),
+            ),
+            (
+                "默认分支",
+                cls._text(
+                    overview.get(
+                        "default_branch"
+                    )
+                ),
+            ),
+            (
+                "仓库体积",
+                (
+                    f"{cls._text(overview.get('size_kb'))}"
+                    " KB"
+                ),
+            ),
+            (
+                "创建 / 最近推送",
+                (
+                    f"{cls._text(overview.get('created_at'))}"
+                    " / "
+                    f"{cls._text(overview.get('pushed_at'))}"
+                ),
+            ),
+            (
+                "README 字符数",
+                cls._text(
+                    overview.get(
+                        "readme_characters"
+                    )
+                ),
+            ),
+            (
+                "地址",
+                cls._text(
+                    overview.get("html_url")
+                ),
+            ),
+        ]
+
+        return cls._table(
+            ["字段", "值"],
+            rows,
+        )
+
+    @classmethod
+    def _technology_markdown(
+        cls,
+        technology_stack: dict,
+    ) -> str:
+        """
+        02 技术栈：分类表格。
+
+        技术栈是「把若干配置文件拼成一个大字符串
+        再做子串匹配」得到的，
+        因此无法把某一项准确归到某一个文件，
+        这里只列出「检测依据」扫过哪些文件，
+        不编造逐项的文件归属。
+        """
+
+        if not technology_stack:
+            return cls._missing_text(
+                "真实数据不存在"
+                "（Technology Agent 未产出 "
+                "technology_stack）。"
+            )
+
+        labels = (
+            ("frameworks", "框架"),
+            ("llm", "LLM"),
+            ("database", "数据库"),
+            ("embedding", "Embedding"),
+            ("deployment", "部署"),
+        )
+
+        rows = []
+
+        for key, label in labels:
+
+            values = technology_stack.get(
+                key
+            )
+
+            if isinstance(
+                values,
+                (list, tuple),
+            ) and values:
+
+                rendered = ", ".join(
+                    str(item)
+                    for item in values
+                )
+
+            else:
+
+                rendered = "未检测到"
+
+            rows.append((label, rendered))
+
+        blocks = [
+            cls._table(
+                ["类别", "检测结果"],
+                rows,
+            )
+        ]
+
+        source_files = technology_stack.get(
+            "source_files"
+        )
+
+        if source_files:
+
+            blocks.append(
+                "**检测依据**（以下文件被读取后做关键词匹配）："
+                "\n\n"
+                + cls._bullets(
+                    f"`{path}`"
+                    for path in source_files
+                )
+            )
+
+        failures = technology_stack.get(
+            "read_failures"
+        )
+
+        if isinstance(failures, dict) and failures:
+
+            blocks.append(
+                "**读取失败**：\n\n"
+                + cls._bullets(
+                    f"`{path}` — {reason}"
+                    for path, reason
+                    in failures.items()
+                )
+            )
+
+        return "\n\n".join(blocks)
+
+    @classmethod
+    def _directory_markdown(
+        cls,
+        directory,
+    ) -> str:
+        """03 目录结构：文件数 + 顶层目录表 + 关键文件。"""
+
+        if not isinstance(
+            directory,
+            dict,
+        ) or not directory.get("available"):
+
+            return cls._missing_text(
+                "真实数据不存在"
+                "（未获取到仓库文件树）。"
+            )
+
+        blocks = [
+            f"共 {cls._text(directory.get('total_files'))} 个文件。"
+        ]
+
+        top_level = directory.get(
+            "top_level_dirs"
+        )
+
+        if isinstance(top_level, list) and top_level:
+
+            blocks.append(
+                cls._table(
+                    ["顶层目录", "文件数"],
+                    [
+                        (
+                            cls._text(
+                                item.get("name")
+                            ),
+                            cls._text(
+                                item.get(
+                                    "file_count"
+                                )
+                            ),
+                        )
+                        for item in top_level
+                        if isinstance(item, dict)
+                    ],
+                )
+            )
+
+        by_extension = directory.get(
+            "by_extension"
+        )
+
+        if isinstance(
+            by_extension,
+            dict,
+        ) and by_extension:
+
+            blocks.append(
+                "**按文件类型**\n\n"
+                + cls._table(
+                    ["扩展名", "文件数"],
+                    [
+                        (
+                            cls._text(name),
+                            cls._text(count),
+                        )
+                        for name, count
+                        in by_extension.items()
+                    ],
+                )
+            )
+
+        key_files = directory.get(
+            "key_files"
+        )
+
+        if isinstance(key_files, list) and key_files:
+
+            blocks.append(
+                "**关键文件**\n\n"
+                + cls._bullets(
+                    f"`{path}`"
+                    for path in key_files
+                )
+            )
+
+        return "\n\n".join(blocks)
+
+    # 结论来源 -> 展示文案。
+    DECLARED_BY_LABELS = {
+        "code": "代码证据",
+        "readme": "README 自述",
+        "code+readme": "代码证据 + README 自述",
+    }
+
+    # 默认报告每章最多几条要点 / 几条证据锚点。
+    #
+    # 默认报告是「概览」，不是「实现说明书」：
+    # 只给要点与可回溯的锚点，
+    # 具体某个模块想知道更多时走深挖。
+    MAX_HIGHLIGHTS = 6
+
+    MAX_ANCHORS = 5
+
+    # 证据锚点里最多留给 README 出处的名额。
+    MAX_README_ANCHORS = 2
+
+    # 单条要点里最多列几个名字。
+    MAX_NAMES_PER_HIGHLIGHT = 8
+
+    @classmethod
+    def _dimension_markdown(
+        cls,
+        entry: dict,
+        dimension: str,
+        run_id=None,
+        focus=None,
+    ) -> str:
+        """
+        04-09 的维度章。
+
+        三种渲染形态：
+
+            无重点（focus 为空）
+                全量等深：要点 + 证据锚点 + 深挖指引
+
+            本次重点维度
+                再加「实现明细」（签名 / 调用链 / 关键常量）
+
+            本次非重点维度
+                压成一行要点 + 一句未展开说明
+
+        为什么要有第三种：用户问「分析这个项目的 agent」
+        时，把 05-09 章都铺开写一遍，
+        重点就被淹没了 ——
+        这正是「报告里还是什么都有」的来源。
+        """
+
+        if cls._is_missing(entry):
+            return cls._missing_text(
+                entry["reason"]
+            )
+
+        focused = (
+            focus is not None
+            and focus.is_focused
+        )
+
+        if focused and not focus.is_primary(
+            dimension
+        ):
+
+            return cls._compressed_markdown(
+                entry,
+                dimension,
+                run_id,
+                focus,
+            )
+
+        blocks = []
+
+        declared_by = entry.get(
+            "declared_by"
+        )
+
+        if declared_by:
+
+            blocks.append(
+                "**结论来源**："
+                + cls.DECLARED_BY_LABELS.get(
+                    declared_by,
+                    declared_by,
+                )
+            )
+
+        highlights = cls._highlights(entry)
+
+        if highlights:
+
+            blocks.append(
+                "**要点**\n\n"
+                + cls._bullets(highlights)
+            )
+
+        else:
+
+            blocks.append(
+                "**要点**\n\n未抽取到结构化条目。"
+            )
+
+        topics = entry.get("topics")
+
+        if isinstance(topics, list) and topics:
+
+            blocks.append(
+                "**命中的 GitHub topics**："
+                + ", ".join(
+                    f"`{topic}`"
+                    for topic in topics
+                )
+            )
+
+        # RAG 章额外带上向量库检测结果。
+        vector_store = entry.get(
+            "vector_store_detected"
+        )
+
+        if isinstance(
+            vector_store,
+            list,
+        ):
+
+            blocks.append(
+                "**检测到的向量库**："
+                + (
+                    ", ".join(vector_store)
+                    if vector_store
+                    else (
+                        "未检测到"
+                        "（当前只识别 qdrant / "
+                        "chromadb）"
+                    )
+                )
+            )
+
+        anchors = cls._anchors(entry)
+
+        if anchors:
+
+            blocks.append(
+                "**证据锚点**\n\n"
+                + cls._bullets(anchors)
+            )
+
+        details = entry.get("details")
+
+        # 报告里实际展开了多少条明细。
+        # 0 表示没展开（非重点维度或没有明细），
+        # 深挖指引的措辞要据此区分。
+        shown_count = 0
+
+        # 本次重点维度：把实现明细展开在报告里。
+        #
+        # 非重点维度不展开 ——
+        # 它们已经走 _compressed_markdown 提前返回了。
+        if (
+            focused
+            and focus.is_primary(dimension)
+            and isinstance(details, list)
+            and details
+        ):
+
+            rendered = [
+                cls._detail_markdown(item)
+                for item in details
+                if isinstance(item, dict)
+            ]
+
+            rendered = [
+                item for item in rendered if item
+            ]
+
+            if rendered:
+
+                shown_count = len(rendered)
+
+                blocks.append(
+                    "**实现明细**\n\n"
+                    + "\n\n".join(rendered)
+                )
+
+        detail_count = len(
+            entry.get("details") or []
+        )
+
+        if detail_count:
+
+            blocks.append(
+                cls._deep_dive_hint(
+                    dimension,
+                    detail_count,
+                    run_id,
+                    shown_count=shown_count,
+                )
+            )
+
+        return "\n\n".join(blocks)
+
+    @classmethod
+    def _compressed_markdown(
+        cls,
+        entry: dict,
+        dimension: str,
+        run_id,
+        focus,
+    ) -> str:
+        """
+        非重点维度的压缩形态。
+
+        只留一行要点与一句说明 ——
+        不是删掉这一章（那会让报告缺章），
+        而是把它压到「知道有这回事」的程度。
+        """
+
+        highlights = cls._highlights(entry)
+
+        summary = (
+            "；".join(highlights)
+            if highlights
+            else "未抽取到结构化条目。"
+        )
+
+        if run_id:
+
+            hint = (
+                "> 查看完整内容与实现明细："
+                f"`POST /analysis/{run_id}/deep-dive"
+                f"?module={dimension}`"
+            )
+
+        else:
+
+            hint = (
+                "> 查看完整内容："
+                "`reports/{run_id}_analysis.md`"
+            )
+
+        return (
+            f"本次未展开。要点：{summary}\n\n"
+            "> 本次分析的重点是 "
+            + "、".join(focus.titles())
+            + "，该模块未按问题展开。\n"
+            ">\n"
+            f"{hint}"
+        )
+
+    @classmethod
+    def _scope_note(
+        cls,
+        question,
+        focus,
+    ) -> str:
+        """
+        报告开头的「本次问题 / 重点」抬头。
+
+        必须写清楚，否则用户无法判断
+        报告为什么有的章详细、有的章只有一行。
+        """
+
+        lines = []
+
+        if isinstance(
+            question,
+            str,
+        ) and question.strip():
+
+            lines.append(
+                "**本次问题**："
+                + question.strip()
+            )
+
+        if focus is not None and focus.is_focused:
+
+            lines.append(
+                "**本次重点**："
+                + "、".join(focus.titles())
+                + "（这几个模块展开，其余压缩）"
+            )
+
+            if focus.notes:
+
+                lines.append(
+                    "**关注点**："
+                    + focus.notes
+                )
+
+        if not lines:
+            return ""
+
+        return "\n\n".join(lines) + "\n\n"
+
+    @classmethod
+    def _deep_dive_hint(
+        cls,
+        dimension: str,
+        detail_count: int,
+        run_id,
+        shown_count: int = 0,
+    ) -> str:
+        """
+        指向该模块深挖报告的指引。
+
+        detail_count 是采集到的明细总数。
+        本次重点维度已经在报告里展开了，
+        措辞要跟着变 ——
+        否则会出现「刚展示完明细，
+        下一行又说这些明细未放入报告」的矛盾。
+        """
+
+        target = (
+            f"/analysis/{run_id}/deep-dive"
+            if run_id
+            else "/analysis/{run_id}/deep-dive"
+        )
+
+        if shown_count:
+
+            return (
+                "> 以上为本次展开的实现明细。"
+                "**源码片段**与其余明细见深挖：\n"
+                ">\n"
+                f"> `POST {target}"
+                f"?module={dimension}`"
+            )
+
+        return (
+            "> 本模块另有 "
+            f"{detail_count} 项实现明细"
+            "（函数签名 / 调用链 / 关键常量 / 源码片段），"
+            "未放入本报告。\n"
+            ">\n"
+            f"> 查看方式：`POST {target}"
+            f"?module={dimension}`"
+        )
+
+    # 要点分组的展示顺序与名称。
+    #
+    # 顺序即优先级：
+    # 图结构与类最能说明一个模块在做什么，
+    # 依赖与目录只是旁证。
+    HIGHLIGHT_GROUPS = (
+        # 叫「图结构」而不是「图节点」：
+        # 这一组里既有 StateGraph 构造，
+        # 也有 add_node / add_edge，
+        # 统称节点会与 add_node 的节点名混起来。
+        ("graph", "图结构"),
+        ("class", "类"),
+        ("function", "函数"),
+        ("import", "依赖"),
+        ("path", "目录"),
+        ("readme", "README 自述"),
+    )
+
+    @classmethod
+    def _highlights(cls, entry: dict) -> list:
+        """
+        把扁平条目归纳成「要点」。
+
+        条目是原始符号（`builder.add_node('x', ...)` /
+        `class BaseAgent(ABC)` / `路径 src/app/agents/`），
+        直接列出来只是堆符号；
+        按类别归并并计数之后才是要点。
+
+        纯字符串处理，不经过 LLM。
+        """
+
+        items = entry.get("items")
+
+        if not isinstance(items, list):
+            return []
+
+        grouped = {
+            key: []
+            for key, _ in cls.HIGHLIGHT_GROUPS
+        }
+
+        for item in items:
+
+            text = str(item).strip()
+
+            if not text:
+                continue
+
+            grouped[
+                cls._highlight_group(text)
+            ].append(text)
+
+        highlights = []
+
+        for key, label in cls.HIGHLIGHT_GROUPS:
+
+            values = grouped[key]
+
+            if not values:
+                continue
+
+            highlights.append(
+                cls._highlight_line(
+                    label,
+                    key,
+                    values,
+                )
+            )
+
+            if len(highlights) >= cls.MAX_HIGHLIGHTS:
+                break
+
+        return highlights
+
+    @classmethod
+    def _highlight_group(
+        cls,
+        text: str,
+    ) -> str:
+        """判断一条条目属于哪个要点分组。"""
+
+        if cls._GRAPH_CALL_PATTERN.search(text):
+
+            return "graph"
+
+        if text.startswith("class "):
+
+            return "class"
+
+        if text.startswith(("def ", "@")):
+
+            return "function"
+
+        if text.startswith("import "):
+
+            return "import"
+
+        if text.startswith("路径 "):
+
+            return "path"
+
+        return "readme"
+
+    # 图调用：`builder.add_node('x', ...)` 之类。
+    _GRAPH_CALL_PATTERN = re.compile(
+        r"\.(add_node|add_edge|add_conditional_edges"
+        r"|set_entry_point|set_finish_point)\("
+        r"|^StateGraph\("
+    )
+
+    # 从 add_node('name', ...) 里取节点名。
+    _NODE_NAME_PATTERN = re.compile(
+        r"add_node\(\s*['\"]([^'\"]+)['\"]"
+    )
+
+    # 从 add_edge('a', 'b') 里取两端。
+    #
+    # 显示成 `a → b` 比 `graph.add_edge` 有信息量得多。
+    _EDGE_PATTERN = re.compile(
+        r"add_(?:conditional_)?edge\(\s*"
+        r"['\"]([^'\"]+)['\"]\s*,\s*"
+        r"['\"]([^'\"]+)['\"]"
+    )
+
+    # 从 class Foo(Bar) / def foo(...) 里取名字。
+    _DEFINITION_NAME_PATTERN = re.compile(
+        r"^(?:class|def)\s+([A-Za-z_][A-Za-z0-9_]*)"
+    )
+
+    @classmethod
+    def _highlight_line(
+        cls,
+        label: str,
+        key: str,
+        values: list,
+    ) -> str:
+        """渲染一条要点。"""
+
+        names = []
+
+        for value in values:
+
+            names.append(
+                cls._highlight_name(key, value)
+            )
+
+        shown = names[
+            : cls.MAX_NAMES_PER_HIGHLIGHT
+        ]
+
+        rest = len(names) - len(shown)
+
+        text = "、".join(
+            f"`{name}`" for name in shown
+        )
+
+        if rest > 0:
+
+            text += f" 等 {len(names)} 项"
+
+        return f"{label}（{len(names)}）：{text}"
+
+    @classmethod
+    def _highlight_name(
+        cls,
+        key: str,
+        value: str,
+    ) -> str:
+        """从原始条目里取出适合展示的名字。"""
+
+        if key == "graph":
+
+            node = cls._NODE_NAME_PATTERN.search(
+                value
+            )
+
+            if node:
+                return node.group(1)
+
+            edge = cls._EDGE_PATTERN.search(value)
+
+            if edge:
+                return f"{edge.group(1)} → {edge.group(2)}"
+
+            # StateGraph(...) -> StateGraph
+            return value.split("(")[0]
+
+        if key == "path":
+
+            return value[len("路径 "):]
+
+        if key == "import":
+
+            return value[len("import "):]
+
+        if key == "readme":
+
+            # 自述条目可能是一整句，
+            # 太长就截断，避免要点变成段落。
+            return (
+                value
+                if len(value) <= 40
+                else value[:40] + "…"
+            )
+
+        matched = cls._DEFINITION_NAME_PATTERN.match(
+            value
+        )
+
+        if matched:
+            return matched.group(1)
+
+        return value
+
+    @classmethod
+    def _anchors(cls, entry: dict) -> list:
+        """
+        证据锚点：代码证据 + README 出处，合并限长。
+
+        代码证据排在前面：
+        它比 README 自述更接近项目实际做了什么。
+
+        但要给 README 预留名额：
+        declared_by 常常是 code+readme，
+        而代码证据通常更多，
+        不预留的话 README 锚点会被全部挤掉，
+        读者就看不到「自述」那一半证据。
+        """
+
+        code = [
+            item
+            for item in (
+                entry.get("code_evidence") or []
+            )
+            if isinstance(item, dict)
+        ]
+
+        readme = [
+            item
+            for item in (
+                entry.get("evidence") or []
+            )
+            if isinstance(item, dict)
+        ]
+
+        # 最多给 README 留 2 个名额，
+        # 且不超过它实际有的条数。
+        reserved = min(
+            cls.MAX_README_ANCHORS,
+            len(readme),
+        )
+
+        code_budget = max(
+            cls.MAX_ANCHORS - reserved,
+            1,
+        )
+
+        anchors = [
+            cls._code_evidence_line(item)
+            for item in code[:code_budget]
+        ]
+
+        for item in readme:
+
+            if len(anchors) >= cls.MAX_ANCHORS:
+                break
+
+            anchors.append(
+                cls._code_evidence_line(item)
+            )
+
+        return anchors
+
+    # 明细类型 -> 展示名。
+    DETAIL_KIND_LABELS = {
+        "graph": "图节点",
+        "class": "类",
+        "function": "函数",
+    }
+
+    @classmethod
+    def _detail_markdown(
+        cls,
+        detail: dict,
+    ) -> str:
+        """
+        渲染一条实现明细。
+
+        形如：
+
+            ### `duplicate_check` · `workflow_service.py:342`
+
+            ```python
+            def _node_duplicate_check(self, state: AgentState) -> AgentState
+            ```
+
+            - 调用：`find_similar_invoices`
+            - 关键常量：`0.85`、`'duplicate_suspected'`
+        """
+
+        name = str(
+            detail.get("name") or ""
+        ).strip()
+
+        signature = str(
+            detail.get("signature") or ""
+        ).strip()
+
+        if not name and not signature:
+            return ""
+
+        file_path = detail.get("file_path")
+
+        line = detail.get("line")
+
+        location = file_path or "（未知文件）"
+
+        if line:
+            location = f"{location}:{line}"
+
+        heading = "### "
+
+        if name:
+
+            heading += f"`{name}`"
+
+            kind = cls.DETAIL_KIND_LABELS.get(
+                str(detail.get("kind") or "")
+            )
+
+            if kind:
+                heading += f" · {kind}"
+
+            heading += f" · `{location}`"
+
+        else:
+
+            heading += f"`{location}`"
+
+        blocks = [heading]
+
+        if signature:
+
+            blocks.append(
+                "```python\n"
+                f"{signature}\n"
+                "```"
+            )
+
+        methods = detail.get("methods")
+
+        if isinstance(methods, list) and methods:
+
+            blocks.append(
+                "- 方法："
+                + "、".join(
+                    f"`{item}`"
+                    for item in methods
+                )
+            )
+
+        calls = detail.get("calls")
+
+        if isinstance(calls, list) and calls:
+
+            blocks.append(
+                "- 调用："
+                + "、".join(
+                    f"`{item}`"
+                    for item in calls
+                )
+            )
+
+        literals = detail.get("literals")
+
+        if isinstance(literals, list) and literals:
+
+            blocks.append(
+                "- 关键常量："
+                + "、".join(
+                    f"`{item}`"
+                    for item in literals
+                )
+            )
+
+        return "\n\n".join(blocks)
+
+    @staticmethod
+    def _code_evidence_line(item: dict) -> str:
+        """
+        渲染一条代码证据。
+
+        路径信号没有行号，
+        直接照搬会变成
+        「`src/app/graph/` — 路径 src/app/graph/」
+        这种把同一句话说了两遍的样子，
+        因此单独处理。
+        """
+
+        text = str(item.get("text") or "")
+
+        line = (
+            item.get("line")
+            or item.get("line_start")
+        )
+
+        if line:
+
+            return (
+                f"`{ReportGenerationSkill._location(item)}`"
+                f" — {text}"
+            )
+
+        # 无行号的一律是路径信号。
+        return (
+            f"目录/文件名命中架构关键词："
+            f"`{ReportGenerationSkill._location(item)}`"
+        )
+
+    @staticmethod
+    def _location(item: dict) -> str:
+        """
+        渲染证据位置。
+
+        路径信号（例如「路径 src/app/agents/」）
+        没有行号，此时只显示路径，
+        不能渲染成 `src/app/agents/:None`。
+        """
+
+        file_path = (
+            item.get("file")
+            or item.get("file_path")
+            or "（未知文件）"
+        )
+
+        line = (
+            item.get("line")
+            or item.get("line_start")
+        )
+
+        if line:
+
+            return f"{file_path}:{line}"
+
+        return str(file_path)
+
+    @classmethod
+    def _database_markdown(
+        cls,
+        technology_stack: dict,
+    ) -> str:
+        """10 数据库。"""
+
+        if not technology_stack:
+            return cls._missing_text(
+                "真实数据不存在"
+                "（未产出 technology_stack）。"
+            )
+
+        databases = technology_stack.get(
+            "database"
+        )
+
+        if isinstance(
+            databases,
+            (list, tuple),
+        ) and databases:
+
+            body = cls._bullets(
+                f"`{name}`" for name in databases
+            )
+
+        else:
+
+            body = "未检测到数据库。"
+
+        return (
+            body
+            + "\n\n"
+            + "数据来源："
+            "`workflow_state.data."
+            "technology_stack.database`"
+        )
+
+    @classmethod
+    def _evidence_markdown(
+        cls,
+        evidence,
+    ) -> str:
+        """12 Evidence：文件 + 行号 + 内容片段。"""
+
+        if not isinstance(
+            evidence,
+            list,
+        ) or not evidence:
+
+            return cls._missing_text(
+                "真实数据不存在"
+                "（Evidence Agent 未产出证据）。"
+            )
+
+        blocks = []
+
+        for item in evidence:
+
+            if not isinstance(item, dict):
+                continue
+
+            file_path = (
+                item.get("file_path")
+                or "（未知文件）"
+            )
+
+            line_start = item.get(
+                "line_start"
+            )
+
+            line_end = item.get(
+                "line_end"
+            )
+
+            if line_start and line_end:
+
+                location = (
+                    f"{file_path}:"
+                    f"{line_start}-{line_end}"
+                )
+
+            elif line_start:
+
+                location = (
+                    f"{file_path}:{line_start}"
+                )
+
+            else:
+
+                location = file_path
+
+            content = str(
+                item.get("content") or ""
+            ).strip()
+
+            # 单条证据的 content 可能很长，
+            # 这里只取首行做摘要，
+            # 完整内容在 Evidence 表里。
+            first_line = (
+                content.splitlines()[0]
+                if content
+                else ""
+            )
+
+            block = f"**`{location}`**"
+
+            if first_line:
+
+                block += (
+                    "\n\n> "
+                    + first_line[:160]
+                )
+
+            blocks.append(block)
+
+        if not blocks:
+            return cls._missing_text(
+                "真实数据不存在"
+                "（Evidence Agent 未产出证据）。"
+            )
+
+        return "\n\n".join(blocks)
+
+    @staticmethod
+    def _missing(
+        reason: str,
+    ) -> dict:
+        """统一的「真实数据不存在」表示。"""
+
+        return {
+            "available": False,
+            "reason": reason,
+        }
+
+    # ------------------------------------------------------------------
+    # 综合分析章节
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def _summary_section(
+        cls,
+        synthesis: dict,
+        question=None,
+        focus=None,
+    ) -> str:
+        """
+        渲染 00 结论摘要。
+
+        与其它章节不同，
+        这一章是给人读的散文，
+        不套 ```text JSON 代码块。
+
+        综合分析不可用时仍然渲染该章，
+        并写明原因 —— 缺席会被误读成
+        「报告本来就没有结论层」。
+        """
+
+        if not synthesis.get("available"):
+
+            reason = (
+                synthesis.get("reason")
+                or "综合分析未产出。"
+            )
+
+            return (
+                "## 00 结论摘要\n\n"
+                + cls._scope_note(question, focus)
+                + "```text\n"
+                "综合分析不可用。\n"
+                f"原因：{reason}\n"
+                "以下 01-11 章为未经归纳的原始分析数据。\n"
+                "```"
+            )
+
+        summary = synthesis.get("summary")
+
+        if not isinstance(summary, dict):
+            summary = {}
+
+        # 抬头：本次问了什么、重点在哪。
+        #
+        # 必须写清楚，否则用户无法判断
+        # 报告为什么有的章详细、有的章只有一行。
+        blocks = ["## 00 结论摘要"]
+
+        scope = cls._scope_note(question, focus)
+
+        if scope:
+            blocks.append(scope.strip())
+
+        blocks.append(
+            "> 本章由 LLM 基于各 Agent 已采集的真实事实归纳，\n"
+            "> 只做归纳、不做推测；\n"
+            "> 事实不足处会明确标注「数据不足」。\n"
+            "> 原始事实见下方 01-11 章。"
+        )
+
+        one_line = str(
+            summary.get("one_line") or ""
+        ).strip()
+
+        if one_line:
+
+            blocks.append(
+                "### 一句话结论\n\n"
+                f"{one_line}"
+            )
+
+        for key, title in cls.SUMMARY_FIELDS:
+
+            items = summary.get(key)
+
+            if not isinstance(items, list):
+                continue
+
+            bullets = [
+                str(item).strip()
+                for item in items
+                if str(item).strip()
+            ]
+
+            if not bullets:
+                continue
+
+            blocks.append(
+                f"### {title}\n\n"
+                + "\n".join(
+                    f"- {item}"
+                    for item in bullets
+                )
+            )
+
+        # summary 全空时（LLM 返回了合法 JSON
+        # 但内容为空），明确说明而不是留一个空章。
+        if len(blocks) == 1:
+
+            blocks.append(
+                "LLM 未返回可用的结论内容。"
+            )
+
+        return "\n\n".join(blocks)
+
+    @classmethod
+    def _section_with_judgment(
+        cls,
+        title: str,
+        value,
+        synthesis: dict,
+        dimension: str,
+    ) -> str:
+        """
+        渲染维度章节，并在末尾追加综合判断。
+
+        综合判断不可用、或该维度没有判断时，
+        只渲染原始数据章节，不追加空段落。
+        """
+
+        section = cls._section(
+            title,
+            value,
+        )
+
+        judgment = cls._dimension_judgment(
+            synthesis,
+            dimension,
+        )
+
+        if not judgment:
+            return section
+
+        return (
+            f"{section}\n\n"
+            f"**综合判断**：{judgment}"
+        )
+
+    @staticmethod
+    def _dimension_judgment(
+        synthesis: dict,
+        dimension: str,
+    ) -> str:
+        """取出某个维度的综合判断，取不到返回空串。"""
+
+        if not synthesis.get("available"):
+            return ""
+
+        dimensions = synthesis.get(
+            "dimensions"
+        )
+
+        if not isinstance(
+            dimensions,
+            dict,
+        ):
+            return ""
+
+        judgment = dimensions.get(
+            dimension
+        )
+
+        if not isinstance(
+            judgment,
+            str,
+        ):
+            return ""
+
+        return judgment.strip()
+
+    @staticmethod
+    def _project_overview(
+        data: dict,
+    ) -> dict:
+        """项目概览：来自 GitHub API 的真实仓库信息。"""
+
+        repository = data.get(
+            "repository"
+        )
+
+        if (
+            not isinstance(repository, dict)
+            or not repository
+        ):
+            return ReportGenerationSkill._missing(
+                "真实数据不存在"
+                "（未获取到仓库信息）。"
+            )
+
+        license_info = repository.get(
+            "license"
+        )
+
+        license_name = None
+
+        if isinstance(
+            license_info,
+            dict,
+        ):
+            license_name = license_info.get(
+                "name"
+            )
+
+        return {
+            "name": repository.get(
+                "name"
+            ),
+            "full_name": repository.get(
+                "full_name"
+            ),
+            "description": repository.get(
+                "description"
+            ),
+            "language": repository.get(
+                "language"
+            ),
+            "topics": repository.get(
+                "topics"
+            ),
+            "stars": repository.get(
+                "stargazers_count"
+            ),
+            "forks": repository.get(
+                "forks_count"
+            ),
+            "open_issues": repository.get(
+                "open_issues_count"
+            ),
+            "license": license_name,
+            "default_branch": repository.get(
+                "default_branch"
+            ),
+            "size_kb": repository.get("size"),
+            "created_at": repository.get(
+                "created_at"
+            ),
+            "pushed_at": repository.get(
+                "pushed_at"
+            ),
+            "html_url": repository.get(
+                "html_url"
+            ),
+            "readme_characters": len(
+                data.get("readme") or ""
+            ),
+        }
+
+    @staticmethod
+    def _structure_dimension(
+        project_structure: dict,
+        name: str,
+    ) -> dict:
+        """
+        从 project_structure 取出某个维度的可读内容。
+
+        该结构来自被分析项目的 README 与 GitHub topics，
+        每条都带 README 行号，可人工复核。
+        """
+
+        if not project_structure.get(
+            "available"
+        ):
+            return ReportGenerationSkill._missing(
+                project_structure.get("reason")
+                or (
+                    "真实数据不存在"
+                    "（未产出被分析项目的自述结构）。"
+                )
+            )
+
+        entry = (
+            project_structure.get(
+                "dimensions"
+            )
+            or {}
+        ).get(name)
+
+        if not isinstance(entry, dict):
+            return ReportGenerationSkill._missing(
+                "真实数据不存在"
+                f"（无 {name} 维度）。"
+            )
+
+        if not entry.get("declared"):
+            return ReportGenerationSkill._missing(
+                entry.get("reason")
+                or (
+                    "被分析项目未声明该能力"
+                    "（README / topics 中没有相关描述）。"
+                )
+            )
+
+        return {
+            "items": entry.get("items") or [],
+            "topics": entry.get("topics") or [],
+            "evidence": [
+                {
+                    "file": item.get("file_path"),
+                    "line": item.get("line_start"),
+                    "text": item.get("text"),
+                }
+                for item in (
+                    entry.get("evidence") or []
+                )
+            ],
+            # 来自真实源码的 AST 证据。
+            #
+            # 与上面的 README 证据分开，
+            # 因为两者性质不同：
+            # 一个是「项目说自己有什么」，
+            # 一个是「项目代码里确实有什么」。
+            "code_evidence": [
+                {
+                    "file": item.get("file_path"),
+                    "line": item.get("line_start"),
+                    "text": item.get("text"),
+                }
+                for item in (
+                    entry.get("code_evidence") or []
+                )
+                if isinstance(item, dict)
+            ],
+            "declared_by": entry.get(
+                "declared_by"
+            ),
+            # 实现明细：函数签名 / 调用链 / 关键字面量。
+            #
+            # 比 items 重，但正是它回答了
+            # 「这个模块具体怎么做的」。
+            "details": [
+                item
+                for item in (
+                    entry.get("details") or []
+                )
+                if isinstance(item, dict)
+            ],
+        }
+
+    @staticmethod
+    def _rag_dimension(
+        project_structure: dict,
+        technology_stack: dict,
+    ) -> dict:
+        """
+        RAG 章节。
+
+        README 自述的 rag 信号是主要来源；
+        technology_stack.embedding 只是
+        「是否检测到向量库」的辅助信息，
+        不能单独代表完整的 RAG 实现。
+        """
+
+        declared = ReportGenerationSkill._structure_dimension(
+            project_structure,
+            "rag",
+        )
+
+        embedding = technology_stack.get(
+            "embedding",
+            [],
+        )
+
+        # 注意：_structure_dimension 成功时
+        # 返回的是 {"items", "topics", "evidence"}，
+        # 并不带 "available" 键；
+        # 只有失败时才返回 _missing() 的
+        # {"available": False, "reason": ...}。
+        #
+        # 这里曾经用 declared.get("available") 判断，
+        # 成功路径永远取到 None，
+        # 于是 RAG 章一直走「不可用」分支，
+        # 还带着一个 None 的 reason。
+        if not ReportGenerationSkill._is_missing(
+            declared
+        ):
+
+            declared["vector_store_detected"] = (
+                embedding
+            )
+
+            return declared
+
+        return {
+            "available": False,
+            "reason": declared.get("reason")
+            or (
+                "真实数据不存在"
+                "（被分析项目未声明 RAG 相关能力）。"
+            ),
+            "vector_store_detected": embedding,
+        }
 
     @staticmethod
     def _section(
         title: str,
         value,
-    ):
+    ) -> str:
+        """
+        渲染一个章节。
+
+        value 为字符串时按 markdown 原样输出；
+        其它类型（理论上不应出现）退化成
+        JSON 代码块，保证不会丢数据。
+        """
 
         if value is None:
-
             value = "暂无数据"
-
 
         if isinstance(
             value,
             str,
         ):
-
-            content = value
-
+            body = value.strip()
         else:
-
-            content = json.dumps(
-
-                value,
-
-                ensure_ascii=False,
-
-                indent=2,
-
-                default=str,
+            body = (
+                "```text\n"
+                + json.dumps(
+                    value,
+                    ensure_ascii=False,
+                    indent=2,
+                    default=str,
+                )
+                + "\n```"
             )
 
-
-
         return (
-
             f"## {title}\n\n"
-
-            f"```text\n"
-
-            f"{content}\n"
-
-            f"```"
+            f"{body}"
         )
 ````
 
@@ -9014,6 +12842,16 @@ from app.skills.evidence_analysis_skill import (
 
 from app.skills.report_generation_skill import (
     ReportGenerationSkill
+)
+
+
+from app.skills.report_synthesis_skill import (
+    ReportSynthesisSkill
+)
+
+
+from app.skills.module_deep_dive_skill import (
+    ModuleDeepDiveSkill
 )
 
 
@@ -9116,9 +12954,2340 @@ def create_skill_registry():
     )
 
 
+    # 注册报告综合分析Skill
+
+    registry.register(
+        ReportSynthesisSkill()
+    )
+
+
+    # 注册单模块深挖Skill
+
+    registry.register(
+        ModuleDeepDiveSkill()
+    )
+
+
 
     return registry
 ```
+
+### 📄 `app/skills/json_output.py`
+
+**层级**：Skill 层 · **职责**：LLM JSON 输出解析。
+
+````python
+"""
+LLM JSON 输出解析。
+
+为什么单独抽出来
+================
+
+报告综合分析（ReportSynthesisSkill）与
+单模块深挖（ModuleDeepDiveSkill）都要
+让 LLM 返回 JSON，
+而模型的实际返回有三种常见形态：
+
+    1. 纯 JSON
+    2. ```json 代码块包裹
+    3. 前后混着解释文字
+
+更麻烦的是第四种：**被截断的 JSON**。
+
+真实事故：综合分析要输出六个维度的判断段落，
+回复一旦触到 max_tokens 上限就会被切断，
+而截断的 JSON 用 json.loads 必然失败，
+报告就会整章退化成「综合分析不可用」。
+
+两处都要处理这件事，
+逻辑放在一处避免两边慢慢长歪。
+"""
+
+import json
+
+
+def parse_json_object(content: str):
+    """
+    尽最大努力把 LLM 回复解析成 dict。
+
+    解析不出来返回 None，
+    由调用方决定怎么降级 ——
+    这里绝不伪造半截内容。
+    """
+
+    if not isinstance(content, str):
+        return None
+
+    text = strip_code_fence(content)
+
+    if not text:
+        return None
+
+    try:
+
+        parsed = json.loads(text)
+
+    except (ValueError, TypeError):
+
+        # 前后混入解释文字时，
+        # 退回到「第一个 { 到最后一个 }」。
+        start = text.find("{")
+
+        end = text.rfind("}")
+
+        if start == -1 or end <= start:
+
+            # 连一对完整的 {} 都没有，
+            # 基本可以认定回复被截断了。
+            return repair_truncated(text)
+
+        try:
+
+            parsed = json.loads(
+                text[start: end + 1]
+            )
+
+        except (ValueError, TypeError):
+
+            return repair_truncated(text)
+
+    if isinstance(parsed, dict):
+        return parsed
+
+    return None
+
+
+def strip_code_fence(content: str) -> str:
+    """去掉 markdown 代码块围栏。"""
+
+    text = content.strip()
+
+    if not text.startswith("```"):
+        return text
+
+    lines = text.splitlines()
+
+    if lines and lines[0].startswith("```"):
+        lines = lines[1:]
+
+    if lines and lines[-1].strip() == "```":
+        lines = lines[:-1]
+
+    return "\n".join(lines).strip()
+
+
+def repair_truncated(text: str):
+    """
+    尝试修复被截断的 JSON。
+
+    两种策略，依次尝试：
+
+        1. 直接补上未闭合的引号与括号
+        2. 回退到最后一个逗号再补括号
+           （截断正好落在半个键值上时用）
+
+    修不好就返回 None。
+    """
+
+    if not text:
+        return None
+
+    for candidate in (
+        close_brackets(text),
+        close_brackets(trim_to_last_comma(text)),
+    ):
+
+        if not candidate:
+            continue
+
+        try:
+
+            parsed = json.loads(candidate)
+
+        except (ValueError, TypeError):
+
+            continue
+
+        if isinstance(parsed, dict):
+            return parsed
+
+    return None
+
+
+def close_brackets(text: str) -> str:
+    """补上未闭合的引号与括号。"""
+
+    stack = []
+
+    in_string = False
+
+    escaped = False
+
+    for char in text:
+
+        if in_string:
+
+            if escaped:
+                escaped = False
+
+            elif char == "\\":
+                escaped = True
+
+            elif char == '"':
+                in_string = False
+
+            continue
+
+        if char == '"':
+            in_string = True
+
+        elif char == "{":
+            stack.append("}")
+
+        elif char == "[":
+            stack.append("]")
+
+        elif char in "}]":
+
+            if stack:
+                stack.pop()
+
+    repaired = text
+
+    # 截断在字符串中间时先补引号。
+    if in_string:
+        repaired += '"'
+
+    return repaired + "".join(
+        reversed(stack)
+    )
+
+
+def trim_to_last_comma(text: str) -> str:
+    """回退到最后一个逗号，丢掉残缺的尾巴。"""
+
+    index = text.rfind(",")
+
+    if index <= 0:
+        return ""
+
+    return text[:index]
+````
+
+### 📄 `app/skills/module_deep_dive_skill.py`
+
+**层级**：Skill 层 · **职责**：Module Deep Dive Skill。
+
+````python
+"""
+Module Deep Dive Skill。
+
+职责
+====
+
+针对**某一个模块**（agents / workflow / skills /
+tools / rag / memory）做深入分析，
+产出一份独立的深挖报告。
+
+为什么要有它
+============
+
+默认报告是「概览」：
+每个模块只给要点与证据锚点，
+既不浅到看不出结构，也不深到读不完。
+
+但用户经常只想弄清楚**一个**模块 ——
+「这个项目的 workflow 到底怎么流转的」。
+这时候重跑整份报告是浪费，
+只看概览又不够。
+
+深挖就是补这一刀：只盯一个模块，
+读更多文件、看更多符号、
+把函数签名 / 调用链 / 关键常量 / 源码片段
+全部展开。
+
+与默认报告的差别
+================
+
+                       默认报告        深挖报告
+    读取文件数          20             40（且只看该模块相关）
+    每模块明细上限      6              20
+    明细内容            不入报告        签名 + 调用链
+                                        + 常量 + 源码片段
+    LLM 结论            全项目一段      该模块七个小节
+
+一条重要约束
+============
+
+深挖只**展开**默认报告已经采集到的结构，
+不改变「只归纳不推测」的规则：
+LLM 拿到的仍然是真实源码与真实事实，
+源码片段直接来自 AST 的源码切片，
+不是模型复述。
+"""
+
+import json
+import re
+
+from app.project_analysis.code_structure_extractor import (
+    CodeStructureExtractor,
+)
+from app.skills.base import BaseSkill
+from app.skills.json_output import (
+    parse_json_object,
+)
+
+
+class ModuleDeepDiveSkill(
+    BaseSkill
+):
+    """单模块深度分析能力。"""
+
+    name = "module_deep_dive"
+
+    description = (
+        "Deep dive into one module of an "
+        "analyzed repository."
+    )
+
+    # 可深挖的模块，与报告的 04-09 章一一对应。
+    MODULES = CodeStructureExtractor.DIMENSIONS
+
+    # 深挖时最多读取多少个文件。
+    #
+    # 默认报告是 20 个（六个模块分摊），
+    # 深挖只看一个模块，所以给到 40。
+    # 代价是每个文件一次 GitHub 请求。
+    MAX_FILES = 40
+
+    # 深挖时单个模块最多展开多少条明细。
+    MAX_DETAILS = 20
+
+    # 源码片段最多展示多少字符。
+    MAX_SOURCE_CHARS = 1200
+
+    # 送进 prompt 的 README 最多多少字符。
+    MAX_README_CHARS = 4000
+
+    MODULE_TITLES = {
+        "agents": "Agent 架构",
+        "workflow": "Workflow",
+        "skills": "Skill",
+        "tools": "Tool",
+        "rag": "RAG",
+        "memory": "Memory",
+    }
+
+    # LLM 输出的小节，顺序即渲染顺序。
+    ANALYSIS_FIELDS = (
+        ("responsibility", "职责"),
+        ("key_implementations", "关键实现"),
+        ("data_structures", "涉及的数据结构"),
+        ("call_flow", "调用流程"),
+        ("boundaries", "边界与限制"),
+        ("risks", "风险与可疑之处"),
+        ("open_questions", "需要人工确认"),
+    )
+
+    async def execute(
+        self,
+        context,
+        input_data: dict,
+    ):
+        module = str(
+            input_data.get("module") or ""
+        ).strip().lower()
+
+        if module not in self.MODULES:
+
+            raise ValueError(
+                f"Unsupported module: {module!r}. "
+                f"Expected one of "
+                f"{', '.join(self.MODULES)}."
+            )
+
+        owner = input_data.get("owner")
+
+        repo = input_data.get("repo")
+
+        if not owner or not repo:
+
+            raise ValueError(
+                "Module deep dive requires "
+                "'owner' and 'repo'."
+            )
+
+        branch = input_data.get(
+            "branch",
+            "main",
+        )
+
+        tree = await self._load_tree(
+            context,
+            owner,
+            repo,
+            branch,
+        )
+
+        file_paths = self._select_files(
+            tree,
+            module,
+        )
+
+        sources, read_failures = (
+            await self._read_sources(
+                context,
+                owner,
+                repo,
+                branch,
+                file_paths,
+            )
+        )
+
+        extra_paths = [
+            item.get("path")
+            for item in tree
+            if isinstance(item, dict)
+            and item.get("path")
+        ]
+
+        code_structure = (
+            CodeStructureExtractor.extract(
+                sources,
+                extra_paths=extra_paths,
+                max_details=self.MAX_DETAILS,
+                # 深挖要展示源码片段；
+                # 默认报告不展示，因此默认关掉
+                # （每条 1.5KB，会把 state_data 撑过
+                #   asyncmy 的 256KB 单字段上限）。
+                include_source=True,
+            )
+        )
+
+        entry = (
+            code_structure.get(
+                "dimensions"
+            )
+            or {}
+        ).get(module) or {
+            "items": [],
+            "evidence": [],
+            "details": [],
+        }
+
+        analysis = await self._analyze(
+            context,
+            module=module,
+            owner=owner,
+            repo=repo,
+            entry=entry,
+            readme=input_data.get("readme"),
+            parsed_files=code_structure.get(
+                "parsed_files",
+                0,
+            ),
+            unparsed=code_structure.get(
+                "unparsed"
+            )
+            or [],
+        )
+
+        content = self._render(
+            module=module,
+            owner=owner,
+            repo=repo,
+            entry=entry,
+            analysis=analysis,
+            files=sources,
+            read_failures=read_failures,
+            parsed_files=code_structure.get(
+                "parsed_files",
+                0,
+            ),
+            unparsed=code_structure.get(
+                "unparsed"
+            )
+            or [],
+        )
+
+        report = await self._export(
+            context,
+            module=module,
+            repo=repo,
+            content=content,
+            run_id=input_data.get("run_id"),
+        )
+
+        return {
+            "module": module,
+            "title": (
+                f"{repo} · "
+                f"{self.MODULE_TITLES.get(module, module)}"
+                " 模块深挖"
+            ),
+            "files_read": [
+                item["file_path"]
+                for item in sources
+            ],
+            "details": len(
+                entry.get("details") or []
+            ),
+            "analysis": analysis,
+            "report": report,
+            "content": content,
+        }
+
+    # ------------------------------------------------------------------
+    # 取材
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _load_tree(
+        context,
+        owner,
+        repo,
+        branch,
+    ):
+        """读取仓库文件树；拿不到时返回空列表。"""
+
+        tool = context.tools.get(
+            "github_repository"
+        )
+
+        if tool is None:
+            return []
+
+        get_tree = getattr(
+            tool,
+            "get_tree",
+            None,
+        )
+
+        if not callable(get_tree):
+            return []
+
+        tree = await get_tree(
+            owner=owner,
+            name=repo,
+            branch=branch,
+        )
+
+        if not isinstance(tree, list):
+            return []
+
+        return tree
+
+    def _select_files(
+        self,
+        tree,
+        module: str,
+    ) -> list:
+        """
+        挑出与目标模块相关的文件。
+
+        先用路径信号（`src/app/agents/` 之类）挑，
+        不够再按浅层优先的顺序补充其它源码文件 ——
+        有些模块不靠目录命名体现
+        （例如 Skill 类散落在 services/ 下），
+        只按路径筛会一个文件都读不到，
+        那种情况下仍然要读一批文件
+        让 AST 去认符号。
+        """
+
+        matched = []
+
+        others = []
+
+        for item in tree:
+
+            if not isinstance(item, dict):
+                continue
+
+            path = item.get("path")
+
+            if not path:
+                continue
+
+            if not str(path).lower().endswith(
+                self.SOURCE_EXTENSIONS
+            ):
+                continue
+
+            if str(path).lower().endswith(
+                "__init__.py"
+            ):
+                continue
+
+            if module in (
+                CodeStructureExtractor
+                .dimensions_for_path(path)
+            ):
+
+                matched.append(path)
+
+            elif self._is_skippable_path(path):
+
+                # 兜底阶段不看测试 / 迁移 / 文档。
+                #
+                # 命中目标模块的文件仍然优先，
+                # 因此这里跳过不会漏掉该模块自身的代码。
+                continue
+
+            else:
+
+                others.append(path)
+
+        key = lambda path: (path.count("/"), path)
+
+        matched.sort(key=key)
+
+        others.sort(key=key)
+
+        remaining = max(
+            self.MAX_FILES - len(matched),
+            0,
+        )
+
+        return matched + others[
+            : min(
+                self.MAX_FALLBACK_FILES,
+                remaining,
+            )
+        ]
+
+    # 与 ArchitectureAnalysisSkill 保持一致的源码扩展名。
+    SOURCE_EXTENSIONS = (
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".mjs",
+        ".go",
+        ".java",
+        ".rs",
+        ".rb",
+        ".php",
+        ".cs",
+        ".kt",
+        ".swift",
+        ".vue",
+    )
+
+    # 兜底补充文件时跳过的路径。
+    #
+    # 深挖的配额是 40，但命中目标模块的文件往往只有 1-2 个
+    # （真实案例：workflow 模块只有 workflow_service.py，
+    #   其余 39 个名额全被 tests/ 与 alembic/ 吃掉）。
+    # 每个文件都是一次 GitHub 请求，
+    # 把配额喂给测试与迁移既慢又没信息。
+    SKIP_PATH_PATTERNS = (
+        re.compile(r"(^|/)tests?/"),
+        re.compile(r"(^|/)test_[^/]*$"),
+        re.compile(r"_test\.[a-z]+$"),
+        re.compile(r"(^|/)migrations?/"),
+        # 整个 alembic/ 都是迁移脚手架，
+        # 不只是 versions/ —— env.py、script.py.mako
+        # 同样与应用架构无关。
+        re.compile(r"(^|/)alembic/"),
+        re.compile(r"(^|/)(demo_data|examples?|samples?)/"),
+        re.compile(r"(^|/)docs?/"),
+    )
+
+    # 兜底补充文件的上限。
+    #
+    # MAX_FILES 是总配额，但命中目标模块的文件
+    # 往往只有 1-2 个；剩下的名额如果全部用无关文件填满，
+    # 就是几十次纯浪费的 GitHub 请求
+    # （实测：workflow 模块读 40 个文件耗时 69 秒，
+    #   其中 39 个对 workflow 维度毫无贡献）。
+    #
+    # 因此兜底只补到够用为止：
+    # 既覆盖「模块符号散落在非同名目录」的情况，
+    # 又不至于为了凑数去扫全仓库。
+    MAX_FALLBACK_FILES = 15
+
+    @classmethod
+    def _is_skippable_path(
+        cls,
+        path: str,
+    ) -> bool:
+        """判断兜底补充时是否应跳过该路径。"""
+
+        normalized = str(path).lower()
+
+        return any(
+            pattern.search(normalized)
+            for pattern in cls.SKIP_PATH_PATTERNS
+        )
+
+    async def _read_sources(
+        self,
+        context,
+        owner,
+        repo,
+        branch,
+        file_paths,
+    ):
+        """
+        逐个读取文件。
+
+        单个文件失败不影响其它文件，
+        失败原因如实带出来。
+        """
+
+        reader = context.tools.get("file_reader")
+
+        if reader is None:
+            raise RuntimeError(
+                "Tool not found: file_reader"
+            )
+
+        sources = []
+
+        failures = []
+
+        for path in file_paths:
+
+            try:
+
+                content = await reader.execute(
+                    owner=owner,
+                    name=repo,
+                    file_path=path,
+                    branch=branch,
+                )
+
+            except Exception as error:
+
+                failures.append(
+                    {
+                        "file_path": path,
+                        "error": (
+                            f"{type(error).__name__}: "
+                            f"{error}"
+                        ),
+                    }
+                )
+
+                continue
+
+            if not isinstance(content, str):
+                continue
+
+            if not content.strip():
+                continue
+
+            sources.append(
+                {
+                    "file_path": path,
+                    "content": content,
+                }
+            )
+
+        return sources, failures
+
+    # ------------------------------------------------------------------
+    # LLM 分析
+    # ------------------------------------------------------------------
+
+    async def _analyze(
+        self,
+        context,
+        *,
+        module,
+        owner,
+        repo,
+        entry,
+        readme,
+        parsed_files,
+        unparsed,
+    ):
+        """
+        生成该模块的分析结论。
+
+        LLM 不可用时返回 available=False，
+        由渲染层降级为「只给实现明细」，
+        不抛异常。
+        """
+
+        tool = context.tools.get("llm_chat")
+
+        if tool is None:
+
+            return {
+                "available": False,
+                "reason": "未注册 llm_chat 工具。",
+            }
+
+        facts = self._build_facts(
+            module=module,
+            owner=owner,
+            repo=repo,
+            entry=entry,
+            readme=readme,
+            parsed_files=parsed_files,
+            unparsed=unparsed,
+        )
+
+        result = await tool.execute(
+            messages=[
+                {
+                    "role": "system",
+                    "content": self._system_prompt(
+                        module
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "<facts>\n"
+                        + json.dumps(
+                            facts,
+                            ensure_ascii=False,
+                            indent=2,
+                        )
+                        + "\n</facts>\n\n"
+                        + self._output_instruction()
+                    ),
+                },
+            ]
+        )
+
+        if not result.get("available"):
+
+            return {
+                "available": False,
+                "reason": result.get("reason")
+                or "LLM 未返回内容。",
+            }
+
+        parsed = self._parse(
+            result.get("content") or ""
+        )
+
+        if parsed is None:
+
+            return {
+                "available": False,
+                "reason": (
+                    "LLM 返回的内容不是合法 JSON。"
+                ),
+            }
+
+        return {
+            "available": True,
+            "reason": None,
+            "sections": {
+                key: self._as_text_list(
+                    parsed.get(key)
+                )
+                for key, _ in self.ANALYSIS_FIELDS
+            },
+        }
+
+    def _build_facts(
+        self,
+        *,
+        module,
+        owner,
+        repo,
+        entry,
+        readme,
+        parsed_files,
+        unparsed,
+    ) -> dict:
+        """构建送进 prompt 的事实。"""
+
+        readme_text = ""
+
+        if isinstance(readme, str):
+            readme_text = readme[
+                : self.MAX_README_CHARS
+            ]
+
+        return {
+            "repository": f"{owner}/{repo}",
+            "module": module,
+            "module_title": self.MODULE_TITLES.get(
+                module,
+                module,
+            ),
+            "declared_by": entry.get(
+                "declared_by"
+            ),
+            "items": entry.get("items") or [],
+            "code_evidence": [
+                {
+                    "file": item.get("file_path"),
+                    "line": item.get("line_start"),
+                    "text": item.get("text"),
+                }
+                for item in (
+                    entry.get("code_evidence") or []
+                )
+                if isinstance(item, dict)
+            ],
+            "readme_evidence": [
+                {
+                    "line": item.get("line_start"),
+                    "text": item.get("text"),
+                }
+                for item in (
+                    entry.get("evidence") or []
+                )
+                if isinstance(item, dict)
+            ],
+            "implementations": [
+                {
+                    "name": item.get("name"),
+                    "kind": item.get("kind"),
+                    "signature": item.get(
+                        "signature"
+                    ),
+                    "file": item.get("file_path"),
+                    "line": item.get("line"),
+                    "methods": item.get("methods")
+                    or [],
+                    "calls": item.get("calls") or [],
+                    "literals": item.get(
+                        "literals"
+                    )
+                    or [],
+                }
+                for item in (
+                    entry.get("details") or []
+                )
+                if isinstance(item, dict)
+            ],
+            "source_excerpts": [
+                {
+                    "name": item.get("name"),
+                    "file": item.get("file_path"),
+                    "line": item.get("line"),
+                    "code": str(
+                        item.get("source") or ""
+                    )[: self.MAX_SOURCE_CHARS],
+                }
+                for item in (
+                    entry.get("details") or []
+                )
+                if isinstance(item, dict)
+                and item.get("source")
+            ],
+            "code_extraction": {
+                "parsed_files": parsed_files,
+                "unparsed": unparsed,
+            },
+            "readme": readme_text,
+        }
+
+    def _system_prompt(self, module: str) -> str:
+        """系统提示词。"""
+
+        title = self.MODULE_TITLES.get(
+            module,
+            module,
+        )
+
+        return (
+            "你是一名资深软件架构分析师，"
+            f"正在对某个 GitHub 项目的 "
+            f"「{title}」模块做深入分析。\n"
+            "\n"
+            "你必须严格遵守以下规则：\n"
+            "\n"
+            "1. 只能使用用户消息中 <facts> 标签内提供的事实。\n"
+            "   禁止使用外部知识、行业常识、"
+            "对同类项目的印象来补充任何信息。\n"
+            "2. 事实不足时必须写「数据不足：<缺什么>」，"
+            "不要给出看起来合理的猜测。\n"
+            "3. facts.declared_by 表示证据来源：\n"
+            "   code   —— 代码里确实存在，可以说「实现了」；\n"
+            "   readme —— 只是 README 声称，"
+            "必须写成「README 声称」；\n"
+            "   code+readme —— 两者都有。\n"
+            "4. code_extraction.parsed_files 为 0 时，"
+            "说明源码没被成功解析，"
+            "不得对该模块的代码结构下任何结论。\n"
+            "5. 只输出 JSON，不要用 markdown 代码块包裹，"
+            "不要在 JSON 前后添加解释文字。\n"
+        )
+
+    def _output_instruction(self) -> str:
+        """输出格式说明。"""
+
+        lines = []
+
+        for index, (key, label) in enumerate(
+            self.ANALYSIS_FIELDS
+        ):
+
+            comma = (
+                ","
+                if index
+                < len(self.ANALYSIS_FIELDS) - 1
+                else ""
+            )
+
+            lines.append(
+                f'  "{key}": '
+                f'["{label}，数据不足时写'
+                f'「数据不足：<缺什么>」"{comma}'
+            )
+
+        return (
+            "请严格按下面的 JSON 结构输出，"
+            "不要增删字段：\n"
+            "{\n"
+            + "\n".join(lines)
+            + "\n}\n"
+            "\n"
+            "每个字段都是字符串数组，最多 6 条，"
+            "每条一句话，要具体到这个模块的实现，"
+            "不要写适用于任何项目的空话。"
+        )
+
+    # ------------------------------------------------------------------
+    # 渲染
+    # ------------------------------------------------------------------
+
+    def _render(
+        self,
+        *,
+        module,
+        owner,
+        repo,
+        entry,
+        analysis,
+        files,
+        read_failures,
+        parsed_files,
+        unparsed,
+    ) -> str:
+        """渲染深挖报告。"""
+
+        title = self.MODULE_TITLES.get(
+            module,
+            module,
+        )
+
+        blocks = [
+            (
+                f"# {repo} · {title} 模块深挖报告\n\n"
+                f"> 分析对象：`{owner}/{repo}`\n"
+                f"> 模块：`{module}`\n"
+                f"> 读取文件：{len(files)} 个"
+                f"（默认报告为 20 个）\n"
+                f"> 解析成功：{parsed_files} 个文件\n"
+                f"> 实现明细："
+                f"{len(entry.get('details') or [])} 项"
+            )
+        ]
+
+        blocks.append(
+            self._render_analysis(
+                title,
+                analysis,
+            )
+        )
+
+        blocks.append(
+            self._render_implementations(
+                entry.get("details") or []
+            )
+        )
+
+        blocks.append(
+            self._render_evidence(entry)
+        )
+
+        blocks.append(
+            self._render_extraction_health(
+                files=files,
+                read_failures=read_failures,
+                unparsed=unparsed,
+            )
+        )
+
+        return "\n\n".join(
+            block
+            for block in blocks
+            if block
+        )
+
+    def _render_analysis(
+        self,
+        title: str,
+        analysis: dict,
+    ) -> str:
+        """渲染 LLM 结论。"""
+
+        if not analysis.get("available"):
+
+            return (
+                "## 分析结论\n\n"
+                "```text\n"
+                f"本模块的结论分析不可用。\n"
+                f"原因：{analysis.get('reason')}\n"
+                "以下实现明细为未经归纳的原始抽取结果。\n"
+                "```"
+            )
+
+        sections = analysis.get(
+            "sections"
+        ) or {}
+
+        blocks = ["## 分析结论"]
+
+        for key, label in self.ANALYSIS_FIELDS:
+
+            values = sections.get(key)
+
+            if not values:
+                continue
+
+            blocks.append(
+                f"### {label}\n\n"
+                + "\n".join(
+                    f"- {item}" for item in values
+                )
+            )
+
+        if len(blocks) == 1:
+
+            blocks.append("LLM 未返回可用的结论内容。")
+
+        return "\n\n".join(blocks)
+
+    def _render_implementations(
+        self,
+        details: list,
+    ) -> str:
+        """渲染实现明细（签名 + 调用链 + 常量 + 源码）。"""
+
+        if not details:
+
+            return (
+                "## 实现明细\n\n"
+                "未抽取到实现明细"
+                "（该模块没有匹配到可解析的函数 / 类）。"
+            )
+
+        blocks = ["## 实现明细"]
+
+        for detail in details:
+
+            blocks.append(
+                self._render_detail(detail)
+            )
+
+        return "\n\n".join(blocks)
+
+    def _render_detail(
+        self,
+        detail: dict,
+    ) -> str:
+        """渲染单条实现明细。"""
+
+        name = str(
+            detail.get("name") or ""
+        ).strip()
+
+        file_path = detail.get("file_path")
+
+        line = detail.get("line")
+
+        location = file_path or "（未知文件）"
+
+        if line:
+            location = f"{location}:{line}"
+
+        heading = (
+            f"### `{name}` · `{location}`"
+            if name
+            else f"### `{location}`"
+        )
+
+        blocks = [heading]
+
+        signature = str(
+            detail.get("signature") or ""
+        ).strip()
+
+        if signature:
+
+            blocks.append(
+                "```python\n"
+                f"{signature}\n"
+                "```"
+            )
+
+        methods = detail.get("methods")
+
+        if isinstance(methods, list) and methods:
+
+            blocks.append(
+                "- 方法："
+                + "、".join(
+                    f"`{item}`" for item in methods
+                )
+            )
+
+        calls = detail.get("calls")
+
+        if isinstance(calls, list) and calls:
+
+            blocks.append(
+                "- 调用："
+                + "、".join(
+                    f"`{item}`" for item in calls
+                )
+            )
+
+        literals = detail.get("literals")
+
+        if isinstance(literals, list) and literals:
+
+            blocks.append(
+                "- 关键常量："
+                + "、".join(
+                    f"`{item}`" for item in literals
+                )
+            )
+
+        source = str(
+            detail.get("source") or ""
+        ).strip()
+
+        if source:
+
+            blocks.append(
+                "**源码片段**\n\n"
+                "```python\n"
+                f"{source[: self.MAX_SOURCE_CHARS]}\n"
+                "```"
+            )
+
+        return "\n\n".join(blocks)
+
+    @staticmethod
+    def _render_evidence(entry: dict) -> str:
+        """渲染该模块的条目与证据锚点。"""
+
+        blocks = []
+
+        items = entry.get("items")
+
+        if isinstance(items, list) and items:
+
+            blocks.append(
+                "## 结构化条目\n\n"
+                + "\n".join(
+                    f"- {item}" for item in items
+                )
+            )
+
+        anchors = []
+
+        for key in (
+            "code_evidence",
+            "evidence",
+        ):
+
+            for item in entry.get(key) or []:
+
+                if not isinstance(item, dict):
+                    continue
+
+                file_path = (
+                    item.get("file_path")
+                    or item.get("file")
+                    or "（未知文件）"
+                )
+
+                line = item.get("line_start")
+
+                location = (
+                    f"{file_path}:{line}"
+                    if line
+                    else file_path
+                )
+
+                anchors.append(
+                    f"- `{location}` — {item.get('text')}"
+                )
+
+        if anchors:
+
+            blocks.append(
+                "## 证据锚点\n\n"
+                + "\n".join(anchors)
+            )
+
+        return "\n\n".join(blocks)
+
+    @staticmethod
+    def _render_extraction_health(
+        *,
+        files,
+        read_failures,
+        unparsed,
+    ) -> str:
+        """
+        如实交代这次的采集情况。
+
+        深挖的价值在于「看得比默认报告多」，
+        因此多读了哪些文件、
+        哪些没读到、哪些没解析成功，
+        必须写清楚，否则读者无法判断结论的覆盖面。
+        """
+
+        lines = [
+            (
+                "- 成功读取并解析："
+                f"{len(files)} 个文件"
+            )
+        ]
+
+        if read_failures:
+
+            lines.append(
+                f"- 读取失败：{len(read_failures)} 个"
+            )
+
+            for item in read_failures[:10]:
+
+                lines.append(
+                    f"  - `{item['file_path']}`"
+                    f" — {item['error']}"
+                )
+
+        if unparsed:
+
+            lines.append(
+                f"- 解析失败：{len(unparsed)} 个"
+            )
+
+            for item in unparsed[:10]:
+
+                lines.append(
+                    f"  - `{item['file_path']}`"
+                    f" — {item['error']}"
+                )
+
+        if files:
+
+            lines.append("- 本次读取的文件：")
+
+            for item in files:
+
+                lines.append(
+                    f"  - `{item['file_path']}`"
+                )
+
+        return (
+            "## 本次采集范围\n\n"
+            + "\n".join(lines)
+        )
+
+    # ------------------------------------------------------------------
+    # 导出与工具方法
+    # ------------------------------------------------------------------
+
+    async def _export(
+        self,
+        context,
+        *,
+        module,
+        repo,
+        content,
+        run_id,
+    ):
+        """写出深挖报告文件。"""
+
+        exporter = context.tools.get(
+            "report_export"
+        )
+
+        filename = (
+            f"{run_id}_{module}_deep_dive.md"
+            if run_id
+            else f"{repo}_{module}_deep_dive.md"
+        )
+
+        if exporter is None:
+
+            return {
+                "format": "markdown",
+                "content": content,
+            }
+
+        return await exporter.execute(
+            title=(
+                f"{repo} · {module} 模块深挖报告"
+            ),
+            content=content,
+            filename=filename,
+        )
+
+    @staticmethod
+    def _parse(
+        content: str,
+    ):
+        """
+        解析 LLM 返回的 JSON。
+
+        与报告综合分析共用同一套容错逻辑
+        （代码块包裹 / 前后噪声 / 被截断）。
+        """
+
+        return parse_json_object(content)
+
+    @staticmethod
+    def _as_text_list(value) -> list:
+        """把任意值转成限长的字符串列表。"""
+
+        if value is None:
+            return []
+
+        if isinstance(value, str):
+
+            text = value.strip()
+
+            return [text] if text else []
+
+        if not isinstance(
+            value,
+            (list, tuple),
+        ):
+            return [str(value)]
+
+        items = []
+
+        for item in value:
+
+            text = str(item).strip()
+
+            if not text:
+                continue
+
+            items.append(text)
+
+            if len(items) >= 6:
+                break
+
+        return items
+````
+
+### 📄 `app/skills/report_synthesis_skill.py`
+
+**层级**：Skill 层 · **职责**：Report Synthesis Skill。
+
+````python
+"""
+Report Synthesis Skill。
+
+职责
+====
+
+在 Finalizer 生成报告之前，
+把已被各 Agent 采集到的**真实事实**
+交给 LLM，产出一层「判断」：
+
+    - 00 结论摘要（一句话结论 / 核心设计 / 技术选型
+                   / 亮点 / 风险与缺口 / 适用场景）
+    - 各维度（agents / workflow / skills / tools
+             / rag / memory）的综合判断
+
+为什么需要这一层
+================
+
+在此之前，报告是 state.data 的 JSON 序列化：
+有事实、没有结论。
+本 Skill 负责从「事实」跨到「判断」。
+
+硬性约束
+========
+
+1. LLM **只能**使用 prompt 中 <facts> 提供的事实，
+   禁止补充外部知识、行业常识或猜测。
+2. 事实不足时必须写「数据不足：<缺什么>」，
+   不允许编造一个看起来合理的答案。
+3. LLM 不可用（无 Key / 超时 / 返回非法 JSON）时，
+   本 Skill 返回 available=False 并给出原因，
+   **不抛异常**，报告仍然正常产出。
+
+这三点与 ReportGenerationSkill 中
+「不使用任何硬编码占位内容」的约束是同一条原则。
+"""
+
+import json
+
+from app.skills.base import BaseSkill
+from app.skills.json_output import (
+    parse_json_object,
+)
+
+
+class ReportSynthesisSkill(
+    BaseSkill
+):
+    """基于已采集事实生成综合判断。"""
+
+    name = "report_synthesis"
+
+    description = (
+        "Synthesize judgments from "
+        "collected analysis facts."
+    )
+
+    # 送进 prompt 的 README 最多多少字符。
+    #
+    # README 是当前最主要的事实来源，
+    # 但个别仓库的 README 有数万字符，
+    # 全量送入会撑爆上下文。
+    MAX_README_CHARS = 6000
+
+    # 送进 prompt 的单个源码片段最多多少字符。
+    MAX_SOURCE_CHARS = 600
+
+    # 最多送入多少个源码片段。
+    MAX_SOURCE_FILES = 6
+
+    # 最多送入多少条 Evidence。
+    MAX_EVIDENCE = 12
+
+    # 输出 JSON 中每个列表最多保留多少条。
+    #
+    # LLM 偶尔会写得很长，
+    # 这里做上限保护，避免报告被一段话淹没。
+    MAX_BULLETS = 6
+
+    # 需要 LLM 给出判断的维度，
+    # 与报告 04-09 章一一对应。
+    DIMENSIONS = (
+        "agents",
+        "workflow",
+        "skills",
+        "tools",
+        "rag",
+        "memory",
+    )
+
+    # 维度名 -> 报告章节标题，用于 prompt 中给出上下文。
+    DIMENSION_TITLES = {
+        "agents": "Agent 架构",
+        "workflow": "Workflow",
+        "skills": "Skill",
+        "tools": "Tool",
+        "rag": "RAG",
+        "memory": "Memory",
+    }
+
+    async def execute(
+        self,
+        context,
+        input_data: dict,
+    ):
+        llm_tool = context.tools.get(
+            "llm_chat"
+        )
+
+        if llm_tool is None:
+
+            return self._unavailable(
+                "Tool not found: llm_chat，"
+                "无法生成综合分析。"
+            )
+
+        facts = self._build_facts(
+            input_data
+        )
+
+        prompt = self._build_prompt(
+            facts,
+            question=input_data.get(
+                "question"
+            ),
+        )
+
+        result = await llm_tool.execute(
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        self._system_prompt()
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ]
+        )
+
+        if not result.get("available"):
+
+            return self._unavailable(
+                result.get("reason")
+                or "LLM 未返回内容。"
+            )
+
+        parsed = self._parse(
+            result.get("content") or ""
+        )
+
+        if parsed is None:
+
+            return self._unavailable(
+                "LLM 返回的内容不是合法 JSON，"
+                "无法解析为综合分析。"
+            )
+
+        summary = parsed.get("summary")
+
+        if not isinstance(summary, dict):
+
+            return self._unavailable(
+                "LLM 返回的 JSON 缺少 summary 字段。"
+            )
+
+        return {
+            "available": True,
+            "reason": None,
+            "summary": self._normalize_summary(
+                summary
+            ),
+            "dimensions": (
+                self._normalize_dimensions(
+                    parsed.get("dimensions")
+                )
+            ),
+        }
+
+    @staticmethod
+    def _unavailable(
+        reason: str,
+    ) -> dict:
+        """统一的「综合分析不可用」表示。"""
+
+        return {
+            "available": False,
+            "reason": reason,
+            "summary": {},
+            "dimensions": {},
+        }
+
+    # ------------------------------------------------------------------
+    # prompt 构建
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _system_prompt() -> str:
+        """
+        系统提示词。
+
+        这里是「只归纳不推测」约束的落点，
+        修改时不要放宽这三条。
+        """
+
+        return (
+            "你是一名资深软件架构分析师，"
+            "正在为一份 GitHub 项目分析报告撰写结论部分。\n"
+            "\n"
+            "你必须严格遵守以下规则：\n"
+            "\n"
+            "1. 你只能使用用户消息中 <facts> 标签内提供的事实。\n"
+            "   禁止使用你自己的外部知识、行业常识、"
+            "对同类项目的印象来补充任何信息。\n"
+            "2. 如果某个问题在 <facts> 中找不到依据，"
+            "必须直接写「数据不足：<具体缺什么>」，"
+            "绝对不要给出一个看起来合理的猜测。\n"
+            "3. <facts> 中标记为 available=false 的部分，"
+            "说明该项数据没有被采集到，"
+            "对应的判断必须写成数据不足，"
+            "不能说「未使用该技术」或「没有实现该能力」。\n"
+            "   同样地，code_extraction.available=false "
+            "或 parsed_files=0 时，"
+            "说明源码没有被成功解析，"
+            "此时不得对代码结构下任何结论。\n"
+            "4. declared_by 表示结论的来源：\n"
+            "   code    —— 代码里确实存在，可以说「实现了」；\n"
+            "   readme  —— 只是 README 声称，"
+            "必须写成「README 声称」而不是「实现了」；\n"
+            "   code+readme  —— 两者都有，可以说「实现了」。\n"
+            "5. 不要复述 JSON 原文，要给出结论性的判断，"
+            "每条判断都要能对应到 <facts> 中的具体事实。\n"
+            "6. 只输出 JSON，不要用 markdown 代码块包裹，"
+            "不要在 JSON 前后添加任何解释文字。\n"
+        )
+
+    def _build_prompt(
+        self,
+        facts: dict,
+        question=None,
+    ) -> str:
+        """构建用户消息。"""
+
+        parts = []
+
+        if isinstance(
+            question,
+            str,
+        ) and question.strip():
+
+            parts.append(
+                "本次分析要回答的问题：\n"
+                f"{question.strip()}\n"
+            )
+
+        parts.append(
+            "<facts>\n"
+            + json.dumps(
+                facts,
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n</facts>\n"
+        )
+
+        parts.append(
+            self._output_instruction()
+        )
+
+        return "\n".join(parts)
+
+    def _output_instruction(self) -> str:
+        """输出格式说明。"""
+
+        dimension_lines = "\n".join(
+            f'    "{name}": "针对「'
+            f'{self.DIMENSION_TITLES[name]}」'
+            f'的综合判断，'
+            f'数据不足时写「数据不足：<缺什么>」"'
+            + ("," if index < len(
+                self.DIMENSIONS
+            ) - 1 else "")
+            for index, name in enumerate(
+                self.DIMENSIONS
+            )
+        )
+
+        return (
+            "请严格按下面的 JSON 结构输出，"
+            "不要增删字段：\n"
+            "\n"
+            "{\n"
+            '  "summary": {\n'
+            '    "one_line": '
+            '"一句话说清这个项目是什么、'
+            '核心设计是什么",\n'
+            '    "core_design": ["核心设计判断", "..."],\n'
+            '    "technology_choices": '
+            '["技术选型判断，'
+            '说明这些技术组合意味着什么", "..."],\n'
+            '    "highlights": ["这个项目做得好的地方", "..."],\n'
+            '    "risks": ["风险、缺口、可疑之处", "..."],\n'
+            '    "use_cases": ["适合用来做什么 / 参考什么", "..."]\n'
+            "  },\n"
+            '  "dimensions": {\n'
+            f"{dimension_lines}\n"
+            "  }\n"
+            "}\n"
+            "\n"
+            "其中 summary 的每个列表字段最多 "
+            f"{self.MAX_BULLETS} 条，"
+            "每条一句话。\n"
+            "facts 中没有依据的字段，"
+            "写成「数据不足：<缺什么>」即可。"
+        )
+
+    # ------------------------------------------------------------------
+    # 事实摘要
+    # ------------------------------------------------------------------
+
+    def _build_facts(
+        self,
+        data: dict,
+    ) -> dict:
+        """
+        从 state.data 构建送入 LLM 的事实摘要。
+
+        刻意只挑选与判断相关的字段：
+        state.data 里还有 modules 全文、
+        executed_tasks 等执行细节，
+        全量送入既浪费上下文，
+        又会把 AIPI 自身的执行状态
+        混进对被分析项目的判断里。
+        """
+
+        if not isinstance(data, dict):
+            data = {}
+
+        return {
+            "project_overview": (
+                self._project_overview(data)
+            ),
+            "readme": self._readme(data),
+            "technology_stack": (
+                self._as_dict(
+                    data.get("technology_stack")
+                )
+            ),
+            "directory_structure": (
+                self._as_dict(
+                    data.get(
+                        "directory_structure"
+                    )
+                )
+            ),
+            "declared_structure": (
+                self._declared_structure(data)
+            ),
+            "code_extraction": (
+                self._code_extraction(data)
+            ),
+            "source_files": (
+                self._source_files(data)
+            ),
+            "evidence": self._evidence(data),
+        }
+
+    @staticmethod
+    def _as_dict(value) -> dict:
+        """只接受 dict，其它一律当空。"""
+
+        if isinstance(value, dict):
+            return value
+
+        return {}
+
+    @staticmethod
+    def _project_overview(
+        data: dict,
+    ) -> dict:
+        """项目概览：GitHub API 的真实元数据。"""
+
+        repository = data.get(
+            "repository"
+        )
+
+        if not isinstance(
+            repository,
+            dict,
+        ):
+            return {
+                "available": False,
+                "reason": "未获取到仓库信息。",
+            }
+
+        license_info = repository.get(
+            "license"
+        )
+
+        license_name = None
+
+        if isinstance(
+            license_info,
+            dict,
+        ):
+            license_name = license_info.get(
+                "name"
+            )
+
+        return {
+            "available": True,
+            "name": repository.get("name"),
+            "full_name": repository.get(
+                "full_name"
+            ),
+            "description": repository.get(
+                "description"
+            ),
+            "language": repository.get(
+                "language"
+            ),
+            "topics": repository.get(
+                "topics"
+            ),
+            "stars": repository.get(
+                "stargazers_count"
+            ),
+            "forks": repository.get(
+                "forks_count"
+            ),
+            "open_issues": repository.get(
+                "open_issues_count"
+            ),
+            "license": license_name,
+            "size_kb": repository.get("size"),
+            "created_at": repository.get(
+                "created_at"
+            ),
+            "pushed_at": repository.get(
+                "pushed_at"
+            ),
+        }
+
+    def _readme(
+        self,
+        data: dict,
+    ) -> dict:
+        """README：被分析项目最主要的事实来源。"""
+
+        readme = data.get("readme")
+
+        if not isinstance(
+            readme,
+            str,
+        ) or not readme.strip():
+
+            return {
+                "available": False,
+                "reason": (
+                    data.get("readme_error")
+                    or "未读取到 README 内容。"
+                ),
+            }
+
+        return {
+            "available": True,
+            "characters": len(readme),
+            "truncated": (
+                len(readme)
+                > self.MAX_README_CHARS
+            ),
+            "content": readme[
+                : self.MAX_README_CHARS
+            ],
+        }
+
+    def _declared_structure(
+        self,
+        data: dict,
+    ) -> dict:
+        """
+        被分析项目自述结构的各维度。
+
+        直接把 declared / items / topics / evidence
+        交给 LLM，
+        并显式带上 available / reason，
+        让模型知道哪些是真没有、哪些是没采到。
+        """
+
+        structure = data.get(
+            "project_structure"
+        )
+
+        if (
+            not isinstance(
+                structure,
+                dict,
+            )
+            or not structure.get("available")
+        ):
+
+            return {
+                "available": False,
+                "reason": (
+                    "未产出被分析项目的自述结构"
+                    "（project_structure）。"
+                ),
+            }
+
+        dimensions = (
+            structure.get("dimensions")
+            or {}
+        )
+
+        result = {}
+
+        for name in self.DIMENSIONS:
+
+            entry = dimensions.get(name)
+
+            if not isinstance(entry, dict):
+
+                result[name] = {
+                    "available": False,
+                    "reason": (
+                        "该维度没有被抽取。"
+                    ),
+                }
+
+                continue
+
+            result[name] = {
+                "available": bool(
+                    entry.get("declared")
+                ),
+                # 结论来自代码还是 README。
+                #
+                # 这个区别对判断很关键：
+                # declared_by=readme 时，
+                # 只能说「README 声称有」，
+                # 不能说「代码里确实有」。
+                "declared_by": entry.get(
+                    "declared_by"
+                ),
+                "items": entry.get(
+                    "items"
+                )
+                or [],
+                "topics": entry.get(
+                    "topics"
+                )
+                or [],
+                "reason": entry.get(
+                    "reason"
+                ),
+                "code_evidence": [
+                    {
+                        "file": item.get(
+                            "file_path"
+                        ),
+                        "line": item.get(
+                            "line_start"
+                        ),
+                        "text": item.get(
+                            "text"
+                        ),
+                    }
+                    for item in (
+                        entry.get(
+                            "code_evidence"
+                        )
+                        or []
+                    )
+                    if isinstance(
+                        item,
+                        dict,
+                    )
+                ],
+                "readme_evidence": [
+                    {
+                        "line": item.get(
+                            "line_start"
+                        ),
+                        "text": item.get(
+                            "text"
+                        ),
+                    }
+                    for item in (
+                        entry.get("evidence")
+                        or []
+                    )
+                    if isinstance(
+                        item,
+                        dict,
+                    )
+                ],
+                # 实现明细：函数签名 / 调用链 / 关键常量。
+                #
+                # 这是判断「做到什么程度」的依据：
+                # 只有符号名时只能说「有这个方法」，
+                # 有了签名与调用链才能说
+                # 「它查了哪些字段、阈值多少」。
+                "details": [
+                    {
+                        "name": item.get("name"),
+                        "signature": item.get(
+                            "signature"
+                        ),
+                        "file": item.get(
+                            "file_path"
+                        ),
+                        "line": item.get("line"),
+                        "methods": item.get(
+                            "methods"
+                        )
+                        or [],
+                        "calls": item.get("calls")
+                        or [],
+                        "literals": item.get(
+                            "literals"
+                        )
+                        or [],
+                    }
+                    for item in (
+                        entry.get("details") or []
+                    )
+                    if isinstance(item, dict)
+                ],
+            }
+
+        return result
+
+    @staticmethod
+    def _code_extraction(
+        data: dict,
+    ) -> dict:
+        """
+        代码抽取的执行情况。
+
+        必须交给 LLM：
+        「解析了 8 个文件、0 个失败」
+        和「一个文件都没读到」
+        会得出完全不同的可靠性判断。
+        """
+
+        structure = data.get(
+            "project_structure"
+        )
+
+        if not isinstance(
+            structure,
+            dict,
+        ):
+            return {
+                "available": False,
+                "reason": "未产出结构信息。",
+            }
+
+        meta = structure.get(
+            "code_extraction"
+        )
+
+        if not isinstance(meta, dict):
+            return {
+                "available": False,
+                "reason": "未执行代码结构抽取。",
+            }
+
+        return meta
+
+    def _source_files(
+        self,
+        data: dict,
+    ) -> list:
+        """
+        真实读到的源码片段。
+
+        这是当前唯一来自代码而非 README 的证据，
+        虽然采样很浅，
+        但对判断「README 说的和代码是否一致」
+        已经够用。
+        """
+
+        modules = data.get("modules")
+
+        if not isinstance(modules, list):
+            return []
+
+        files = []
+
+        for module in modules:
+
+            if not isinstance(
+                module,
+                dict,
+            ):
+                continue
+
+            if module.get("error"):
+                continue
+
+            content = str(
+                module.get("content") or ""
+            )
+
+            if not content.strip():
+                continue
+
+            files.append(
+                {
+                    "file_path": module.get(
+                        "file_path"
+                    ),
+                    "content": content[
+                        : self.MAX_SOURCE_CHARS
+                    ],
+                    "truncated": (
+                        len(content)
+                        > self.MAX_SOURCE_CHARS
+                    ),
+                }
+            )
+
+            if len(files) >= self.MAX_SOURCE_FILES:
+                break
+
+        return files
+
+    def _evidence(
+        self,
+        data: dict,
+    ) -> list:
+        """Evidence 摘要：只给文件、行号与片段。"""
+
+        evidence = data.get("evidence")
+
+        if not isinstance(evidence, list):
+            return []
+
+        items = []
+
+        for item in evidence[
+            : self.MAX_EVIDENCE
+        ]:
+
+            if not isinstance(item, dict):
+                continue
+
+            content = item.get("content")
+
+            items.append(
+                {
+                    "file_path": item.get(
+                        "file_path"
+                    ),
+                    "line_start": item.get(
+                        "line_start"
+                    ),
+                    "line_end": item.get(
+                        "line_end"
+                    ),
+                    "content": str(
+                        content or ""
+                    )[:200],
+                }
+            )
+
+        return items
+
+    # ------------------------------------------------------------------
+    # 输出解析
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _parse(
+        content: str,
+    ):
+        """
+        解析 LLM 返回的 JSON。
+
+        兼容纯 JSON / ```json 包裹 /
+        前后有解释文字 / 被截断四种情况。
+        解析失败返回 None，由调用方降级。
+        """
+
+        return parse_json_object(content)
+
+    def _normalize_summary(
+        self,
+        summary: dict,
+    ) -> dict:
+        """
+        规整 summary。
+
+        列表字段统一成字符串列表并限长；
+        one_line 统一成字符串。
+        """
+
+        normalized = {
+            "one_line": self._as_text(
+                summary.get("one_line")
+            )
+        }
+
+        for key in (
+            "core_design",
+            "technology_choices",
+            "highlights",
+            "risks",
+            "use_cases",
+        ):
+
+            normalized[key] = (
+                self._as_text_list(
+                    summary.get(key)
+                )
+            )
+
+        return normalized
+
+    def _normalize_dimensions(
+        self,
+        dimensions,
+    ) -> dict:
+        """规整 dimensions：只保留已知维度且值为文本。"""
+
+        if not isinstance(
+            dimensions,
+            dict,
+        ):
+            return {}
+
+        return {
+            name: self._as_text(
+                dimensions.get(name)
+            )
+            for name in self.DIMENSIONS
+            if dimensions.get(name)
+        }
+
+    @staticmethod
+    def _as_text(value) -> str:
+        """把任意值转成去空白的字符串。"""
+
+        if value is None:
+            return ""
+
+        if isinstance(value, str):
+            return value.strip()
+
+        if isinstance(
+            value,
+            (list, tuple),
+        ):
+            return "；".join(
+                str(item).strip()
+                for item in value
+                if str(item).strip()
+            )
+
+        return str(value).strip()
+
+    def _as_text_list(
+        self,
+        value,
+    ) -> list:
+        """把任意值转成限长的字符串列表。"""
+
+        if value is None:
+            return []
+
+        if isinstance(value, str):
+
+            text = value.strip()
+
+            return [text] if text else []
+
+        if not isinstance(
+            value,
+            (list, tuple),
+        ):
+            return [str(value)]
+
+        items = []
+
+        for item in value:
+
+            text = ReportSynthesisSkill._as_text(
+                item
+            )
+
+            if not text:
+                continue
+
+            items.append(text)
+
+            if len(items) >= self.MAX_BULLETS:
+                break
+
+        return items
+````
 
 ## 十四、证据与溯源层（Evidence）
 
@@ -9547,27 +15716,92 @@ class BaseLLM(ABC):
 ```python
 """
 DeepSeek LLM实现。
+
+DeepSeek 提供 OpenAI 兼容接口，
+底层使用 openai SDK 的 AsyncOpenAI 客户端。
+
+构造方式保持向后兼容：
+
+    DeepSeekLLM(client)
+
+也可以显式指定模型与超时：
+
+    DeepSeekLLM(client, model="deepseek-chat", timeout=60.0)
 """
 
 from .base import BaseLLM
+
+
 class DeepSeekLLM(BaseLLM):
+
+    # 默认模型。
+    #
+    # 保留该默认值是为了不破坏
+    # 早期只传 client 的调用方式。
+    DEFAULT_MODEL = "deepseek-chat"
 
     def __init__(
         self,
-        client
+        client,
+        model: str | None = None,
+        timeout: float | None = None,
+        max_tokens: int | None = None,
     ):
 
         self.client = client
+
+        self.model = (
+            model or self.DEFAULT_MODEL
+        )
+
+        self.timeout = timeout
+
+        self.max_tokens = max_tokens
+
     async def chat(
         self,
-        messages
+        messages,
+        model: str | None = None,
+        max_tokens: int | None = None,
     ):
+        """
+        发送一次对话请求，返回文本内容。
 
-        response = await self.client.chat.completions.create(
+        model / max_tokens 允许单次调用覆盖实例默认值。
+        """
 
-            model="deepseek-chat",
-            messages=messages
+        create_kwargs = {
+            "model": model or self.model,
+            "messages": messages,
+        }
+
+        if self.timeout is not None:
+            create_kwargs["timeout"] = (
+                self.timeout
+            )
+
+        limit = (
+            max_tokens
+            if max_tokens is not None
+            else self.max_tokens
         )
+
+        # 必须显式给出上限。
+        #
+        # 不设置时走服务端默认值，
+        # 综合分析那种几千字符的 JSON 回复
+        # 会被中途截断，
+        # 截断的 JSON 一定解析失败。
+        if limit is not None:
+            create_kwargs["max_tokens"] = limit
+
+        response = (
+            await self.client
+            .chat.completions.create(
+                **create_kwargs
+            )
+        )
+
         return response.choices[0].message.content
 ```
 
@@ -9631,12 +15865,39 @@ class BaseTool(ABC):
 File Reader Tool。
 
 负责:
-    - 从 GitHub raw 地址读取项目文件
+
+    - 读取 GitHub 项目文件内容
+
+读取策略
+========
+
+优先 GitHub Contents API
+（api.github.com/repos/{owner}/{name}/contents/{path}）
+
+失败时回退
+（raw.githubusercontent.com）
+
+原因：
+
+部分网络环境下 raw.githubusercontent.com 极不稳定，
+实测同一个 README：
+
+    api.github.com/contents   -> 200，0.88 秒
+    raw.githubusercontent.com -> 20 秒后 ReadError
+
+而一个文件读取失败曾经导致
+整个 5-Agent 分析计划直接 FAILED。
+
+因此把稳定的域名放在前面，
+raw 只作为回退（它支持 >1MB 的大文件，
+Contents API 对超过 1MB 的文件不返回内容）。
 """
 
 
+import base64
 import httpx
 
+from app.core.config import get_settings
 from app.core.exceptions import ToolError
 from app.tools.base import BaseTool
 
@@ -9647,16 +15908,50 @@ class FileReaderTool(BaseTool):
 
     """
     GitHub 文件读取工具。
-    当前支持:
-        - README.md
-    后续可以扩展:
-        - .py
-        - requirements.txt
-        - pyproject.toml
     """
 
 
     name = "file_reader"
+
+
+    # 单次读取超时（秒）。
+    TIMEOUT_SECONDS = 30
+
+
+    API_BASE = "https://api.github.com"
+
+
+    RAW_BASE = (
+        "https://raw.githubusercontent.com"
+    )
+
+
+    # 内部标记：
+    # Contents API 无法提供内容
+    # （网络出错 / 目录 / 超过 1MB），
+    # 但「文件不存在」不属于这种情况。
+    _USE_FALLBACK = object()
+
+
+    @staticmethod
+    def _headers() -> dict:
+        """GitHub 请求头（配置了 token 就带上）。"""
+
+        headers = {
+            "Accept": (
+                "application/vnd.github+json"
+            ),
+        }
+
+        token = get_settings().GITHUB_TOKEN
+
+        if token:
+
+            headers["Authorization"] = (
+                f"Bearer {token}"
+            )
+
+        return headers
 
 
     async def execute(
@@ -9675,6 +15970,7 @@ class FileReaderTool(BaseTool):
             branch,
         )
 
+
     async def read_file(
         self,
         owner: str,
@@ -9682,25 +15978,212 @@ class FileReaderTool(BaseTool):
         file_path: str,
         branch: str = "main",
     ) -> str:
+        """
+        读取文件内容。
 
+        返回空字符串表示「文件不存在」
+        （非 200 / 404），保持既有语义。
+
+        回退策略是「按分支决策」而不是
+        「按来源整体回退」：
+
+            Contents API 明确回答 404
+                → 该分支上文件确实不存在
+                → 不再去 raw 白等几十秒超时
+
+            Contents API 网络出错 / 文件超过 1MB
+                → 该分支回退 raw
+
+        否则一个不存在的文件要等
+        两个 raw 超时（实测 51 秒）。
+        """
+
+        branches = [branch]
+
+        # main 不存在时尝试 master
+        if branch == "main":
+
+            branches.append("master")
+
+        errors = []
+
+        completed = 0
+
+        for candidate in branches:
+
+            try:
+
+                result = (
+                    await self._read_via_contents_api(
+                        owner,
+                        name,
+                        file_path,
+                        candidate,
+                    )
+                )
+
+            except ToolError as error:
+
+                errors.append(str(error))
+
+                result = self._USE_FALLBACK
+
+            else:
+
+                completed += 1
+
+            if isinstance(result, str):
+
+                return result
+
+            # 文件确实不存在（404）：
+            # 换下一个分支，不必回退 raw。
+            if result is None:
+
+                continue
+
+            # 需要回退 raw：
+            # Contents API 出错或缺内容。
+            try:
+
+                content = await self._read_via_raw(
+                    owner,
+                    name,
+                    file_path,
+                    candidate,
+                )
+
+            except ToolError as error:
+
+                errors.append(str(error))
+
+                continue
+
+            completed += 1
+
+            if content is not None:
+
+                return content
+
+        # 所有来源都是网络错误：
+        # 抛出以便定位，而不是伪装成「文件不存在」。
+        if completed == 0 and errors:
+
+            raise ToolError(errors[0])
+
+        return ""
+
+
+    async def _read_via_contents_api(
+        self,
+        owner: str,
+        name: str,
+        file_path: str,
+        branch: str,
+    ) -> str | None:
+        """
+        GitHub Contents API。
+
+        返回值语义（调用方据此决定是否回退 raw）：
+
+            str           读到内容
+            None          文件在该分支上不存在
+            _USE_FALLBACK 拿不到内容（目录 / >1MB），
+                          需要回退 raw
+        """
 
         url = (
-            "https://raw.githubusercontent.com/"
-            f"{owner}/{name}/"
-            f"{branch}/{file_path}"
+            f"{self.API_BASE}"
+            f"/repos/{owner}/{name}"
+            f"/contents/{file_path}"
         )
 
-        # httpx 的超时异常（例如 ReadTimeout）
-        # 其 str() 可能是空字符串，
-        # 直接向上抛出会丢失 URL 和异常语义，
-        # 因此统一转换成带上下文的 ToolError。
         try:
 
             async with httpx.AsyncClient() as client:
 
                 response = await client.get(
                     url,
-                    timeout=10,
+                    params={"ref": branch},
+                    headers=self._headers(),
+                    timeout=self.TIMEOUT_SECONDS,
+                )
+
+        except httpx.TimeoutException as error:
+
+            raise ToolError(
+                f"Contents API timeout: {url}"
+            ) from error
+
+        except httpx.HTTPError as error:
+
+            raise ToolError(
+                f"Contents API failed: {url}: {error}"
+            ) from error
+
+        if response.status_code != 200:
+
+            return None
+
+        payload = response.json()
+
+        if not isinstance(payload, dict):
+
+            return None
+
+        encoded = payload.get("content")
+
+        if (
+            payload.get("encoding") != "base64"
+            or not encoded
+        ):
+
+            # 目录或超过 1MB 的文件：
+            # 这是「该来源拿不到」，
+            # 不是「文件不存在」，
+            # 因此需要回退 raw。
+            return self._USE_FALLBACK
+
+        try:
+
+            return base64.b64decode(
+                encoded
+            ).decode(
+                "utf-8",
+                errors="replace",
+            )
+
+        except Exception:
+
+            return None
+
+
+    async def _read_via_raw(
+        self,
+        owner: str,
+        name: str,
+        file_path: str,
+        branch: str,
+    ) -> str | None:
+        """
+        raw.githubusercontent.com 回退。
+
+        返回 None 表示非 200（文件不存在）。
+        """
+
+        url = (
+            f"{self.RAW_BASE}/"
+            f"{owner}/{name}/"
+            f"{branch}/{file_path}"
+        )
+
+        try:
+
+            async with httpx.AsyncClient() as client:
+
+                response = await client.get(
+                    url,
+                    timeout=self.TIMEOUT_SECONDS,
                 )
 
         except httpx.TimeoutException as error:
@@ -9715,22 +16198,9 @@ class FileReaderTool(BaseTool):
                 f"Read failed: {url}: {error}"
             ) from error
 
-        # 非 200 视为“文件不存在”，
-        # 保持原有语义：不抛异常。
         if response.status_code != 200:
 
-            # main不存在时尝试master
-
-            if branch == "main":
-
-                return await self.read_file(
-                    owner,
-                    name,
-                    file_path,
-                    "master",
-                )
-
-            return ""
+            return None
 
         return response.text
 ```
@@ -10091,6 +16561,9 @@ GitHub Repository Tool。
 """
 
 import httpx
+
+from app.core.config import get_settings
+from app.core.exceptions import ToolError
 from app.tools.base import BaseTool
 
 class GitHubRepositoryTool(BaseTool):
@@ -10101,11 +16574,30 @@ class GitHubRepositoryTool(BaseTool):
     负责:
         - 调用 GitHub REST API
         - 获取仓库基础信息
+        - 获取仓库完整文件树（Git Trees API）
     """
 
     name = "github_repository"
 
     BASE_URL = "https://api.github.com"
+
+    def _headers(self) -> dict:
+        """构造 GitHub 请求头。
+
+        未认证时的速率限制很低，
+        因此配置了 token 就带上。
+        """
+
+        headers = {
+            "Accept": "application/vnd.github+json",
+        }
+
+        token = get_settings().GITHUB_TOKEN
+
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+
+        return headers
 
     async def execute(
         self,
@@ -10135,10 +16627,77 @@ class GitHubRepositoryTool(BaseTool):
         async with httpx.AsyncClient() as client:
 
             response = await client.get(
-                url
+                url,
+                headers=self._headers(),
             )
             response.raise_for_status()
             return response.json()
+
+    async def get_tree(
+        self,
+        owner: str,
+        name: str,
+        branch: str = "main",
+    ) -> list[dict]:
+        """
+        获取仓库完整文件树。
+
+        使用 Git Trees API（recursive=1）。
+
+        GitHub Code Search 的 repo: 限定符
+        对多数仓库返回 0 条结果，
+        因此目录结构必须用 Trees API，
+        不能用 Code Search 替代。
+
+        取不到时返回空列表而不是抛异常：
+        目录结构属于增强信息，
+        不应因此中断整个分析流程。
+        """
+
+        for candidate in (
+            branch,
+            "master",
+        ):
+
+            url = (
+                f"{self.BASE_URL}"
+                f"/repos/{owner}/{name}"
+                f"/git/trees/{candidate}"
+            )
+
+            try:
+
+                async with httpx.AsyncClient() as client:
+
+                    response = await client.get(
+                        url,
+                        params={"recursive": "1"},
+                        headers=self._headers(),
+                    )
+
+            except httpx.TimeoutException as error:
+
+                raise ToolError(
+                    f"Tree timeout: {url}"
+                ) from error
+
+            except httpx.HTTPError as error:
+
+                raise ToolError(
+                    f"Tree failed: {url}: {error}"
+                ) from error
+
+            if response.status_code == 200:
+
+                tree = response.json().get(
+                    "tree",
+                    [],
+                )
+
+                if isinstance(tree, list):
+                    return tree
+
+        return []
 ```
 
 ### 📄 `app/tools/github/github_code_search_tool.py`
@@ -10301,6 +16860,174 @@ def parse_github_url(url: str) -> tuple[str, str]:
 **层级**：工具层 · **职责**：（未标注）
 
 > 该文件为 **0 字节** 空文件，无源码内容。
+
+### 📄 `app/tools/llm_chat_tool.py`
+
+**层级**：工具层 · **职责**：LLM Chat Tool。
+
+```python
+"""
+LLM Chat Tool。
+
+把 LLM 调用封装成 Tool，
+供 Skill 通过 context.tools 获取，
+与其它 Tool 的装配方式保持一致。
+
+设计约束
+========
+
+本 Tool **永不抛异常**。
+
+原因：报告综合分析只是报告的增强章节，
+LLM 不可用（没有 API Key / 网络不通 /
+额度耗尽 / 返回超时）时，
+报告仍然应该正常产出，
+只是缺少「结论摘要」部分。
+
+因此所有失败都转成：
+
+    {
+        "available": False,
+        "reason": "<可读原因>"
+    }
+
+由调用方决定如何降级。
+"""
+
+from openai import AsyncOpenAI
+
+from app.core.config import get_settings
+from app.llm.deepseek import DeepSeekLLM
+from app.tools.base import BaseTool
+
+
+class LLMChatTool(BaseTool):
+
+    name = "llm_chat"
+
+    def __init__(
+        self,
+        llm=None,
+    ):
+        """
+        llm 允许注入一个假实现用于测试。
+
+        注入时完全不读取配置、不创建网络客户端。
+        """
+
+        self._llm = llm
+
+    def _build_llm(self):
+        """按配置创建真实的 DeepSeek 客户端。"""
+
+        settings = get_settings()
+
+        api_key = (
+            settings.LLM_API_KEY or ""
+        ).strip()
+
+        if not api_key:
+            return None, (
+                "未配置 LLM_API_KEY，"
+                "无法调用 LLM 生成综合分析。"
+            )
+
+        client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=settings.LLM_BASE_URL,
+            timeout=settings.LLM_TIMEOUT,
+        )
+
+        return (
+            DeepSeekLLM(
+                client,
+                model=settings.LLM_MODEL,
+                timeout=settings.LLM_TIMEOUT,
+                max_tokens=settings.LLM_MAX_TOKENS,
+            ),
+            None,
+        )
+
+    async def execute(
+        self,
+        messages,
+        model: str | None = None,
+        **kwargs,
+    ):
+        """
+        执行一次对话。
+
+        返回：
+
+            {"available": True,  "content": "..."}
+            {"available": False, "reason": "..."}
+        """
+
+        llm = self._llm
+
+        if llm is None:
+
+            llm, reason = self._build_llm()
+
+            if llm is None:
+
+                return {
+                    "available": False,
+                    "reason": reason,
+                }
+
+        try:
+
+            # 默认不传 model，
+            # 沿用 BaseLLM 的最小契约
+            # chat(messages)，
+            # 这样只实现该契约的假实现也能工作。
+            if model is None:
+
+                content = await llm.chat(
+                    messages
+                )
+
+            else:
+
+                content = await llm.chat(
+                    messages,
+                    model=model,
+                )
+
+        # 真实事故的防线：
+        # LLM 侧的异常种类很多
+        # （鉴权 / 限流 / 超时 / 连接失败），
+        # 逐个捕获没有意义，
+        # 这里统一降级为 available=False。
+        except Exception as error:
+
+            return {
+                "available": False,
+                "reason": (
+                    "LLM 调用失败："
+                    f"{type(error).__name__}: "
+                    f"{error}"
+                ),
+            }
+
+        if not isinstance(
+            content,
+            str,
+        ) or not content.strip():
+
+            return {
+                "available": False,
+                "reason": (
+                    "LLM 返回了空内容。"
+                ),
+            }
+
+        return {
+            "available": True,
+            "content": content,
+        }
+```
 
 ## 十七、项目分析层（Project Analysis）
 
@@ -10553,6 +17280,2270 @@ class RepositoryIndexer:
 **层级**：项目分析层 · **职责**：（未标注）
 
 > 该文件为 **0 字节** 空文件，无源码内容。
+
+### 📄 `app/project_analysis/analysis_focus.py`
+
+**层级**：项目分析层 · **职责**：本次分析的重点维度。
+
+```python
+"""
+本次分析的重点维度。
+
+为什么需要它
+============
+
+在此之前，用户提出的问题（question）
+只影响结论层的措辞，完全不影响采集与报告：
+
+    PlannerAgent 的任务表是写死的 5 个 agent
+    ArchitectureAnalysisSkill 的配额是写死的
+    ReportGenerationSkill 的章节是写死的
+
+于是「分析这个项目的 agent」和
+「分析它的 workflow」得到的报告一模一样 ——
+每个模块都是同样的深度，看不出重点。
+
+真实反馈：
+    「我让分析的是 agent，为什么报告里还是什么都有」
+
+本模块把「用户关心什么」变成一份显式的焦点，
+供采集层（分配文件配额）与报告层（展开 / 压缩）共同使用。
+
+焦点怎么来
+==========
+
+    llm       由 PlannerAgent 调 LLM 从 question 解析（首选）
+    keywords  关键词回退（LLM 不可用时）
+    none      没有识别出重点 —— 此时报告保持全量等深，
+              与旧行为一致，不做任何裁剪
+
+「识别不出重点」与「重点是空」是两回事：
+前者保持现状，后者是用户明确说「只看 agent」。
+"""
+
+import re
+
+
+class AnalysisFocus:
+    """本次分析的重点维度。"""
+
+    # 与 CodeStructureExtractor.DIMENSIONS、
+    # 报告 04-09 章一一对应。
+    DIMENSIONS = (
+        "agents",
+        "workflow",
+        "skills",
+        "tools",
+        "rag",
+        "memory",
+    )
+
+    # 维度名 -> 展示名。
+    TITLES = {
+        "agents": "Agent 架构",
+        "workflow": "Workflow",
+        "skills": "Skill",
+        "tools": "Tool",
+        "rag": "RAG",
+        "memory": "Memory",
+    }
+
+    # 关键词回退表。
+    #
+    # 只在 LLM 不可用时使用，
+    # 因此宁可保守：宁可不识别出重点
+    # （保持全量报告），
+    # 也不要误判成「只看某一个维度」
+    # （那会让用户拿不到其它章节）。
+    KEYWORDS = {
+        "agents": (
+            "agent",
+            "智能体",
+            "代理",
+            "多智能体",
+            "multi-agent",
+            "multi agent",
+            "supervisor",
+            "planner",
+            "reAct",
+            "react",
+            "角色",
+        ),
+        "workflow": (
+            "workflow",
+            "工作流",
+            "编排",
+            "流程",
+            "graph",
+            "状态机",
+            "langgraph",
+            "节点",
+            "路由",
+        ),
+        "skills": (
+            "skill",
+            "技能",
+            "能力",
+            "capability",
+        ),
+        "tools": (
+            "tool",
+            "工具",
+            "函数调用",
+            "function call",
+            "mcp",
+        ),
+        "rag": (
+            "rag",
+            "检索",
+            "向量",
+            "知识库",
+            "embedding",
+            "召回",
+            "retrieval",
+        ),
+        "memory": (
+            "memory",
+            "记忆",
+            "上下文",
+            "会话",
+            "checkpoint",
+            "持久化",
+        ),
+    }
+
+    # 一次最多认几个重点维度。
+    #
+    # 认太多等于没有重点：
+    # 用户问「agent 和 workflow」是合理的，
+    # 一次点名五个就不是在提重点了。
+    MAX_DIMENSIONS = 3
+
+    def __init__(
+        self,
+        dimensions=None,
+        notes=None,
+        source="none",
+    ):
+        self.dimensions = self._normalize(
+            dimensions
+        )
+
+        self.notes = (
+            notes.strip()
+            if isinstance(notes, str)
+            else ""
+        )
+
+        self.source = source
+
+    # ------------------------------------------------------------------
+    # 构造
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def none(cls) -> "AnalysisFocus":
+        """没有识别出重点 —— 报告保持全量等深。"""
+
+        return cls()
+
+    @classmethod
+    def _normalize(
+        cls,
+        dimensions,
+    ) -> list:
+        """去重、只保留已知维度、限长，保持顺序。"""
+
+        if not isinstance(
+            dimensions,
+            (list, tuple),
+        ):
+            return []
+
+        result = []
+
+        for item in dimensions:
+
+            name = str(item).strip().lower()
+
+            if name not in cls.DIMENSIONS:
+                continue
+
+            if name in result:
+                continue
+
+            result.append(name)
+
+            if len(result) >= cls.MAX_DIMENSIONS:
+                break
+
+        return result
+
+    @classmethod
+    def from_question(
+        cls,
+        question,
+    ) -> "AnalysisFocus":
+        """
+        关键词回退：从问题文本里认重点维度。
+
+        只在 LLM 规划不可用时使用。
+        一条都没命中时返回 none()，
+        而不是「猜一个」。
+        """
+
+        if not isinstance(question, str):
+            return cls.none()
+
+        lowered = question.lower()
+
+        hits = []
+
+        for name in cls.DIMENSIONS:
+
+            if cls._matches(lowered, name):
+
+                hits.append(name)
+
+        if not hits:
+            return cls.none()
+
+        return cls(
+            dimensions=hits,
+            notes="",
+            source="keywords",
+        )
+
+    @classmethod
+    def _matches(
+        cls,
+        lowered: str,
+        dimension: str,
+    ) -> bool:
+        """判断文本是否命中该维度的关键词。"""
+
+        for keyword in cls.KEYWORDS[dimension]:
+
+            # 中文关键词直接子串匹配；
+            # 英文关键词要词边界，
+            # 否则 "agent" 会命中 "reagent"。
+            if re.search(r"[一-鿿]", keyword):
+
+                if keyword in lowered:
+                    return True
+
+                continue
+
+            if re.search(
+                r"(?:^|[^a-z0-9])"
+                + re.escape(keyword)
+                + r"(?:$|[^a-z0-9])",
+                lowered,
+            ):
+                return True
+
+        return False
+
+    @classmethod
+    def from_plan(
+        cls,
+        research_plan,
+    ) -> "AnalysisFocus":
+        """
+        从 research_plan 里读回焦点。
+
+        采集层与报告层都用这个入口，
+        避免两处各自解析导致行为不一致。
+        """
+
+        if not isinstance(research_plan, dict):
+            return cls.none()
+
+        raw = research_plan.get("focus")
+
+        if not isinstance(raw, dict):
+
+            # 兼容旧 run：research_plan 里没有 focus。
+            # 退回用 question 做关键词匹配，
+            # 这样历史数据的报告也能有点侧重。
+            return cls.from_question(
+                research_plan.get("question")
+            )
+
+        source = raw.get("source") or "none"
+
+        if source == "none":
+            return cls.none()
+
+        return cls(
+            dimensions=raw.get("dimensions"),
+            notes=raw.get("notes"),
+            source=source,
+        )
+
+    # ------------------------------------------------------------------
+    # 查询
+    # ------------------------------------------------------------------
+
+    @property
+    def is_focused(self) -> bool:
+        """是否识别出了明确重点。"""
+
+        return bool(self.dimensions)
+
+    def is_primary(self, dimension) -> bool:
+        """该维度是否是本次重点。"""
+
+        return dimension in self.dimensions
+
+    def rank(self, dimension) -> int:
+        """
+        维度在重点里的排序。
+
+        越靠前越重要；不在重点里返回一个很大的值。
+        """
+
+        try:
+
+            return self.dimensions.index(
+                dimension
+            )
+
+        except ValueError:
+
+            return len(self.DIMENSIONS)
+
+    def titles(self) -> list:
+        """重点维度的展示名，用于写进报告开头。"""
+
+        return [
+            self.TITLES.get(name, name)
+            for name in self.dimensions
+        ]
+
+    def to_dict(self) -> dict:
+        """落进 research_plan 的形态。"""
+
+        return {
+            "dimensions": list(self.dimensions),
+            "notes": self.notes,
+            "source": self.source,
+        }
+
+    def __repr__(self) -> str:
+
+        return (
+            f"AnalysisFocus({self.dimensions!r}, "
+            f"source={self.source!r})"
+        )
+```
+
+### 📄 `app/project_analysis/code_structure_extractor.py`
+
+**层级**：项目分析层 · **职责**：Code Structure Extractor。
+
+```python
+"""
+Code Structure Extractor。
+
+用 Python AST 从**真实源码**中抽取被分析项目的结构信号。
+
+为什么需要它
+============
+
+在此之前，报告 04-09 章（Agent 架构 / Workflow / Skill /
+Tool / RAG / Memory）唯一的来源是
+
+    ArchitectureAnalysisSkill._extract_project_structure
+
+它对被分析项目的 README 做关键词匹配，
+再把命中的行按逗号切碎当条目。
+
+结果是：一个 README 里没写 "skill" 二字的项目，
+即使代码里有一整套 Skill 类，
+报告也只能写「未声明该能力」；
+而一个 README 写得漂亮但代码空心的项目，
+反而能拿到一堆看似完整的条目。
+
+本模块把「代码怎么说」变成一等证据：
+每个信号都带文件路径与行号，
+可以逐条打开源码复核。
+
+抽取范围
+========
+
+只做**静态符号识别**，不做语义推断：
+
+    class 定义      -> 类名 + 基类
+    函数定义        -> 函数名 + 装饰器
+    import          -> 模块名
+    关键调用        -> StateGraph / .add_node / .add_edge 等
+
+不解析调用图、不推断数据流、不判断代码质量。
+
+诚实性约束
+==========
+
+- 只有拿到具体符号与行号才会产出条目，不猜。
+- 语法解析失败的文件记入 unparsed，
+  由调用方如实展示，而不是静默丢弃。
+- 一个文件解析失败不影响其它文件。
+"""
+
+import ast
+import re
+
+
+def _symbol_pattern(keyword: str):
+    """
+    构造「符号名里出现该关键词」的模式。
+
+    坑点：不能直接写 r"[^a-z]" 配 IGNORECASE，
+    因为 re.IGNORECASE 会让 [^a-z] 连大写字母
+    一起排除，于是 PlannerAgent / BaseToolBase
+    这类 camelCase 名字反而匹配不上。
+
+    两侧分别处理：
+
+        左侧 (?:^|[^A-Za-z])  大小写都算字母，
+                              不受 IGNORECASE 影响
+        右侧 (?:$|(?-i:[^a-z]))  用作用域关掉 IGNORECASE，
+                              这样 [^a-z] 才真的是
+                              「不是小写字母」，
+                              camelCase 边界与 _ / 数字都能命中
+
+    已知局限（刻意宽进，宁可多留证据）：
+    Toolkit、Retool、agentic 这类词会被命中。
+    在被分析项目的类名里出现频率很低，
+    而且误判只是多一条待人工复核的证据，
+    不会伪造出不存在的结论。
+    """
+
+    return re.compile(
+        rf"(?:^|[^A-Za-z]){keyword}"
+        rf"|{keyword}(?:$|(?-i:[^a-z]))",
+        re.IGNORECASE,
+    )
+
+
+def _parent_directory(file_path: str) -> str:
+    """取文件所在目录，用于路径信号去重。"""
+
+    text = str(file_path).replace("\\", "/")
+
+    if "/" not in text:
+        return text
+
+    directory = text.rsplit("/", 1)[0]
+
+    return directory + "/" if directory else text
+
+
+class CodeStructureExtractor:
+    """从 Python 源码中抽取六个维度的结构信号。"""
+
+    # 与 ArchitectureAnalysisSkill.STRUCTURE_KEYWORDS
+    # 保持同一组维度名，
+    # 这样两层结果才能按维度合并。
+    DIMENSIONS = (
+        "agents",
+        "workflow",
+        "skills",
+        "tools",
+        "rag",
+        "memory",
+    )
+
+    # 单个维度最多产出多少条目 / 证据。
+    MAX_ITEMS = 12
+
+    MAX_EVIDENCE = 6
+
+    # 实现明细：单个维度最多记录多少条，
+    # 每条最多记多少个被调用函数 / 字面量。
+    #
+    # 明细比条目重得多（一条约 200-400 字节），
+    # 上限要收紧，否则 state_data 会明显膨胀。
+    MAX_DETAILS = 6
+
+    MAX_CALLS = 6
+
+    MAX_LITERALS = 5
+
+    # 抽取字面量时要忽略的噪声。
+    #
+    # 形如 "utf-8" / "GET" / "id" 的字符串
+    # 到处都是，对理解实现没有帮助，
+    # 反而会把真正有信息量的阈值（0.85）
+    # 和状态名（"duplicate_suspected"）挤掉。
+    LITERAL_NOISE = frozenset(
+        {
+            "utf-8",
+            "utf8",
+            "ascii",
+            "get",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "head",
+            "options",
+            "json",
+            "text",
+            "html",
+            "text/plain",
+            "text/html",
+            "application/json",
+            "application/x-www-form-urlencoded",
+            "content-type",
+            "content_length",
+            "authorization",
+            "bearer",
+            "user-agent",
+            "id",
+            "pk",
+            "name",
+            "type",
+            "kind",
+            "status",
+            "state",
+            "data",
+            "value",
+            "key",
+            "message",
+            "error",
+            "detail",
+            "none",
+            "true",
+            "false",
+            "null",
+            "info",
+            "debug",
+            "warning",
+            "system",
+            "user",
+            "assistant",
+        }
+    )
+
+    # 调用链里要忽略的内建 / 通用函数名。
+    CALL_NOISE = frozenset(
+        {
+            "print",
+            "len",
+            "str",
+            "int",
+            "float",
+            "bool",
+            "list",
+            "dict",
+            "set",
+            "tuple",
+            "range",
+            "enumerate",
+            "zip",
+            "isinstance",
+            "issubclass",
+            "getattr",
+            "setattr",
+            "hasattr",
+            "super",
+            "format",
+            "repr",
+            "type",
+            "min",
+            "max",
+            "sum",
+            "sorted",
+            "any",
+            "all",
+            "open",
+            "__init__",
+            "__repr__",
+            "__str__",
+            "__eq__",
+            "__hash__",
+        }
+    )
+
+    # 只有这些扩展名会被 AST 解析。
+    PYTHON_EXTENSIONS = (".py",)
+
+    # --------------------------------------------------------------
+    # 识别规则
+    # --------------------------------------------------------------
+
+    # 类名命中即算该维度的信号。
+    #
+    # 覆盖 Agent / BaseAgent / PlannerAgent / BaseTool 等写法。
+    CLASS_NAME_PATTERNS = {
+        "agents": _symbol_pattern("agent"),
+        "skills": _symbol_pattern("skill"),
+        "tools": _symbol_pattern("tool"),
+        "memory": re.compile(
+            r"(memory|checkpoint|saver|session)",
+            re.IGNORECASE,
+        ),
+    }
+
+    # 基类名命中即算该维度的信号。
+    #
+    # 例如 class FinanceAgent(BaseAgent)、
+    # class SearchTool(BaseTool)。
+    BASE_NAME_PATTERNS = CLASS_NAME_PATTERNS
+
+    # 文件路径命中即算该维度的信号。
+    PATH_PATTERNS = {
+        "agents": re.compile(
+            r"(^|[/_\-.])agents?([/_\-.]|$)",
+        ),
+        "workflow": re.compile(
+            r"(workflow|graph|pipeline|nodes?|state)",
+        ),
+        "skills": re.compile(
+            r"(^|[/_\-.])skills?([/_\-.]|$)",
+        ),
+        "tools": re.compile(
+            r"(^|[/_\-.])tools?([/_\-.]|$)",
+        ),
+        "rag": re.compile(
+            r"(rag|retriev|embedding|vector)",
+        ),
+        "memory": re.compile(
+            r"(memory|checkpoint|session)",
+        ),
+    }
+
+    # 导入模块名命中即算该维度的信号。
+    #
+    # agents 刻意不收 langgraph / langchain：
+    # 这两个是编排框架，
+    # `import langgraph.graph` 说明的是
+    # 「用了图编排」，不是「实现了 Agent」。
+    # 早期把 langgraph 同时算进 agents，
+    # 导致任何用了 LangGraph 的项目
+    # 都会凭空多出一批 agents 条目。
+    IMPORT_PATTERNS = {
+        "rag": re.compile(
+            r"(qdrant|chromadb|chroma|faiss|"
+            r"pgvector|sentence_transformers|"
+            r"vectorstores|embeddings|milvus|weaviate)",
+        ),
+        "memory": re.compile(
+            r"(checkpoint|memory|redis|saver)",
+        ),
+        "workflow": re.compile(
+            r"(langgraph|langchain|prefect|airflow|"
+            r"temporal|celery)",
+        ),
+        # 真正的多 Agent 框架。
+        "agents": re.compile(
+            r"(autogen|crewai|semantic_kernel|"
+            r"langchain\.agents|langgraph\.prebuilt|"
+            r"create_react_agent|swarm)",
+        ),
+    }
+
+    # 类名 / 函数名命中即算 rag 信号。
+    #
+    # 只收「明确指向检索」的词，
+    # 不收 search 这种过于宽泛的词
+    # （一个 search_github_repo 不是 RAG）。
+    #
+    # rag 这三个字母必须带词边界：
+    # 直接做子串匹配会命中 storage ——
+    # 真实事故：src/app/core/config.py 里的
+    # validate_storage_root 被判成了 RAG 实现。
+    RAG_SYMBOL_PATTERN = re.compile(
+        r"(?:retriev|embed|rerank|similarity_search"
+        r"|vector_store|vectorstore)"
+        r"|(?:(?:^|[^A-Za-z])rag"
+        r"|rag(?:$|(?-i:[^a-z])))",
+        re.IGNORECASE,
+    )
+
+    # Agent / Workflow 常见角色名。
+    ROLE_PATTERN = re.compile(
+        r"(planner|executor|critic|synthesizer|"
+        r"researcher|supervisor|orchestrator|"
+        r"coordinator|router)",
+        re.IGNORECASE,
+    )
+
+    # 这些属性的调用参数会被原样记录（图谱节点与边）。
+    GRAPH_CALL_ATTRIBUTES = (
+        "add_node",
+        "add_edge",
+        "add_conditional_edges",
+        "set_entry_point",
+        "set_finish_point",
+    )
+
+    # 图谱构造函数名。
+    GRAPH_CONSTRUCTORS = (
+        "StateGraph",
+        "MessageGraph",
+    )
+
+    # 工具装饰器名。
+    TOOL_DECORATORS = (
+        "tool",
+        "mcp.tool",
+    )
+
+    # --------------------------------------------------------------
+    # 入口
+    # --------------------------------------------------------------
+
+    @classmethod
+    def extract(
+        cls,
+        files: list,
+        extra_paths=None,
+        max_details=None,
+        include_source=False,
+    ) -> dict:
+        """
+        从若干源文件抽取结构信号。
+
+        files:
+            [
+                {"file_path": "src/app/graph.py",
+                 "content": "<源码全文>"},
+                ...
+            ]
+
+        只接受**未截断**的源码：
+        截断过的 Python 几乎必然语法错误。
+
+        max_details:
+            单个维度最多记录多少条实现明细。
+            默认用 MAX_DETAILS；
+            深挖模式会传一个更大的值。
+
+        include_source:
+            明细里是否附上源码片段。
+
+            默认 False —— 默认报告只展示「要点 + 证据锚点」，
+            明细里的源码片段根本不会被渲染，
+            但每条约 1.5KB，六维 × 六条能凭空撑大
+            checkpoint 的 state_data。
+            深挖模式（ModuleDeepDiveSkill）传 True，
+            因为它要展示源码。
+
+        extra_paths:
+            只有路径、没有内容的文件
+            （通常是仓库文件树里没被读取的部分）。
+            它们只参与路径信号，
+            这样「存在 src/agents/ 目录」这条证据
+            不会因为该目录下的文件没被读到而丢失。
+
+        返回：
+
+            {
+                "available": True,
+                "dimensions": {
+                    "agents": {"items": [...],
+                               "evidence": [...]},
+                    ...
+                },
+                "unparsed": [
+                    {"file_path": ..., "error": ...}
+                ],
+                "parsed_files": 3,
+            }
+        """
+
+        dimensions = {
+            name: {
+                "items": [],
+                "evidence": [],
+                # 实现明细：比 items 重，
+                # 但能说清「这个模块具体怎么做的」。
+                "details": [],
+            }
+            for name in cls.DIMENSIONS
+        }
+
+        unparsed = []
+
+        parsed_files = 0
+
+        # 每条证据的 text 在全局去重，
+        # 避免同一个类在多个文件里
+        # 把同一个条目刷满。
+        seen_items = {
+            name: set() for name in cls.DIMENSIONS
+        }
+
+        if not isinstance(files, list):
+            files = []
+
+        for item in files:
+
+            if not isinstance(item, dict):
+                continue
+
+            file_path = item.get("file_path")
+
+            content = item.get("content")
+
+            if not file_path or not isinstance(
+                content,
+                str,
+            ):
+                continue
+
+            if not cls._is_python(file_path):
+                continue
+
+            try:
+
+                tree = ast.parse(content)
+
+            except (SyntaxError, ValueError) as error:
+
+                unparsed.append(
+                    {
+                        "file_path": file_path,
+                        "error": (
+                            f"{type(error).__name__}: "
+                            f"{error}"
+                        ),
+                    }
+                )
+
+                continue
+
+            parsed_files += 1
+
+            cls._scan_module(
+                tree,
+                file_path,
+                dimensions,
+                seen_items,
+            )
+
+            cls._collect_details(
+                tree,
+                file_path,
+                dimensions,
+                content,
+                max_details,
+                include_source,
+            )
+
+        # 路径信号在所有符号扫描完之后再收集。
+        #
+        # 顺序很重要：_add 是按顺序填满
+        # MAX_ITEMS 就停止的，
+        # 符号（class / 调用）比「路径长这样」
+        # 有价值得多，不能让它被路径挤掉。
+        path_candidates = []
+
+        for item in files:
+
+            if not isinstance(item, dict):
+                continue
+
+            file_path = item.get("file_path")
+
+            if file_path:
+                path_candidates.append(file_path)
+
+        if isinstance(extra_paths, list):
+            path_candidates += [
+                path
+                for path in extra_paths
+                if isinstance(path, str)
+            ]
+
+        for file_path in path_candidates:
+
+            cls._collect_path_signal(
+                file_path,
+                dimensions,
+                seen_items,
+            )
+
+        return {
+            "available": parsed_files > 0,
+            "dimensions": dimensions,
+            "unparsed": unparsed,
+            "parsed_files": parsed_files,
+        }
+
+    # --------------------------------------------------------------
+    # 单文件扫描
+    # --------------------------------------------------------------
+
+    @classmethod
+    def _scan_module(
+        cls,
+        tree,
+        file_path: str,
+        dimensions: dict,
+        seen_items: dict,
+    ) -> None:
+        """扫描一个已解析的模块。"""
+
+        for node in ast.walk(tree):
+
+            if isinstance(
+                node,
+                (ast.Import, ast.ImportFrom),
+            ):
+                cls._collect_import(
+                    node,
+                    file_path,
+                    dimensions,
+                    seen_items,
+                )
+
+            elif isinstance(
+                node,
+                ast.ClassDef,
+            ):
+                cls._collect_class(
+                    node,
+                    file_path,
+                    dimensions,
+                    seen_items,
+                )
+
+            elif isinstance(
+                node,
+                (
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                ),
+            ):
+                cls._collect_function(
+                    node,
+                    file_path,
+                    dimensions,
+                    seen_items,
+                )
+
+            elif isinstance(node, ast.Call):
+                cls._collect_call(
+                    node,
+                    file_path,
+                    dimensions,
+                    seen_items,
+                )
+
+    @classmethod
+    def _collect_import(
+        cls,
+        node,
+        file_path,
+        dimensions,
+        seen_items,
+    ) -> None:
+        """import 语句 -> 维度信号。"""
+
+        if isinstance(node, ast.Import):
+
+            modules = [
+                alias.name
+                for alias in node.names
+            ]
+
+        else:
+
+            module = node.module or ""
+
+            modules = [module] if module else []
+
+            # from x import y 时，y 也可能是
+            # 有信号的名字（例如 SqliteSaver）。
+            modules += [
+                alias.name
+                for alias in node.names
+            ]
+
+        for module in modules:
+
+            if not module:
+                continue
+
+            for dimension, pattern in (
+                cls.IMPORT_PATTERNS.items()
+            ):
+
+                if not pattern.search(module):
+                    continue
+
+                cls._add(
+                    dimension,
+                    f"import {module}",
+                    file_path,
+                    node.lineno,
+                    dimensions,
+                    seen_items,
+                )
+
+    @classmethod
+    def _collect_class(
+        cls,
+        node,
+        file_path,
+        dimensions,
+        seen_items,
+    ) -> None:
+        """class 定义 -> 维度信号。"""
+
+        bases = []
+
+        for base in node.bases:
+
+            text = cls._unparse(base)
+
+            if text:
+                bases.append(text)
+
+        label = f"class {node.name}"
+
+        if bases:
+            label += f"({', '.join(bases)})"
+
+        matched = set()
+
+        for dimension, pattern in (
+            cls.CLASS_NAME_PATTERNS.items()
+        ):
+
+            if pattern.search(node.name):
+                matched.add(dimension)
+
+            if any(
+                pattern.search(base)
+                for base in bases
+            ):
+                matched.add(dimension)
+
+        if cls.ROLE_PATTERN.search(node.name):
+            matched.add("agents")
+
+        # tools 维度额外接受
+        # 「在 tool 装饰器下的类」
+        # 与名字里带 tool 的类，
+        # 前一条已覆盖。
+        for dimension in matched:
+
+            cls._add(
+                dimension,
+                label,
+                file_path,
+                node.lineno,
+                dimensions,
+                seen_items,
+            )
+
+    @classmethod
+    def _collect_function(
+        cls,
+        node,
+        file_path,
+        dimensions,
+        seen_items,
+    ) -> None:
+        """函数定义 -> 维度信号。"""
+
+        decorators = []
+
+        for decorator in node.decorator_list:
+
+            text = cls._unparse(decorator)
+
+            if text:
+                decorators.append(text)
+
+        label = f"def {node.name}"
+
+        if decorators:
+            label = (
+                f"@{', @'.join(decorators)} "
+                f"{label}"
+            )
+
+        matched = set()
+
+        # langchain 风格的工具声明。
+        if any(
+            cls._is_tool_decorator(decorator)
+            for decorator in decorators
+        ):
+            matched.add("tools")
+
+        if cls.RAG_SYMBOL_PATTERN.search(node.name):
+            matched.add("rag")
+
+        if cls.ROLE_PATTERN.search(node.name):
+            matched.add("agents")
+
+        for dimension in matched:
+
+            cls._add(
+                dimension,
+                label,
+                file_path,
+                node.lineno,
+                dimensions,
+                seen_items,
+            )
+
+    @classmethod
+    def _collect_call(
+        cls,
+        node,
+        file_path,
+        dimensions,
+        seen_items,
+    ) -> None:
+        """
+        关键调用 -> 维度信号。
+
+        Workflow 维度最有价值的部分在这里：
+        StateGraph 的节点名与边
+        会以源码原文的形式被记录下来。
+        """
+
+        func = node.func
+
+        # StateGraph(...) —— 图谱构造。
+        if (
+            isinstance(func, ast.Name)
+            and func.id in cls.GRAPH_CONSTRUCTORS
+        ):
+
+            cls._add(
+                "workflow",
+                f"{func.id}(...)",
+                file_path,
+                node.lineno,
+                dimensions,
+                seen_items,
+            )
+
+            return
+
+        if not isinstance(func, ast.Attribute):
+            return
+
+        if func.attr not in cls.GRAPH_CALL_ATTRIBUTES:
+            return
+
+        target = cls._unparse(func.value)
+
+        arguments = []
+
+        for argument in node.args:
+
+            text = cls._unparse(argument)
+
+            if text:
+                arguments.append(text)
+
+        label = (
+            f"{target}.{func.attr}"
+            f"({', '.join(arguments)})"
+        )
+
+        cls._add(
+            "workflow",
+            label,
+            file_path,
+            node.lineno,
+            dimensions,
+            seen_items,
+        )
+
+    # --------------------------------------------------------------
+    # 实现明细
+    # --------------------------------------------------------------
+
+    @classmethod
+    def _collect_details(
+        cls,
+        tree,
+        file_path: str,
+        dimensions: dict,
+        content: str | None = None,
+        max_details: int | None = None,
+        include_source: bool = False,
+    ) -> None:
+        """
+        收集「这个模块具体怎么做的」。
+
+        与 _scan_module 的区别：
+
+            _scan_module  抽符号名字，供比较与检索
+            _collect_details  抽函数签名 / 调用链 /
+                              关键字面量 / 类的方法表，
+                              供报告展示实现细节
+
+        最有价值的是 workflow：
+        add_node('duplicate_check',
+                 self._node_duplicate_check)
+        会被解析成那个函数本身，
+        于是报告能写出「这个节点做了什么」，
+        而不只是「有这么个节点」。
+        """
+
+        symbols = cls._build_symbol_table(tree)
+
+        for node in ast.walk(tree):
+
+            if isinstance(node, ast.Call):
+
+                cls._detail_from_graph_call(
+                    node,
+                    symbols,
+                    file_path,
+                    dimensions,
+                    content,
+                    max_details,
+                    include_source,
+                )
+
+        # 类：给出基类与方法表。
+        for node in ast.walk(tree):
+
+            if isinstance(node, ast.ClassDef):
+
+                cls._detail_from_class(
+                    node,
+                    file_path,
+                    dimensions,
+                    content,
+                    max_details,
+                    include_source,
+                )
+
+        # 函数：给出签名、调用链与字面量。
+        for node in ast.walk(tree):
+
+            if isinstance(
+                node,
+                (
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                ),
+            ):
+
+                cls._detail_from_function(
+                    node,
+                    file_path,
+                    dimensions,
+                    content,
+                    max_details,
+                    include_source,
+                )
+
+    @classmethod
+    def _detail_from_graph_call(
+        cls,
+        node,
+        symbols,
+        file_path,
+        dimensions,
+        content=None,
+        max_details=None,
+        include_source=False,
+    ) -> None:
+        """
+        把 add_node / add_edge 解析成工作流节点明细。
+        """
+
+        function = node.func
+
+        if not isinstance(function, ast.Attribute):
+            return
+
+        # 只为「带处理函数」的调用产出明细。
+        #
+        # add_edge 的拓扑已经作为条目记录，
+        # 再产一条什么都解析不出来的明细
+        # 只会挤占 MAX_DETAILS 配额。
+        if function.attr not in (
+            "add_node",
+            "add_conditional_edges",
+        ):
+            return
+
+        if not node.args:
+            return
+
+        first = cls._unparse(node.args[0])
+
+        target = cls._unparse(function.value)
+
+        entry = {
+            "kind": "graph",
+            "name": first.strip("'\"") or first,
+            "file_path": file_path,
+            "line": node.lineno,
+            "signature": (
+                f"{target}.{function.attr}"
+                f"({', '.join(cls._unparse(a) for a in node.args)})"
+            ),
+            "calls": [],
+            "literals": [],
+        }
+
+        # add_node 的第二个实参是处理函数，
+        # 解析它能拿到真正的实现。
+        if (
+            function.attr == "add_node"
+            and len(node.args) >= 2
+        ):
+
+            symbol_name = cls._called_symbol(
+                node.args[1]
+            )
+
+            if symbol_name:
+
+                definition = symbols.get(
+                    symbol_name
+                )
+
+                if definition is not None:
+
+                    entry["symbol"] = symbol_name
+
+                    entry["signature"] = (
+                        cls._signature(definition)
+                    )
+
+                    entry["calls"] = cls._calls_in(
+                        definition
+                    )
+
+                    entry["literals"] = (
+                        cls._literals_in(definition)
+                    )
+
+                    if include_source:
+
+                        entry["source"] = (
+                            cls._source_segment(
+                                content,
+                                definition,
+                            )
+                        )
+
+        cls._add_detail(
+            "workflow",
+            entry,
+            dimensions,
+            max_details,
+        )
+
+    @classmethod
+    def _detail_from_class(
+        cls,
+        node,
+        file_path,
+        dimensions,
+        content=None,
+        max_details=None,
+        include_source=False,
+    ) -> None:
+        """类明细：基类 + 方法表。"""
+
+        bases = [
+            rendered
+            for rendered in (
+                cls._unparse(base)
+                for base in node.bases
+            )
+            if rendered
+        ]
+
+        label = f"class {node.name}"
+
+        if bases:
+            label += f"({', '.join(bases)})"
+
+        methods = [
+            child.name
+            for child in node.body
+            if isinstance(
+                child,
+                (
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                ),
+            )
+        ]
+
+        entry = {
+            "kind": "class",
+            "name": node.name,
+            "file_path": file_path,
+            "line": node.lineno,
+            "signature": label,
+            "calls": [],
+            "literals": [],
+        }
+
+        if methods:
+
+            entry["methods"] = methods[
+                : cls.MAX_CALLS
+            ]
+
+        if include_source:
+
+            entry["source"] = cls._source_segment(
+                content,
+                node,
+            )
+
+        for dimension, pattern in (
+            cls.CLASS_NAME_PATTERNS.items()
+        ):
+
+            matched = pattern.search(node.name) or any(
+                pattern.search(base)
+                for base in bases
+            )
+
+            if matched:
+
+                cls._add_detail(
+                    dimension,
+                    entry,
+                    dimensions,
+                    max_details,
+                )
+
+        if cls.ROLE_PATTERN.search(node.name):
+
+            cls._add_detail(
+                "agents",
+                entry,
+                dimensions,
+                max_details,
+            )
+
+    @classmethod
+    def _detail_from_function(
+        cls,
+        node,
+        file_path,
+        dimensions,
+        content=None,
+        max_details=None,
+        include_source=False,
+    ) -> None:
+        """函数明细：签名 + 调用链 + 字面量。"""
+
+        decorators = [
+            rendered
+            for rendered in (
+                cls._unparse(decorator)
+                for decorator in node.decorator_list
+            )
+            if rendered
+        ]
+
+        entry = {
+            "kind": "function",
+            "name": node.name,
+            "file_path": file_path,
+            "line": node.lineno,
+            "signature": cls._signature(node),
+            "calls": cls._calls_in(node),
+            "literals": cls._literals_in(node),
+        }
+
+        if include_source:
+
+            entry["source"] = cls._source_segment(
+                content,
+                node,
+            )
+
+        if any(
+            cls._is_tool_decorator(decorator)
+            for decorator in decorators
+        ):
+
+            cls._add_detail(
+                "tools",
+                entry,
+                dimensions,
+                max_details,
+            )
+
+        if cls.RAG_SYMBOL_PATTERN.search(node.name):
+
+            cls._add_detail(
+                "rag",
+                entry,
+                dimensions,
+                max_details,
+            )
+
+        if cls.ROLE_PATTERN.search(node.name):
+
+            cls._add_detail(
+                "agents",
+                entry,
+                dimensions,
+                max_details,
+            )
+
+    @staticmethod
+    def _add_detail(
+        dimension,
+        entry,
+        dimensions,
+        max_details=None,
+    ) -> None:
+        """登记一条明细（按 名称+位置 去重）。"""
+
+        bucket = dimensions.get(dimension)
+
+        if bucket is None:
+            return
+
+        limit = (
+            max_details
+            if isinstance(max_details, int)
+            else CodeStructureExtractor.MAX_DETAILS
+        )
+
+        if len(bucket["details"]) >= limit:
+            return
+
+        key = (
+            entry.get("name"),
+            entry.get("file_path"),
+            entry.get("line"),
+        )
+
+        for existing in bucket["details"]:
+
+            if (
+                existing.get("name"),
+                existing.get("file_path"),
+                existing.get("line"),
+            ) == key:
+                return
+
+        bucket["details"].append(entry)
+
+    # --------------------------------------------------------------
+    # 路径信号
+    # --------------------------------------------------------------
+
+    @classmethod
+    def dimensions_for_path(
+        cls,
+        file_path: str,
+    ) -> list:
+        """
+        路径命中了哪些维度，按固定顺序返回。
+
+        ArchitectureAnalysisSkill 用它做按维度配额：
+        每个维度都有独立的样本名额，
+        不会出现「workflow 文件太多、
+        rag 文件一个都没读」的情况。
+        """
+
+        normalized = str(file_path).lower()
+
+        return [
+            dimension
+            for dimension in cls.DIMENSIONS
+            if cls.PATH_PATTERNS[
+                dimension
+            ].search(normalized)
+        ]
+
+    @classmethod
+    def path_signal_count(
+        cls,
+        file_path: str,
+    ) -> int:
+        """
+        路径命中多少个维度的信号。
+
+        ArchitectureAnalysisSkill 用它决定
+        优先读哪些文件：
+        命中越多，越可能承载架构。
+
+        与 _collect_path_signal 共用同一套 PATTERNS，
+        避免两处规则漂移。
+        """
+
+        normalized = str(file_path).lower()
+
+        return sum(
+            1
+            for pattern in cls.PATH_PATTERNS.values()
+            if pattern.search(normalized)
+        )
+
+    @classmethod
+    def _collect_path_signal(
+        cls,
+        file_path: str,
+        dimensions,
+        seen_items,
+    ) -> None:
+        """
+        文件路径本身也是证据。
+
+        「存在 src/agents/ 目录」这件事
+        与「某个类叫 FinanceAgent」同样说明问题，
+        而且前者在没读到那个文件时也能成立。
+
+        按**目录**去重：
+        src/agents/ 下有 30 个文件时，
+        只记一条 `路径 src/agents/`，
+        而不是把 30 个文件名刷满配额 ——
+        否则真正有价值的类名会被挤出去。
+        """
+
+        normalized = file_path.lower()
+
+        directory = _parent_directory(file_path)
+
+        for dimension, pattern in (
+            cls.PATH_PATTERNS.items()
+        ):
+
+            if not pattern.search(normalized):
+                continue
+
+            cls._add(
+                dimension,
+                f"路径 {directory}",
+                directory,
+                None,
+                dimensions,
+                seen_items,
+            )
+
+    # --------------------------------------------------------------
+    # 工具方法
+    # --------------------------------------------------------------
+
+    @classmethod
+    def _add(
+        cls,
+        dimension: str,
+        text: str,
+        file_path: str,
+        line,
+        dimensions: dict,
+        seen_items: dict,
+    ) -> None:
+        """登记一条条目与对应的证据。"""
+
+        bucket = dimensions.get(dimension)
+
+        if bucket is None:
+            return
+
+        seen = seen_items[dimension]
+
+        lowered = text.lower()
+
+        # 同一个符号只记一次。
+        if lowered in seen:
+            return
+
+        seen.add(lowered)
+
+        if len(bucket["items"]) >= cls.MAX_ITEMS:
+            return
+
+        bucket["items"].append(text)
+
+        if len(bucket["evidence"]) >= cls.MAX_EVIDENCE:
+            return
+
+        bucket["evidence"].append(
+            {
+                "file_path": file_path,
+                "line_start": line,
+                "line_end": line,
+                "text": text,
+            }
+        )
+
+    @classmethod
+    def _is_python(
+        cls,
+        file_path: str,
+    ) -> bool:
+        """只解析 Python 文件。"""
+
+        return str(file_path).lower().endswith(
+            cls.PYTHON_EXTENSIONS
+        )
+
+    # 代码摘录的起始处：跳过这些前缀开头的行。
+    SKIPPABLE_LINE_PREFIXES = (
+        "import ",
+        "from ",
+    )
+
+    @classmethod
+    def meaningful_start(
+        cls,
+        content,
+    ) -> int:
+        """
+        找出源码里第一行「有信息量」的内容的字符下标。
+
+        为什么需要：代码摘录原本固定从第 1 行开始取，
+        而 Python 文件开头必然是 import 块 ——
+        截出来就是一堆
+
+            import sqlite3
+            import uuid
+            from decimal import Decimal
+
+        对理解项目毫无帮助。
+        真实反馈：「这源码提取了一堆 import 根本没有用」。
+
+        跳过开头的：
+
+            空行 / 注释行
+            模块级 docstring
+            import / from 语句（含括号与反斜杠续行）
+
+        返回第一行实际代码的位置。
+        整份文件都跳完还没找到代码时返回 0，
+        保持「从头取」的旧行为，不至于截出空串。
+
+        必须处理**多行 import**：真实文件里常见
+
+            from app.schemas.agent import (
+                AgentRunListItem,
+                AgentRunResponse,
+            )
+
+        这种写法的续行不以 import 开头，
+        只看行首的话扫描器会停在第 2 行，
+        摘录依然是一串 import 名单。
+        """
+
+        if not isinstance(content, str) or not content:
+            return 0
+
+        offset = 0
+
+        in_docstring = False
+
+        delimiter = ""
+
+        # 多行 import 的括号深度与反斜杠续行。
+        in_import = False
+
+        import_depth = 0
+
+        for line in content.splitlines(
+            keepends=True
+        ):
+
+            stripped = line.strip()
+
+            # 多行 import 的续行
+            if in_import:
+
+                offset += len(line)
+
+                import_depth += (
+                    line.count("(") - line.count(")")
+                )
+
+                if (
+                    import_depth <= 0
+                    and not line.rstrip().endswith("\\")
+                ):
+                    in_import = False
+
+                continue
+
+            if in_docstring:
+
+                offset += len(line)
+
+                if delimiter in stripped:
+                    in_docstring = False
+
+                continue
+
+            # 空行与注释
+            if not stripped or stripped.startswith("#"):
+
+                offset += len(line)
+
+                continue
+
+            # 模块级 docstring
+            if stripped.startswith(('"""', "'''")):
+
+                delimiter = stripped[:3]
+
+                # 单行写法："""xxx"""
+                if stripped.count(delimiter) >= 2:
+
+                    offset += len(line)
+
+                    continue
+
+                in_docstring = True
+
+                offset += len(line)
+
+                continue
+
+            # import 段
+            if stripped.startswith(
+                cls.SKIPPABLE_LINE_PREFIXES
+            ):
+
+                offset += len(line)
+
+                depth = (
+                    line.count("(") - line.count(")")
+                )
+
+                # 括号未闭合或反斜杠续行时，
+                # 后面的行还是这条 import 的一部分。
+                if depth > 0 or line.rstrip().endswith(
+                    "\\"
+                ):
+
+                    in_import = True
+
+                    import_depth = depth
+
+                continue
+
+            # 第一行真正的代码
+            break
+
+        if offset >= len(content):
+            return 0
+
+        return offset
+
+    @classmethod
+    def _is_tool_decorator(
+        cls,
+        decorator: str,
+    ) -> bool:
+        """判断装饰器是否为 @tool 一类。"""
+
+        if not decorator:
+            return False
+
+        lowered = decorator.lower()
+
+        if lowered in cls.TOOL_DECORATORS:
+            return True
+
+        # 兼容 @tool(...) 带参数的形式。
+        for name in cls.TOOL_DECORATORS:
+
+            if lowered.startswith(name + "("):
+                return True
+
+        return lowered.endswith(".tool")
+
+    # --------------------------------------------------------------
+    # 函数体分析
+    # --------------------------------------------------------------
+
+    @classmethod
+    def _signature(cls, node) -> str:
+        """
+        还原函数签名（含类型标注）。
+
+        这是「下到函数体」的第一步：
+        `def _node_duplicate_check(self, state: AgentState)
+         -> AgentState` 远比一个名字有信息量。
+        """
+
+        arguments = node.args
+
+        parts = []
+
+        positional = list(arguments.posonlyargs) + list(
+            arguments.args
+        )
+
+        # 默认值对齐到参数尾部。
+        defaults = [None] * (
+            len(positional) - len(arguments.defaults)
+        ) + list(arguments.defaults)
+
+        for argument, default in zip(
+            positional,
+            defaults,
+        ):
+
+            parts.append(
+                cls._argument(argument, default)
+            )
+
+        if arguments.vararg:
+
+            parts.append(
+                "*" + cls._argument(arguments.vararg)
+            )
+
+        elif arguments.kwonlyargs:
+
+            # 有仅关键字参数但没有 *args 时，
+            # 需要显式一个 * 占位。
+            parts.append("*")
+
+        for argument, default in zip(
+            arguments.kwonlyargs,
+            arguments.kw_defaults,
+        ):
+
+            parts.append(
+                cls._argument(argument, default)
+            )
+
+        if arguments.kwarg:
+
+            parts.append(
+                "**" + cls._argument(arguments.kwarg)
+            )
+
+        prefix = (
+            "async def"
+            if isinstance(node, ast.AsyncFunctionDef)
+            else "def"
+        )
+
+        signature = (
+            f"{prefix} {node.name}"
+            f"({', '.join(parts)})"
+        )
+
+        returns = getattr(node, "returns", None)
+
+        if returns is not None:
+
+            rendered = cls._unparse(returns)
+
+            if rendered:
+                signature += f" -> {rendered}"
+
+        return signature
+
+    @classmethod
+    def _argument(
+        cls,
+        argument,
+        default=None,
+    ) -> str:
+        """渲染单个参数（含标注与默认值）。"""
+
+        text = argument.arg
+
+        annotation = getattr(
+            argument,
+            "annotation",
+            None,
+        )
+
+        if annotation is not None:
+
+            rendered = cls._unparse(annotation)
+
+            if rendered:
+                text += f": {rendered}"
+
+        if default is not None:
+
+            rendered = cls._unparse(default)
+
+            if rendered:
+                text += f" = {rendered}"
+
+        return text
+
+    @classmethod
+    def _calls_in(cls, node) -> list:
+        """
+        函数体里调用了哪些自定义函数。
+
+        只取被调用者的名字（`f()` 取 f，
+        `obj.method()` 取 method），
+        过滤掉内建函数与通用名，
+        去重后保序。
+        """
+
+        calls = []
+
+        seen = set()
+
+        for child in ast.walk(node):
+
+            if not isinstance(child, ast.Call):
+                continue
+
+            function = child.func
+
+            if isinstance(function, ast.Name):
+
+                name = function.id
+
+            elif isinstance(function, ast.Attribute):
+
+                name = function.attr
+
+            else:
+
+                continue
+
+            lowered = name.lower()
+
+            if lowered in cls.CALL_NOISE:
+                continue
+
+            # 单字符与全大写下划线常量不是函数调用。
+            if len(name) < 3:
+                continue
+
+            if lowered in seen:
+                continue
+
+            seen.add(lowered)
+
+            calls.append(name)
+
+            if len(calls) >= cls.MAX_CALLS:
+                break
+
+        return calls
+
+    @classmethod
+    def _literals_in(cls, node) -> list:
+        """
+        函数体里出现的、有信息量的字面量。
+
+        典型价值：阈值（0.85）、状态名
+        （"duplicate_suspected"）、重试次数（3）。
+        """
+
+        literals = []
+
+        seen = set()
+
+        for child in ast.walk(node):
+
+            if not isinstance(child, ast.Constant):
+                continue
+
+            value = child.value
+
+            if not cls._is_interesting_literal(
+                value
+            ):
+                continue
+
+            rendered = repr(value)
+
+            if rendered in seen:
+                continue
+
+            seen.add(rendered)
+
+            literals.append(rendered)
+
+            if len(literals) >= cls.MAX_LITERALS:
+                break
+
+        return literals
+
+    @classmethod
+    def _is_interesting_literal(
+        cls,
+        value,
+    ) -> bool:
+        """判断一个字面量是否值得记录。"""
+
+        # bool 是 int 的子类，必须排在前面排除。
+        if isinstance(value, bool):
+            return False
+
+        # 0.0 通常是初始化占位，
+        # 真正的阈值（0.85）才值得记。
+        if isinstance(value, float):
+            return value != 0.0
+
+        if isinstance(value, int):
+            return abs(value) >= 10
+
+        if isinstance(value, str):
+
+            text = value.strip()
+
+            if len(text) < 4:
+                return False
+
+            if text.lower() in cls.LITERAL_NOISE:
+                return False
+
+            if text.startswith(
+                ("http://", "https://")
+            ):
+                return False
+
+            # 纯符号 / 纯数字字符串没有信息量。
+            if not any(
+                char.isalnum() for char in text
+            ):
+                return False
+
+            return True
+
+        return False
+
+    @classmethod
+    def _build_symbol_table(
+        cls,
+        tree,
+    ) -> dict:
+        """
+        建立 短名 -> 函数节点 的索引。
+
+        用途：把
+            builder.add_node('duplicate_check',
+                             self._node_duplicate_check)
+        解析到
+            def _node_duplicate_check(self, state) -> AgentState
+
+        只看短名（不带类名前缀），
+        同名冲突时保留第一个 ——
+        解析结果会带上文件与行号，
+        人工复核时能看出解析得对不对。
+        """
+
+        table = {}
+
+        for node in ast.walk(tree):
+
+            if isinstance(
+                node,
+                (
+                    ast.FunctionDef,
+                    ast.AsyncFunctionDef,
+                ),
+            ):
+
+                table.setdefault(node.name, node)
+
+        return table
+
+    @staticmethod
+    def _called_symbol(node):
+        """
+        从 add_node / add_edge 的实参里
+        取出「被引用的函数名」。
+
+        支持两种写法：
+
+            self._node_duplicate_check   -> _node_duplicate_check
+            _node_duplicate_check        -> _node_duplicate_check
+        """
+
+        if isinstance(node, ast.Attribute):
+
+            return node.attr
+
+        if isinstance(node, ast.Name):
+
+            return node.id
+
+        return None
+
+    # 明细里附带的源码片段最多多少字符。
+    #
+    # 深挖报告要展示「这段代码长什么样」，
+    # 因此明细可以带源码；
+    # 但一个函数可能有几千字符，
+    # 不设上限会让深挖产物失控。
+    MAX_DETAIL_SOURCE_CHARS = 1500
+
+    @classmethod
+    def _source_segment(
+        cls,
+        content,
+        node,
+    ) -> str:
+        """
+        取出某个 AST 节点对应的源码原文。
+
+        这是深挖报告与默认报告最大的差别：
+        默认报告给签名，深挖给源码。
+        """
+
+        if not isinstance(content, str) or node is None:
+            return ""
+
+        try:
+
+            segment = ast.get_source_segment(
+                content,
+                node,
+            )
+
+        except Exception:
+
+            return ""
+
+        if not segment:
+            return ""
+
+        segment = segment.strip()
+
+        if len(segment) > cls.MAX_DETAIL_SOURCE_CHARS:
+
+            segment = (
+                segment[
+                    : cls.MAX_DETAIL_SOURCE_CHARS
+                ]
+                + "\n# ...（已截断）"
+            )
+
+        return segment
+
+    @staticmethod
+    def _unparse(node) -> str:
+        """
+        把 AST 节点还原成源码文本。
+
+        还原失败返回空串
+        （个别节点在低版本 Python 上
+         unparse 会抛异常）。
+        """
+
+        try:
+
+            return ast.unparse(node).strip()
+
+        except Exception:
+
+            return ""
+```
 
 ## 十八、AI 能力层（Embeddings）
 
@@ -11652,6 +20643,707 @@ def test_analysis_not_found():
         data["error"]["code"]
         == "VALIDATION_ERROR"
     )
+
+def test_parse_github_url_strips_query_string():
+    """
+    带 query string 的 GitHub URL 必须被正确解析。
+
+    旧实现按 "/" 朴素切分，
+    会把 "?utm_source=chatgpt.com" 当成 repository name 的一部分，
+    导致 README 与配置文件全部 404、
+    证据为 0、technology_stack 全空，
+    而该 run 仍然被标记为 COMPLETED。
+    """
+
+    from app.services.analysis_service import (
+        AnalysisService,
+    )
+
+    owner, name = AnalysisService._parse_github_url(
+        "https://github.com/smlfy/"
+        "enterprise-workflow-agent-platform"
+        "?utm_source=chatgpt.com"
+    )
+
+    assert owner == "smlfy"
+
+    assert name == "enterprise-workflow-agent-platform"
+
+
+def test_parse_github_url_handles_common_forms():
+    """常见的 URL 写法都要能解析。"""
+
+    from app.services.analysis_service import (
+        AnalysisService,
+    )
+
+    cases = [
+        (
+            "https://github.com/openai/openai-python",
+            ("openai", "openai-python"),
+        ),
+        (
+            "https://github.com/openai/openai-python.git",
+            ("openai", "openai-python"),
+        ),
+        (
+            "https://github.com/openai/openai-python/",
+            ("openai", "openai-python"),
+        ),
+        (
+            "https://github.com/openai/openai-python"
+            "?tab=readme-ov-file#install",
+            ("openai", "openai-python"),
+        ),
+    ]
+
+    for url, expected in cases:
+        assert (
+            AnalysisService._parse_github_url(url)
+            == expected
+        ), url
+
+
+def test_parse_github_url_rejects_non_github():
+    """非 GitHub 域名必须抛业务异常（→ HTTP 400）。"""
+
+    import pytest
+
+    from app.core.exceptions import ValidationError
+    from app.services.analysis_service import (
+        AnalysisService,
+    )
+
+    with pytest.raises(ValidationError):
+        AnalysisService._parse_github_url(
+            "https://example.com/owner/name"
+        )
+```
+
+### 📄 `tests/test_analysis_focus.py`
+
+**层级**：测试层 · **职责**：question 驱动分析计划的测试。
+
+```python
+"""
+question 驱动分析计划的测试。
+
+覆盖三层：
+
+1. AnalysisFocus  焦点解析（LLM / 关键词 / 无重点）
+2. PlannerAgent   产出 focus，且任务表保持不变
+3. 采集与报告     配额重分配、章节展开与压缩
+
+背景（真实反馈）：
+    「我让分析的是 agent，为什么报告里还是什么都有」
+
+根因：question 只影响结论措辞，
+采集配额与报告章节都是写死的。
+"""
+
+import json
+
+from app.agents.planner_agent import PlannerAgent
+from app.project_analysis.analysis_focus import (
+    AnalysisFocus,
+)
+from app.skills.architecture_analysis_skill import (
+    ArchitectureAnalysisSkill,
+)
+from app.skills.report_generation_skill import (
+    ReportGenerationSkill,
+)
+
+
+class FakeRegistry:
+
+    def get(self, name):
+        return None
+
+
+class FakeLLM:
+
+    def __init__(
+        self,
+        content,
+        available=True,
+    ):
+        self.content = content
+        self.available = available
+        self.calls = []
+
+    async def execute(self, messages, **kwargs):
+
+        self.calls.append(messages)
+
+        if not self.available:
+            return {
+                "available": False,
+                "reason": "未配置 LLM_API_KEY",
+            }
+
+        return {
+            "available": True,
+            "content": self.content,
+        }
+
+
+class FakeContext:
+
+    def __init__(self, llm=None):
+
+        self.tools = {}
+
+        if llm is not None:
+            self.tools["llm_chat"] = llm
+
+
+def run_planner(question, llm=None):
+    """跑一次真实的 PlannerAgent。"""
+
+    import asyncio
+
+    return asyncio.run(
+        PlannerAgent(FakeRegistry()).execute(
+            FakeContext(llm),
+            {"question": question},
+        )
+    )
+
+
+# ----------------------------------------------------------------
+# AnalysisFocus
+# ----------------------------------------------------------------
+
+
+def test_keyword_fallback_finds_dimension():
+
+    focus = AnalysisFocus.from_question(
+        "分析项目的agent"
+    )
+
+    assert focus.dimensions == ["agents"]
+
+    assert focus.source == "keywords"
+
+
+def test_keyword_fallback_finds_multiple_in_order():
+
+    focus = AnalysisFocus.from_question(
+        "重点看 agent 和 memory"
+    )
+
+    assert focus.dimensions == ["agents", "memory"]
+
+
+def test_keyword_fallback_is_conservative():
+    """
+    认不出重点时返回空焦点，而不是猜一个。
+
+    空焦点意味着报告保持全量等深 ——
+    这比误判成「只看某一个维度」
+    （用户会丢掉其它章节）安全得多。
+    """
+
+    for question in (
+        "分析项目架构",
+        "这个项目怎么防止重复发票",
+        "没有关键词的问题",
+    ):
+
+        focus = AnalysisFocus.from_question(
+            question
+        )
+
+        assert focus.is_focused is False
+
+
+def test_keyword_uses_word_boundary():
+    """reagent 不能命中 agents。"""
+
+    assert (
+        AnalysisFocus.from_question(
+            "reagent 是什么"
+        ).is_focused
+        is False
+    )
+
+
+def test_focus_is_capped_at_three():
+    """一次点名五个就不是在提重点了。"""
+
+    focus = AnalysisFocus.from_question(
+        "agent workflow skill tool rag memory 全都看看"
+    )
+
+    assert len(focus.dimensions) == (
+        AnalysisFocus.MAX_DIMENSIONS
+    )
+
+
+def test_focus_ignores_unknown_dimensions():
+
+    focus = AnalysisFocus(
+        dimensions=["agents", "不存在", "workflow"],
+        source="llm",
+    )
+
+    assert focus.dimensions == [
+        "agents",
+        "workflow",
+    ]
+
+
+def test_rank_orders_by_mention():
+
+    focus = AnalysisFocus(
+        dimensions=["workflow", "agents"],
+        source="llm",
+    )
+
+    assert focus.rank("workflow") == 0
+
+    assert focus.rank("agents") == 1
+
+    # 不在重点里的排在最后。
+    assert focus.rank("memory") > 1
+
+
+def test_from_plan_reads_focus():
+
+    focus = AnalysisFocus.from_plan(
+        {
+            "focus": {
+                "dimensions": ["rag"],
+                "notes": "关心检索",
+                "source": "llm",
+            }
+        }
+    )
+
+    assert focus.dimensions == ["rag"]
+
+    assert focus.notes == "关心检索"
+
+    assert focus.source == "llm"
+
+
+def test_from_plan_falls_back_for_legacy_runs():
+    """
+    旧 run 的 research_plan 没有 focus 字段时，
+    退回用 question 做关键词匹配 ——
+    历史报告也能有点侧重。
+    """
+
+    focus = AnalysisFocus.from_plan(
+        {"question": "分析 workflow 编排"}
+    )
+
+    assert focus.dimensions == ["workflow"]
+
+    assert focus.source == "keywords"
+
+
+def test_from_plan_handles_broken_input():
+
+    assert (
+        AnalysisFocus.from_plan(None).is_focused
+        is False
+    )
+
+    assert (
+        AnalysisFocus.from_plan("x").is_focused
+        is False
+    )
+
+
+# ----------------------------------------------------------------
+# PlannerAgent
+# ----------------------------------------------------------------
+
+
+def test_planner_uses_llm_focus():
+
+    result = run_planner(
+        "我关心这个项目的多智能体怎么协作",
+        FakeLLM(
+            json.dumps(
+                {
+                    "dimensions": ["agents"],
+                    "notes": "关心多智能体协作",
+                },
+                ensure_ascii=False,
+            )
+        ),
+    )
+
+    focus = result["research_plan"]["focus"]
+
+    assert focus["dimensions"] == ["agents"]
+
+    assert focus["source"] == "llm"
+
+    assert focus["notes"] == "关心多智能体协作"
+
+
+def test_planner_keeps_all_agents():
+    """
+    任务表必须保持 5 个 agent。
+
+    少跑一个会让对应章节变成「真实数据不存在」，
+    CriticAgent 也会报字段缺失。
+    question 驱动的是重点，不是「跑不跑」。
+    """
+
+    result = run_planner(
+        "分析项目的 agent",
+        FakeLLM(
+            json.dumps({"dimensions": ["agents"]})
+        ),
+    )
+
+    assert result["tasks"] == list(
+        PlannerAgent.TASKS
+    )
+
+    assert len(result["tasks"]) == 5
+
+
+def test_planner_respects_llm_no_focus():
+
+    result = run_planner(
+        "分析这个项目",
+        FakeLLM(
+            json.dumps(
+                {"dimensions": [], "notes": ""}
+            )
+        ),
+    )
+
+    focus = result["research_plan"]["focus"]
+
+    assert focus["dimensions"] == []
+
+    assert focus["source"] == "none"
+
+
+def test_planner_falls_back_when_llm_unavailable():
+
+    result = run_planner(
+        "重点分析 workflow 编排",
+        FakeLLM("", available=False),
+    )
+
+    focus = result["research_plan"]["focus"]
+
+    assert focus["dimensions"] == ["workflow"]
+
+    assert focus["source"] == "keywords"
+
+
+def test_planner_falls_back_on_invalid_json():
+
+    result = run_planner(
+        "分析 rag 检索",
+        FakeLLM("这不是 JSON"),
+    )
+
+    assert result["research_plan"]["focus"][
+        "dimensions"
+    ] == ["rag"]
+
+
+def test_planner_falls_back_without_llm_tool():
+
+    result = run_planner("看看 memory 记忆设计")
+
+    assert result["research_plan"]["focus"][
+        "dimensions"
+    ] == ["memory"]
+
+
+def test_planner_plan_version_is_bumped():
+
+    result = run_planner("分析项目")
+
+    assert result["research_plan"][
+        "plan_version"
+    ] == PlannerAgent.PLAN_VERSION
+
+
+# ----------------------------------------------------------------
+# 采集配额
+# ----------------------------------------------------------------
+
+
+def test_quotas_unchanged_without_focus():
+
+    quotas = ArchitectureAnalysisSkill._quotas_for(
+        AnalysisFocus.none()
+    )
+
+    assert quotas == (
+        ArchitectureAnalysisSkill.DIMENSION_QUOTAS
+    )
+
+
+def test_focus_dimension_gets_more_quota():
+    """
+    重点维度拿更多文件配额。
+
+    这是「调深度」的一半：
+    问 agent 就该多读 agents 相关文件。
+    """
+
+    focus = AnalysisFocus(
+        dimensions=["agents"],
+        source="llm",
+    )
+
+    quotas = ArchitectureAnalysisSkill._quotas_for(
+        focus
+    )
+
+    assert quotas["agents"] > (
+        ArchitectureAnalysisSkill
+        .DIMENSION_QUOTAS["agents"]
+    )
+
+    # 非重点维度仍然有配额 ——
+    # 报告里那些章节还是要写的。
+    assert quotas["workflow"] >= 1
+
+    assert all(
+        value >= 1 for value in quotas.values()
+    )
+
+
+def test_focus_dimensions_come_first():
+    """
+    重点维度必须排在配额表前面。
+
+    _read_candidates 是按顺序取名额的，
+    重点排在后面就会被先取完的维度挤掉。
+    """
+
+    focus = AnalysisFocus(
+        dimensions=["memory"],
+        source="llm",
+    )
+
+    quotas = ArchitectureAnalysisSkill._quotas_for(
+        focus
+    )
+
+    assert next(iter(quotas)) == "memory"
+
+
+def test_quota_total_is_bounded():
+
+    for dimensions in (
+        ["agents"],
+        ["agents", "workflow"],
+        ["agents", "workflow", "rag"],
+    ):
+
+        quotas = ArchitectureAnalysisSkill._quotas_for(
+            AnalysisFocus(
+                dimensions=dimensions,
+                source="llm",
+            )
+        )
+
+        assert sum(quotas.values()) <= (
+            ArchitectureAnalysisSkill.MAX_MODULES
+        )
+
+
+# ----------------------------------------------------------------
+# 报告渲染
+# ----------------------------------------------------------------
+
+
+def build_report_data(focus_dimensions=None):
+
+    structure = {
+        "available": True,
+        "basis": "code+readme+topics",
+        "dimensions": {
+            name: {
+                "declared": True,
+                "declared_by": "code",
+                "items": [f"class {name.title()}Thing"],
+                "topics": [],
+                "evidence": [],
+                "code_evidence": [],
+                "details": [
+                    {
+                        "kind": "class",
+                        "name": f"{name.title()}Thing",
+                        "signature": (
+                            f"class {name.title()}Thing(Base)"
+                        ),
+                        "file_path": f"{name}.py",
+                        "line": 10,
+                        "methods": ["run"],
+                        "calls": [],
+                        "literals": [],
+                    }
+                ],
+            }
+            for name in AnalysisFocus.DIMENSIONS
+        },
+    }
+
+    data = {
+        "run_id": "run-1",
+        "question": "分析项目的 agent",
+        "repository": {
+            "full_name": "a/b",
+            "language": "Python",
+            "topics": [],
+            "html_url": "u",
+            "license": {"name": "MIT"},
+        },
+        "technology_stack": {
+            "frameworks": [],
+            "llm": [],
+            "database": [],
+            "embedding": [],
+            "deployment": [],
+        },
+        "project_structure": structure,
+        "synthesis": {
+            "available": True,
+            "summary": {
+                "one_line": "一句话。",
+                "core_design": [],
+                "technology_choices": [],
+                "highlights": [],
+                "risks": [],
+                "use_cases": [],
+            },
+            "dimensions": {},
+        },
+    }
+
+    if focus_dimensions is not None:
+
+        data["research_plan"] = {
+            "question": "分析项目的 agent",
+            "focus": {
+                "dimensions": focus_dimensions,
+                "notes": "关心协作",
+                "source": "llm",
+            },
+        }
+
+    return data
+
+
+def section(content, start, end):
+
+    return content[
+        content.index(start): content.index(end)
+    ]
+
+
+def test_focus_chapter_is_expanded():
+    """重点章节要展开实现明细。"""
+
+    content = ReportGenerationSkill._build_report(
+        build_report_data(["agents"])
+    )
+
+    agents = section(
+        content,
+        "## 04 Agent 架构",
+        "## 05 Workflow",
+    )
+
+    assert "**实现明细**" in agents
+
+    assert "class AgentsThing(Base)" in agents
+
+    # 措辞不能自相矛盾。
+    assert "以上为本次展开的实现明细" in agents
+
+    assert "未放入本报告" not in agents
+
+
+def test_non_focus_chapter_is_compressed():
+    """非重点章节压成一行，但不消失。"""
+
+    content = ReportGenerationSkill._build_report(
+        build_report_data(["agents"])
+    )
+
+    workflow = section(
+        content,
+        "## 05 Workflow",
+        "## 06 Skill",
+    )
+
+    assert "本次未展开" in workflow
+
+    assert "未按问题展开" in workflow
+
+    # 不能整章删掉 —— 报告必须仍是完整的 01-11。
+    assert "## 05 Workflow" in content
+
+    assert "## 09 Memory" in content
+
+
+def test_report_states_the_question_and_focus():
+    """报告开头要写清问了什么、重点在哪。"""
+
+    content = ReportGenerationSkill._build_report(
+        build_report_data(["agents"])
+    )
+
+    head = content[: content.index("## 01")]
+
+    assert "**本次问题**：分析项目的 agent" in head
+
+    assert "**本次重点**：Agent 架构" in head
+
+
+def test_report_unchanged_without_focus():
+    """
+    没有识别出重点时保持全量等深。
+
+    这是对旧行为的兼容：
+    泛泛地问「分析这个项目」不该
+    让用户丢掉任何章节的细节。
+    """
+
+    content = ReportGenerationSkill._build_report(
+        build_report_data(None)
+    )
+
+    for name in ("## 04 Agent 架构", "## 09 Memory"):
+
+        assert name in content
+
+    assert "本次未展开" not in content
+
+
+def test_compressed_chapter_keeps_judgment():
+    """压缩后仍保留综合判断，不丢结论。"""
+
+    data = build_report_data(["agents"])
+
+    data["synthesis"]["dimensions"] = {
+        "workflow": "LangGraph 编排。"
+    }
+
+    content = ReportGenerationSkill._build_report(
+        data
+    )
+
+    assert "**综合判断**：LangGraph 编排。" in (
+        content
+    )
 ```
 
 ### 📄 `tests/test_analysis_result.py`
@@ -11734,6 +21426,1076 @@ def test_analysis_result_build():
     )
 ```
 
+### 📄 `tests/test_architecture_code_evidence.py`
+
+**层级**：测试层 · **职责**：代码证据与 README 自述合并的测试。
+
+```python
+"""
+代码证据与 README 自述合并的测试。
+
+覆盖：
+
+1. 代码抽到的维度，declared_by 为 code / code+readme
+2. 只有 README 声明的维度，declared_by 为 readme
+3. 两侧都没有时 declared=False，且给出新原因
+4. declared / items / topics / evidence / reason
+   五个契约字段的类型与含义不变
+   （报告各维度章按它们渲染）
+5. 报告能渲染出代码证据与结论来源
+
+全程使用假 Tool，不联网。
+"""
+
+import pytest
+
+from app.core.exceptions import ToolError
+from app.project_analysis.code_structure_extractor import (
+    CodeStructureExtractor,
+)
+from app.skills.architecture_analysis_skill import (
+    ArchitectureAnalysisSkill,
+)
+from app.skills.report_generation_skill import (
+    ReportGenerationSkill,
+)
+
+TREE = (
+    "src/app/main.py",
+    "src/app/agents/invoice_agent.py",
+    "src/app/graph/workflow.py",
+    "src/app/tools/supplier_lookup.py",
+    "src/app/rag/retriever.py",
+)
+
+
+SOURCES = {
+    "src/app/agents/invoice_agent.py": (
+        "class InvoiceAgent:\n"
+        "    pass\n"
+    ),
+    "src/app/graph/workflow.py": (
+        "from langgraph.graph import StateGraph\n"
+        "\n"
+        "graph = StateGraph(AgentState)\n"
+        "graph.add_node('intake', intake_node)\n"
+        "graph.add_edge('intake', 'approve')\n"
+    ),
+    "src/app/tools/supplier_lookup.py": (
+        "class SupplierLookupTool:\n"
+        "    pass\n"
+    ),
+    "src/app/rag/retriever.py": (
+        "from qdrant_client import QdrantClient\n"
+        "\n"
+        "def retrieve_documents(query):\n"
+        "    pass\n"
+    ),
+    "src/app/main.py": (
+        "from fastapi import FastAPI\n"
+        "\n"
+        "app = FastAPI()\n"
+    ),
+}
+
+
+# README 只声明了 workflow，
+# 其余维度全靠代码抽取。
+README = (
+    "# Demo\n"
+    "\n"
+    "## Workflow\n"
+    "- LangGraph state orchestration\n"
+)
+
+
+class FakeCodeSearch:
+    """GitHub Code Search 对该仓库返回 0 条。"""
+
+    async def execute(self, **kwargs):
+        return []
+
+
+class FakeRepositoryTool:
+
+    async def get_tree(self, **kwargs):
+        return [
+            {"path": path, "type": "blob"}
+            for path in TREE
+        ]
+
+
+class FakeFileReader:
+
+    async def execute(
+        self,
+        owner,
+        name,
+        file_path,
+        branch,
+    ):
+        if file_path == "README.md":
+            return README
+
+        if file_path in SOURCES:
+            return SOURCES[file_path]
+
+        raise ToolError(f"HTTP 404: {file_path}")
+
+
+class FakeContext:
+
+    def __init__(self):
+        self.tools = {
+            "github_code_search": FakeCodeSearch(),
+            "github_repository": FakeRepositoryTool(),
+            "file_reader": FakeFileReader(),
+        }
+
+
+@pytest.fixture
+def structure():
+    """跑一次真实的 ArchitectureAnalysisSkill。"""
+
+    import asyncio
+
+    skill = ArchitectureAnalysisSkill()
+
+    result = asyncio.run(
+        skill.execute(
+            FakeContext(),
+            {
+                "owner": "demo",
+                "repo": "demo",
+                "branch": "main",
+                "readme": README,
+                "repository": {
+                    "topics": [],
+                    "description": "a demo",
+                },
+            },
+        )
+    )
+
+    return result["project_structure"]
+
+
+# ----------------------------------------------------------------
+# 合并语义
+# ----------------------------------------------------------------
+
+
+def test_code_signals_declare_dimension(structure):
+    """代码里有的维度必须被判为已声明。"""
+
+    agents = structure["dimensions"]["agents"]
+
+    assert agents["declared"] is True
+
+    assert agents["declared_by"] == "code"
+
+    assert any(
+        "InvoiceAgent" in item
+        for item in agents["items"]
+    )
+
+
+def test_code_evidence_carries_file_and_line(structure):
+    """
+    代码证据必须带文件与行号。
+
+    这是本次改动的核心价值：
+    从「README 里有这个词」
+    变成「这个文件第 N 行确实这么写」。
+    """
+
+    workflow = structure["dimensions"]["workflow"]
+
+    evidence = workflow["code_evidence"]
+
+    assert evidence
+
+    node_call = next(
+        item
+        for item in evidence
+        if "add_node" in (item["text"] or "")
+    )
+
+    assert node_call["file_path"] == (
+        "src/app/graph/workflow.py"
+    )
+
+    assert node_call["line_start"] == 4
+
+
+def test_readme_and_code_combine(structure):
+    """两侧都有时 declared_by 为 code+readme。"""
+
+    workflow = structure["dimensions"]["workflow"]
+
+    assert workflow["declared_by"] == "code+readme"
+
+    # README 条目补在代码条目之后。
+    assert "LangGraph state orchestration" in (
+        workflow["items"]
+    )
+
+
+def test_langgraph_topic_alone_does_not_declare_agents(
+    structure,
+):
+    """
+    只有 LangGraph 而没有 Agent 类时，
+    agents 维度不能被判为已声明。
+
+    回归点：langgraph 曾经既算 workflow
+    又算 agents，让任何 LangGraph 项目
+    都凭空多出 agents 条目。
+    """
+
+    assert (
+        "import langgraph.graph"
+        not in structure["dimensions"]["agents"]["items"]
+    )
+
+
+def test_undeclared_dimension_keeps_reason(structure):
+    """两侧都没有的维度必须给出原因。"""
+
+    skills = structure["dimensions"]["skills"]
+
+    assert skills["declared"] is False
+
+    assert skills["declared_by"] is None
+
+    assert skills["items"] == []
+
+    assert "skills" in skills["reason"]
+
+
+def test_contract_fields_keep_their_types(structure):
+    """
+    报告各维度章按这五个字段渲染，
+    类型与含义都不能变。
+    """
+
+    for entry in structure["dimensions"].values():
+
+        assert isinstance(
+            entry["declared"],
+            bool,
+        )
+
+        assert isinstance(entry["items"], list)
+
+        assert isinstance(
+            entry["topics"],
+            list,
+        )
+
+        assert isinstance(
+            entry["evidence"],
+            list,
+        )
+
+        assert (
+            entry["reason"] is None
+            or isinstance(entry["reason"], str)
+        )
+
+
+def test_readme_evidence_keeps_line_numbers(structure):
+    """
+    README 证据的原有含义不变：
+    仍然指向 README.md 的行号。
+    """
+
+    workflow = structure["dimensions"]["workflow"]
+
+    readme_hit = [
+        item
+        for item in workflow["evidence"]
+        if item["text"]
+        == "- LangGraph state orchestration"
+    ]
+
+    assert readme_hit
+
+    assert (
+        readme_hit[0]["file_path"] == "README.md"
+    )
+
+
+def test_code_extraction_meta_is_reported(structure):
+    """代码抽取的执行情况必须带出来。"""
+
+    meta = structure["code_extraction"]
+
+    assert meta["available"] is True
+
+    assert meta["parsed_files"] == 5
+
+    assert meta["unparsed"] == []
+
+
+def test_basis_records_both_sources(structure):
+    """basis 要说明结论来自代码与 README。"""
+
+    assert structure["basis"] == (
+        "code+readme+topics"
+    )
+
+
+# ----------------------------------------------------------------
+# 按维度分配采集配额
+# ----------------------------------------------------------------
+
+
+def pick(paths):
+    tree = [
+        {"path": path, "type": "blob"}
+        for path in paths
+    ]
+
+    return ArchitectureAnalysisSkill()._read_candidates(
+        tree
+    )
+
+
+def test_every_dimension_gets_its_own_quota():
+    """
+    每个维度都要有独立名额。
+
+    回归点：旧做法按「命中信号总数」全局排序，
+    仓库目录结构会决定结果 ——
+    agents/ 文件多就把 rag/ 挤掉，
+    各模块详略极不均匀。
+    """
+
+    picked = pick(
+        [
+            "src/app/main.py",
+            *[
+                f"src/app/agents/a{i}.py"
+                for i in range(10)
+            ],
+            *[
+                f"src/app/graph/g{i}.py"
+                for i in range(8)
+            ],
+            *[
+                f"src/app/tools/t{i}.py"
+                for i in range(3)
+            ],
+            "src/app/rag/r1.py",
+            "src/app/rag/r2.py",
+            "src/app/memory/m1.py",
+            *[
+                f"src/app/services/o{i}.py"
+                for i in range(8)
+            ],
+        ]
+    )
+
+    dimensions = {
+        dimension: sum(
+            1
+            for path in picked
+            if dimension
+            in CodeStructureExtractor.dimensions_for_path(
+                path
+            )
+        )
+        for dimension in (
+            "workflow",
+            "agents",
+            "tools",
+            "rag",
+            "memory",
+        )
+    }
+
+    # 即使 agents 文件是 rag 的 5 倍，
+    # rag 也必须有样本。
+    assert dimensions["rag"] >= 2
+
+    assert dimensions["workflow"] >= 4
+
+    assert dimensions["tools"] >= 3
+
+    assert dimensions["memory"] >= 1
+
+
+def test_quota_leftovers_backfill_the_budget():
+    """
+    配额之外的文件必须回填名额。
+
+    否则「源码全在一个目录下」的仓库
+    会只读到配额那么几个文件，
+    其余名额白白浪费。
+    """
+
+    picked = pick(
+        [
+            *[
+                f"src/app/agents/a{i}.py"
+                for i in range(20)
+            ],
+            "src/app/main.py",
+        ]
+    )
+
+    assert len(picked) == (
+        ArchitectureAnalysisSkill.MAX_MODULES
+    )
+
+
+def test_low_priority_paths_lose_to_real_code():
+    """
+    名额不够时，测试 / 迁移目录优先被牺牲。
+
+    注意它们是「最后才读」而不是「永不读」：
+    名额够时仍会被读，
+    因为多读一个文件总比空着名额好。
+    """
+
+    source = [
+        f"src/app/services/s{i}.py"
+        for i in range(
+            ArchitectureAnalysisSkill.MAX_MODULES
+        )
+    ]
+
+    picked = pick(
+        source
+        + [
+            "tests/test_workflow.py",
+            "alembic/versions/0001_init.py",
+            "src/app/scripts/seed.py",
+        ]
+    )
+
+    assert len(picked) == (
+        ArchitectureAnalysisSkill.MAX_MODULES
+    )
+
+    assert "tests/test_workflow.py" not in picked
+
+    assert (
+        "alembic/versions/0001_init.py" not in picked
+    )
+
+    assert "src/app/scripts/seed.py" not in picked
+
+
+def test_low_priority_paths_fill_spare_slots():
+    """名额有剩时，低优先级路径仍应被读取。"""
+
+    picked = pick(
+        [
+            "src/app/graph/workflow.py",
+            "tests/test_workflow.py",
+        ]
+    )
+
+    assert "src/app/graph/workflow.py" in picked
+
+    assert "tests/test_workflow.py" in picked
+
+
+# ----------------------------------------------------------------
+# 报告渲染
+# ----------------------------------------------------------------
+
+
+def test_report_renders_anchors(structure):
+    """
+    默认报告要给证据锚点（文件:行号）。
+
+    锚点是默认报告的「可回溯性」来源：
+    要点可以归纳，锚点必须能逐条打开核对。
+    """
+
+    content = ReportGenerationSkill._build_report(
+        {
+            "project_structure": structure,
+            "technology_stack": {
+                "embedding": ["Qdrant"],
+            },
+        }
+    )
+
+    workflow = content[
+        content.index("## 05 Workflow"):
+        content.index("## 06 Skill")
+    ]
+
+    assert "**结论来源**：代码证据 + README 自述" in (
+        workflow
+    )
+
+    assert "**证据锚点**" in workflow
+
+    assert (
+        "`src/app/graph/workflow.py:4`"
+        in workflow
+    )
+
+    # README 出处也进锚点，与代码证据合并成一组。
+    assert "`README.md:4`" in workflow
+
+
+def test_default_report_shows_highlights_not_symbols():
+    """
+    默认报告要的是「要点」，不是符号清单。
+
+    条目是 `builder.add_node('x', ...)` 这类原始符号，
+    直接列出来只是堆符号；
+    归纳成「图节点（3）：a、b、c」才是要点。
+    """
+
+    content = ReportGenerationSkill._build_report(
+        {
+            "project_structure": {
+                "available": True,
+                "basis": "code+readme+topics",
+                "dimensions": {
+                    "workflow": {
+                        "declared": True,
+                        "declared_by": "code",
+                        "items": [
+                            "StateGraph(...)",
+                            "builder.add_node('intake', self._a)",
+                            "builder.add_node('approve', self._b)",
+                            "import langgraph.graph",
+                            "路径 src/app/graph/",
+                            "README 说了一句话",
+                        ],
+                        "topics": [],
+                        "evidence": [],
+                        "code_evidence": [],
+                        "details": [],
+                    },
+                },
+            }
+        }
+    )
+
+    workflow = content[
+        content.index("## 05 Workflow"):
+        content.index("## 06 Skill")
+    ]
+
+    assert "**要点**" in workflow
+
+    # 图调用被归纳成名字列表
+    # （StateGraph 构造 + 两个 add_node）。
+    assert "图结构（3）" in workflow
+
+    assert "`StateGraph`" in workflow
+
+    assert "`intake`" in workflow
+
+    assert "`approve`" in workflow
+
+    assert "依赖（1）：`langgraph.graph`" in workflow
+
+    assert "目录（1）：`src/app/graph/`" in workflow
+
+    # 原始符号不应再原样出现。
+    assert "builder.add_node(" not in workflow
+
+
+def test_default_report_points_to_deep_dive():
+    """
+    默认报告不放大块实现细节，
+    但要给出深挖的入口。
+    """
+
+    content = ReportGenerationSkill._build_report(
+        {
+            "run_id": "run-123",
+            "project_structure": {
+                "available": True,
+                "basis": "code+readme+topics",
+                "dimensions": {
+                    "workflow": {
+                        "declared": True,
+                        "declared_by": "code",
+                        "items": ["StateGraph(...)"],
+                        "topics": [],
+                        "evidence": [],
+                        "code_evidence": [],
+                        "details": [
+                            {
+                                "kind": "graph",
+                                "name": "duplicate_check",
+                                "signature": "def f(self)",
+                                "file_path": "a.py",
+                                "line": 1,
+                                "calls": [],
+                                "literals": [],
+                            }
+                        ],
+                    },
+                },
+            },
+        }
+    )
+
+    workflow = content[
+        content.index("## 05 Workflow"):
+        content.index("## 06 Skill")
+    ]
+
+    # 实现明细的签名不进默认报告。
+    assert "**实现细节**" not in workflow
+
+    assert "def f(self)" not in workflow
+
+    # 但必须指向深挖接口。
+    assert "1 项实现明细" in workflow
+
+    assert (
+        "/analysis/run-123/deep-dive?module=workflow"
+        in workflow
+    )
+
+
+def test_deep_dive_hint_uses_placeholder_without_run_id():
+    """拿不到 run_id 时用占位符，不能渲染成 None。"""
+
+    content = ReportGenerationSkill._build_report(
+        {
+            "project_structure": {
+                "available": True,
+                "basis": "code+readme+topics",
+                "dimensions": {
+                    "rag": {
+                        "declared": True,
+                        "declared_by": "code",
+                        "items": ["def retrieve(q)"],
+                        "topics": [],
+                        "evidence": [],
+                        "code_evidence": [],
+                        "details": [
+                            {
+                                "kind": "function",
+                                "name": "retrieve",
+                                "signature": "def retrieve(q)",
+                                "file_path": "a.py",
+                                "line": 1,
+                                "calls": [],
+                                "literals": [],
+                            }
+                        ],
+                    },
+                },
+            }
+        }
+    )
+
+    rag = content[
+        content.index("## 08 RAG"):
+        content.index("## 09 Memory")
+    ]
+
+    assert "{run_id}" in rag
+
+    assert "None" not in rag
+
+
+def test_report_renders_path_signal_without_line():
+    """
+    路径信号没有行号，
+    不能渲染成 `src/app/agents/:None`。
+    """
+
+    content = ReportGenerationSkill._build_report(
+        {
+            "project_structure": {
+                "available": True,
+                "basis": "code+readme+topics",
+                "dimensions": {
+                    "agents": {
+                        "declared": True,
+                        "declared_by": "code",
+                        "items": ["路径 src/app/agents/"],
+                        "topics": [],
+                        "evidence": [],
+                        "code_evidence": [
+                            {
+                                "file_path": (
+                                    "src/app/agents/"
+                                ),
+                                "line_start": None,
+                                "text": (
+                                    "路径 src/app/agents/"
+                                ),
+                            }
+                        ],
+                    },
+                },
+            }
+        }
+    )
+
+    agents = content[
+        content.index("## 04 Agent 架构"):
+        content.index("## 05 Workflow")
+    ]
+
+    assert "None" not in agents
+
+    assert (
+        "目录/文件名命中架构关键词："
+        "`src/app/agents/`"
+    ) in agents
+```
+
+### 📄 `tests/test_checkpoint_size_guard.py`
+
+**层级**：测试层 · **职责**：Checkpoint 体积守卫与报告兜底测试。
+
+```python
+"""
+Checkpoint 体积守卫与报告兜底测试。
+
+背景
+====
+
+真实事故：被分析项目 Legal（17.8MB）跑完后，
+checkpoint 的 state_data 涨到 263,743 字节，
+越过 asyncmy 读取大字段的缓冲区分片上限
+（实测与 MySQL sort_buffer_size 262,144 吻合）：
+
+    Lost connection to MySQL server during query
+    (Existing exports of data: object cannot be re-sized)
+
+后果是**这个 run 再也读不回来了** ——
+恢复、取报告、深挖全部 500，
+而任务其实早就 COMPLETED。
+
+两道防线：
+
+1. 写入前守卫：state_data 超限就瘦身，
+   保证写进去的行一定能读回来
+2. 读取时兜底：checkpoint 读不出来就回读
+   磁盘上的 reports/{run_id}_analysis.md
+"""
+
+import json
+from pathlib import Path
+
+from app.repositories.checkpoint import (
+    MAX_STATE_BYTES,
+    CheckpointRepository,
+)
+from app.services.analysis_workflow import (
+    AnalysisWorkflowRunner,
+)
+
+
+def build_oversized_state():
+    """构造一个远超上限的 state。"""
+
+    return {
+        "final_report": {
+            "report": {
+                "path": "reports/x_analysis.md",
+                "format": "markdown",
+            },
+            "content": "# 报告\n" + "正文" * 20000,
+        },
+        "readme": "R" * 120000,
+        "evidence": [
+            {
+                "file_path": f"f{i}.py",
+                "content": "E" * 1500,
+            }
+            for i in range(40)
+        ],
+        "modules": [
+            {
+                "file_path": f"m{i}.py",
+                "content": "M" * 1200,
+            }
+            for i in range(20)
+        ],
+        "business_field": {"important": "必须保留"},
+    }
+
+
+# ----------------------------------------------------------------
+# 写入守卫
+# ----------------------------------------------------------------
+
+
+def test_oversized_state_is_trimmed_under_limit():
+
+    state = build_oversized_state()
+
+    assert (
+        CheckpointRepository._size(state)
+        > MAX_STATE_BYTES
+    )
+
+    data, trims = CheckpointRepository._fit_state_data(
+        state
+    )
+
+    assert (
+        CheckpointRepository._size(data)
+        <= MAX_STATE_BYTES
+    )
+
+    assert trims
+
+    assert trims["original_bytes"] > trims[
+        "final_bytes"
+    ]
+
+
+def test_trim_drops_the_most_redundant_first():
+    """
+    先丢报告正文与 README。
+
+    报告正文已经写在 reports/*.md，
+    README 也已被抽取成结构 ——
+    两者都是「丢了不心疼」的重复数据。
+    """
+
+    state = build_oversized_state()
+
+    data, trims = CheckpointRepository._fit_state_data(
+        state
+    )
+
+    dropped = trims["dropped_bytes"]
+
+    assert "final_report.content" in dropped
+
+    assert "readme" in dropped
+
+    # 落到上限以内就停手，
+    # 不该继续动 evidence / modules。
+    assert "evidence" not in dropped
+
+    assert "modules" not in dropped
+
+    assert "content" not in data["final_report"]
+
+    assert len(data["readme"]) == 4000
+
+
+def test_trim_preserves_business_fields():
+    """瘦身只动重复的大字段，不能误伤业务数据。"""
+
+    state = build_oversized_state()
+
+    data, _ = CheckpointRepository._fit_state_data(
+        state
+    )
+
+    assert data["business_field"] == {
+        "important": "必须保留"
+    }
+
+    assert len(data["evidence"]) == 40
+
+    assert len(data["modules"]) == 20
+
+
+def test_trim_falls_through_to_evidence_and_modules():
+    """光丢报告正文和 README 还不够时，继续往后丢。"""
+
+    state = {
+        "final_report": {"content": "x" * 100},
+        "readme": "short",
+        # 光靠 evidence 与 modules 就把体积顶上去
+        "evidence": [
+            {"content": "E" * 2000} for _ in range(150)
+        ],
+        "modules": [
+            {"content": "M" * 2000} for _ in range(150)
+        ],
+    }
+
+    assert (
+        CheckpointRepository._size(state)
+        > MAX_STATE_BYTES
+    )
+
+    data, trims = CheckpointRepository._fit_state_data(
+        state
+    )
+
+    assert (
+        CheckpointRepository._size(data)
+        <= MAX_STATE_BYTES
+    )
+
+    dropped = trims["dropped_bytes"]
+
+    assert "evidence" in dropped or "modules" in dropped
+
+
+def test_small_state_is_untouched():
+
+    state = {"a": 1, "readme": "short"}
+
+    data, trims = CheckpointRepository._fit_state_data(
+        state
+    )
+
+    assert trims == {}
+
+    assert data == state
+
+
+def test_non_dict_state_does_not_crash():
+
+    data, trims = CheckpointRepository._fit_state_data(
+        "not-a-dict"
+    )
+
+    assert data == "not-a-dict"
+
+    assert trims == {}
+
+
+# ----------------------------------------------------------------
+# 读取兜底
+# ----------------------------------------------------------------
+
+
+def test_report_falls_back_to_disk(tmp_path, monkeypatch):
+    """
+    checkpoint 读不出来时，回读磁盘上的报告文件。
+
+    没有这条兜底，「分析成功但取报告 500」
+    就会一直存在 —— 而报告其实早就写好了。
+    """
+
+    monkeypatch.chdir(tmp_path)
+
+    reports = Path("reports")
+
+    reports.mkdir()
+
+    (reports / "run-1_analysis.md").write_text(
+        "# 报告\n\n正文内容",
+        encoding="utf-8",
+    )
+
+    result = AnalysisWorkflowRunner._report_from_disk(
+        "run-1",
+        None,
+    )
+
+    assert result["content"] == "# 报告\n\n正文内容"
+
+    assert "run-1_analysis.md" in result[
+        "report"
+    ]["path"]
+
+
+def test_report_fills_missing_content_from_disk(
+    tmp_path,
+    monkeypatch,
+):
+    """
+    报告正文被瘦身丢掉时，同样从文件回读。
+
+    state 里只剩路径，正文在磁盘上。
+    """
+
+    monkeypatch.chdir(tmp_path)
+
+    reports = Path("reports")
+
+    reports.mkdir()
+
+    (reports / "run-2_analysis.md").write_text(
+        "# 从文件读回来的报告",
+        encoding="utf-8",
+    )
+
+    result = AnalysisWorkflowRunner._report_from_disk(
+        "run-2",
+        {
+            "report": {
+                "path": "reports/run-2_analysis.md",
+                "format": "markdown",
+            }
+        },
+    )
+
+    assert result["content"] == (
+        "# 从文件读回来的报告"
+    )
+
+
+def test_report_keeps_inline_content_when_present():
+    """state 里有正文就不用读文件。"""
+
+    report = {
+        "report": {
+            "path": "reports/nope.md",
+            "format": "markdown",
+        },
+        "content": "# 来自 state 的正文",
+    }
+
+    result = AnalysisWorkflowRunner._report_from_disk(
+        "run-3",
+        report,
+    )
+
+    assert result is report
+
+
+def test_report_returns_none_when_nothing_available(
+    tmp_path,
+    monkeypatch,
+):
+    """既没 state 也没文件时返回 None，而不是编一个。"""
+
+    monkeypatch.chdir(tmp_path)
+
+    assert (
+        AnalysisWorkflowRunner._report_from_disk(
+            "missing-run",
+            None,
+        )
+        is None
+    )
+
+
+def test_trimmed_marker_is_underscore_prefixed():
+    """
+    瘦身记录必须用下划线开头。
+
+    FinalizerNode 组装报告输入时会跳过
+    下划线开头的键，否则这条记录会混进报告。
+    """
+
+    state = build_oversized_state()
+
+    _, trims = CheckpointRepository._fit_state_data(
+        state
+    )
+
+    assert trims
+
+    key = "_trimmed"
+
+    assert key.startswith("_")
+
+    # 记录本身要能落库（可 JSON 序列化）。
+    json.dumps({key: trims})
+```
+
 ### 📄 `tests/test_chunker.py`
 
 **层级**：测试层 · **职责**：Markdown 切分器单元测试
@@ -11771,1839 +22533,946 @@ Human approval is required for sensitive operations.
     assert "HITL" in chunks[2]
 ```
 
-### 📄 `tests/test_comparison_agent.py`
+### 📄 `tests/test_code_structure_extractor.py`
 
-**层级**：测试层 · **职责**：Comparison Agent 测试。
+**层级**：测试层 · **职责**：CodeStructureExtractor 测试。
 
 ```python
 """
-Comparison Agent 测试。
+CodeStructureExtractor 测试。
 
-重要：
+覆盖：
 
-本文件所有 fixture 都模拟 RunMemory.load() 的
-真实返回结构，不再使用 project["analysis"]
-这种真实系统中并不存在的结构。
+1. 符号识别（class / 函数 / 导入 / 图谱调用）
+2. camelCase 名字边界（BaseTool / PlannerAgent）
+3. 语法错误文件不拖垮其它文件
+4. 路径信号按目录去重
+5. 条目数量上限
 
-真实结构（顶层 key）：
-
-    run_id / status / current_node / question
-    repository / research_plan / final_report
-    agent_outputs / task_results / evidences / workflow_state
+全部只做静态解析，不联网。
 """
 
-import pytest
-
-from app.agents.comparison_agent import (
-    ComparisonAgent,
-)
-
-# Phase 13 文档 16.3 定义的比较维度。
-PHASE13_DIMENSIONS = [
-    "agent",
-    "workflow",
-    "skill",
-    "tool",
-    "rag",
-    "memory",
-    "database",
-    "deployment",
-    "code_complexity",
-    "extension",
-]
-
-EXECUTED_TASKS = [
-    "repository_analysis_agent",
-    "architecture_analysis_agent",
-    "technology_analysis_agent",
-    "evidence_analysis_agent",
-    "critic_agent",
-]
-
-RESEARCH_PLAN = {
-    "tasks": list(EXECUTED_TASKS),
-    "plan_version": 1,
-    "analysis_type": "github_agent_project",
-    "evidence_required": True,
-}
-
-
-def real_project(
-    run_id="run-a",
-    repository_id=26,
-    repository_name="project-a",
-    executed_tasks=None,
-    research_plan=None,
-    technology_stack=None,
-    architecture=None,
-    evidences=None,
-    language="Python",
-    size_kb=8586,
-    question="分析这个项目",
-):
-    """
-    构造一个与 RunMemory.load() 真实返回结构一致的 project。
-
-    注意：刻意不包含 project["analysis"]。
-    """
-
-    plan = (
-        RESEARCH_PLAN
-        if research_plan is None
-        else research_plan
-    )
-
-    return {
-        "run_id": run_id,
-        "status": "COMPLETED",
-        "current_node": "end",
-        "question": question,
-        "repository": {
-            "id": repository_id,
-            "url": (
-                "https://github.com/demo/"
-                f"{repository_name}"
-            ),
-            "owner": "demo",
-            "name": repository_name,
-            "description": None,
-            "language": language,
-        },
-        "research_plan": plan,
-        "final_report": {
-            "report": {
-                "path": f"reports/{run_id}.md",
-                "format": "markdown",
-            },
-            "content": "# report",
-        },
-        "agent_outputs": [
-            {
-                "dependencies": {},
-                "readme": "# readme",
-                "repository": {},
-            },
-        ],
-        "task_results": [],
-        "evidences": list(
-            evidences or []
-        ),
-        "workflow_state": {
-            "status": "COMPLETED",
-            "current_node": "end",
-            "data": {
-                "executed_tasks": list(
-                    EXECUTED_TASKS
-                    if executed_tasks is None
-                    else executed_tasks
-                ),
-                "research_plan": plan,
-                "repository": {
-                    "language": language,
-                    "size": size_kb,
-                },
-                "architecture_analysis_agent": (
-                    architecture
-                    if architecture is not None
-                    else {
-                        "files": [],
-                        "modules": [],
-                    }
-                ),
-                "technology_stack": (
-                    technology_stack
-                    if technology_stack is not None
-                    else {
-                        "llm": [],
-                        "database": [],
-                        "embedding": [],
-                        "deployment": [],
-                        "frameworks": [],
-                        "source_files": [],
-                    }
-                ),
-            },
-        },
-    }
-
-
-def real_evidence(
-    evidence_id,
-    content,
-    file_path="README.md",
-):
-    """构造一条与真实 Evidence 行结构一致的记录。"""
-
-    return {
-        "id": evidence_id,
-        "source_type": "github",
-        "file_path": file_path,
-        "line_start": 1,
-        "line_end": 10,
-        "content": content,
-        "verification_status": "UNVERIFIED",
-    }
-
-
-async def run_compare(project_a, project_b):
-    """执行一次比较。"""
-
-    agent = ComparisonAgent(
-        skill_registry=None
-    )
-
-    return await agent.execute(
-        context=None,
-        input_data={
-            "project_a": project_a,
-            "project_b": project_b,
-        },
-    )
-
-
-def test_dimensions_match_phase13_document():
-    """比较维度必须与 Phase 13 文档一致。"""
-
-    assert list(
-        ComparisonAgent.DIMENSIONS
-    ) == PHASE13_DIMENSIONS
-
-
-def test_fixture_has_no_fake_analysis_schema():
-    """
-    回归保护：fixture 不得再出现
-    真实系统中不存在的 project["analysis"]。
-    """
-
-    project = real_project()
-
-    assert "analysis" not in project
-
-    assert "workflow_state" in project
-
-    assert "evidences" in project
-
-
-@pytest.mark.asyncio
-async def test_agent_dimension_reads_executed_tasks():
-    """Agent 维度必须读取真实 executed_tasks。"""
-
-    same = await run_compare(
-        real_project("run-a"),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    agent_dimension = same["comparison"]["agent"]
-
-    assert agent_dimension["relation"] == "SAME"
-
-    assert (
-        agent_dimension["project_a"]["value"]
-        == {
-            "count": 5,
-            "agents": EXECUTED_TASKS,
-        }
-    )
-
-    assert (
-        agent_dimension["project_a"]["available"]
-        is True
-    )
-
-    assert (
-        agent_dimension["source"]
-        == "workflow_state.data.executed_tasks"
-    )
-
-    different = await run_compare(
-        real_project("run-a"),
-        real_project(
-            "run-b",
-            repository_id=35,
-            executed_tasks=[
-                "repository_analysis_agent",
-                "critic_agent",
-            ],
-        ),
-    )
-
-    assert (
-        different["comparison"]["agent"][
-            "relation"
-        ]
-        == "DIFFERENT"
-    )
-
-
-@pytest.mark.asyncio
-async def test_workflow_dimension_uses_research_plan():
-    """
-    Workflow 维度读取真实 research_plan。
-
-    不同提问不应影响该维度：
-    research_plan["question"] 属于 Run 元数据，
-    不是被分析项目的属性。
-    """
-
-    result = await run_compare(
-        real_project(
-            "run-a",
-            question="第一个完全不同的问题",
-        ),
-        real_project(
-            "run-b",
-            repository_id=35,
-            question="第二个完全不同的问题",
-        ),
-    )
-
-    workflow = result["comparison"]["workflow"]
-
-    assert workflow["relation"] == "SAME"
-
-    assert (
-        workflow["project_a"]["value"]
-        == RESEARCH_PLAN
-    )
-
-    assert (
-        workflow["source"]
-        == "workflow_state.data.research_plan"
-    )
-
-
-@pytest.mark.asyncio
-async def test_run_status_does_not_create_false_evidence():
-    """
-    回归保护：Run 执行状态不能污染 Evidence 归因。
-
-    workflow_state.status == "COMPLETED"
-    这类 Run 元数据若进入维度值，
-    token "completed" 会与 README Evidence 巧合匹配，
-    产生看起来合理、实际无意义的 Evidence 引用。
-    """
-
-    # Evidence 内容里刻意包含 "completed" 与 "end"。
-    result = await run_compare(
-        real_project(
-            "run-a",
-            evidences=[
-                real_evidence(
-                    "evidence-real-1",
-                    "The analysis was completed "
-                    "and reached the end.",
-                ),
-            ],
-        ),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    # workflow 维度值只有 research_plan，
-    # 不含 status / current_node，因此不应引用 Evidence。
-    assert (
-        result["comparison"]["workflow"][
-            "project_a"
-        ]["evidence_ids"]
-        == []
-    )
-
-    # agent 维度同理：Agent 名称不会命中 Evidence。
-    assert (
-        result["comparison"]["agent"][
-            "project_a"
-        ]["evidence_ids"]
-        == []
-    )
-
-    # 没有任何真实引用，因此 evidence_based 必须为 False。
-    assert result["evidence_based"] is False
-
-
-@pytest.mark.asyncio
-async def test_database_dimension_uses_technology_stack():
-    """Database 维度读取真实 technology_stack.database。"""
-
-    result = await run_compare(
-        real_project(
-            "run-a",
-            technology_stack={
-                "database": ["PostgreSQL"],
-                "deployment": [],
-                "embedding": [],
-                "llm": [],
-                "frameworks": [],
-                "source_files": [
-                    "docker-compose.yml"
-                ],
-            },
-        ),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    database = result["comparison"]["database"]
-
-    assert database["relation"] == "DIFFERENT"
-
-    assert (
-        database["project_a"]["value"]
-        == ["PostgreSQL"]
-    )
-
-    assert database["project_b"]["value"] == []
-
-    assert (
-        database["source"]
-        == (
-            "workflow_state.data."
-            "technology_stack.database"
-        )
-    )
-
-
-@pytest.mark.asyncio
-async def test_rag_dimension_uses_embedding_field():
-    """RAG 维度读取 technology_stack.embedding（向量库检测）。"""
-
-    result = await run_compare(
-        real_project(
-            "run-a",
-            technology_stack={
-                "database": [],
-                "deployment": [],
-                "embedding": ["Qdrant"],
-                "llm": [],
-                "frameworks": [],
-                "source_files": [],
-            },
-        ),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    rag = result["comparison"]["rag"]
-
-    assert rag["relation"] == "DIFFERENT"
-
-    assert rag["project_a"]["value"] == ["Qdrant"]
-
-    assert (
-        rag["source"]
-        == (
-            "workflow_state.data."
-            "technology_stack.embedding"
-        )
-    )
-
-
-@pytest.mark.asyncio
-async def test_deployment_dimension_uses_technology_stack():
-    """Deployment 维度读取真实 technology_stack.deployment。"""
-
-    result = await run_compare(
-        real_project(
-            "run-a",
-            technology_stack={
-                "database": [],
-                "deployment": ["Docker"],
-                "embedding": [],
-                "llm": [],
-                "frameworks": [],
-                "source_files": [],
-            },
-        ),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    deployment = result["comparison"]["deployment"]
-
-    assert deployment["relation"] == "DIFFERENT"
-
-    assert deployment["project_a"]["value"] == [
-        "Docker"
-    ]
-
-
-@pytest.mark.asyncio
-async def test_code_complexity_uses_repository_and_architecture():
-    """代码复杂度维度读取真实 repository / architecture 数据。"""
-
-    result = await run_compare(
-        real_project(
-            "run-a",
-            language="Python",
-            size_kb=8586,
-            architecture={
-                "files": ["a.py", "b.py"],
-                "modules": [{"file_path": "a.py"}],
-            },
-        ),
-        real_project(
-            "run-b",
-            repository_id=35,
-            language="Go",
-            size_kb=120,
-        ),
-    )
-
-    complexity = result["comparison"][
-        "code_complexity"
-    ]
-
-    assert complexity["relation"] == "DIFFERENT"
-
-    value_a = complexity["project_a"]["value"]
-
-    assert value_a["language"] == "Python"
-
-    assert value_a["size_kb"] == 8586
-
-    assert value_a["file_count"] == 2
-
-    assert value_a["module_count"] == 1
-
-    assert complexity["project_b"]["value"][
-        "language"
-    ] == "Go"
-
-
-@pytest.mark.asyncio
-async def test_unavailable_dimensions_explain_missing_data():
-    """
-    skill / tool / memory / extension
-    在真实数据中确实不存在，
-    必须返回 NOT_AVAILABLE 并说明原因。
-    """
-
-    result = await run_compare(
-        real_project("run-a"),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    for dimension in (
-        "skill",
-        "tool",
-        "memory",
-        "extension",
-    ):
-
-        entry = result["comparison"][dimension]
-
-        assert entry["relation"] == "NOT_AVAILABLE"
-
-        assert (
-            entry["project_a"]["available"]
-            is False
-        )
-
-        reason = entry["project_a"][
-            "unavailable_reason"
-        ]
-
-        assert "真实数据不存在" in reason
-
-
-@pytest.mark.asyncio
-async def test_missing_workflow_state_is_unavailable():
-    """
-    缺少 workflow_state 时必须是
-    “真实数据缺失”，而不是读错了字段名。
-    """
-
-    project_without_state = {
-        "run_id": "run-a",
-        "status": "COMPLETED",
-        "repository": {"id": 1},
-        "evidences": [],
-    }
-
-    result = await run_compare(
-        project_without_state,
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    assert (
-        result["comparison"]["agent"]["relation"]
-        == "ONE_SIDE_UNAVAILABLE"
-    )
-
-    assert (
-        "executed_tasks"
-        in result["comparison"]["agent"][
-            "project_a"
-        ]["unavailable_reason"]
-    )
-
-
-@pytest.mark.asyncio
-async def test_fake_analysis_schema_is_ignored():
-    """
-    project["analysis"] 不再被读取。
-
-    即使传入旧结构，也不会产生有效维度值。
-    """
-
-    legacy_project = {
-        "run_id": "run-a",
-        "status": "COMPLETED",
-        "repository": {"id": 1},
-        "evidences": [],
-        "analysis": {
-            "agents": {
-                "count": 99,
-                "evidence_ids": [
-                    "fake-evidence-id"
-                ],
-            },
-            "database": {
-                "type": "FakeDB",
-                "evidence_ids": [
-                    "fake-evidence-id"
-                ],
-            },
-        },
-    }
-
-    result = await run_compare(
-        legacy_project,
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    assert (
-        result["comparison"]["agent"]["relation"]
-        == "ONE_SIDE_UNAVAILABLE"
-    )
-
-    assert (
-        result["comparison"]["database"][
-            "project_a"
-        ]["value"]
-        is None
-    )
-
-    # 关键：假 evidence id 绝不能出现在结果里。
-    assert "fake-evidence-id" not in str(
-        result
-    )
-
-
-@pytest.mark.asyncio
-async def test_evidence_ids_come_from_real_evidences():
-    """
-    evidence_ids 必须来自 project["evidences"][*]["id"]。
-
-    真实 Evidence 使用 id 字段，
-    而不是 evidence_id / evidence_ids。
-    """
-
-    result = await run_compare(
-        real_project(
-            "run-a",
-            technology_stack={
-                "database": ["PostgreSQL"],
-                "deployment": [],
-                "embedding": [],
-                "llm": [],
-                "frameworks": [],
-                "source_files": [],
-            },
-            evidences=[
-                real_evidence(
-                    "evidence-real-1",
-                    "This project stores data in "
-                    "PostgreSQL.",
-                ),
-                real_evidence(
-                    "evidence-real-2",
-                    "Unrelated content about CSS.",
-                ),
-            ],
-        ),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    evidence_ids = (
-        result["comparison"]["database"][
-            "project_a"
-        ]["evidence_ids"]
-    )
-
-    assert evidence_ids == ["evidence-real-1"]
-
-    assert (
-        result["comparison"]["agent"][
-            "project_a"
-        ]["evidence_ids"]
-        == []
-    )
-
-
-@pytest.mark.asyncio
-async def test_evidence_ids_are_never_invented():
-    """引用的 Evidence ID 必须全部存在于真实 evidences 中。"""
-
-    evidences = [
-        real_evidence(
-            "evidence-real-1",
-            "Uses PostgreSQL.",
-        ),
-    ]
-
-    result = await run_compare(
-        real_project(
-            "run-a",
-            technology_stack={
-                "database": ["PostgreSQL"],
-                "deployment": [],
-                "embedding": [],
-                "llm": [],
-                "frameworks": [],
-                "source_files": [],
-            },
-            evidences=evidences,
-        ),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    known_ids = {
-        evidence["id"]
-        for evidence in evidences
-    }
-
-    for dimension in result["comparison"].values():
-
-        for side in (
-            "project_a",
-            "project_b",
-        ):
-
-            for evidence_id in dimension[
-                side
-            ]["evidence_ids"]:
-
-                assert evidence_id in known_ids
-
-
-@pytest.mark.asyncio
-async def test_evidence_based_is_false_without_evidence():
-    """
-    evidence_based 不再硬编码。
-
-    没有任何 Evidence 引用时必须为 False。
-    """
-
-    result = await run_compare(
-        real_project("run-a"),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    assert result["evidence_based"] is False
-
-
-@pytest.mark.asyncio
-async def test_evidence_based_is_true_with_real_evidence():
-    """存在真实 Evidence 引用时必须为 True。"""
-
-    result = await run_compare(
-        real_project(
-            "run-a",
-            technology_stack={
-                "database": ["PostgreSQL"],
-                "deployment": [],
-                "embedding": [],
-                "llm": [],
-                "frameworks": [],
-                "source_files": [],
-            },
-            evidences=[
-                real_evidence(
-                    "evidence-real-1",
-                    "Backed by PostgreSQL.",
-                ),
-            ],
-        ),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    assert result["evidence_based"] is True
-
-
-@pytest.mark.asyncio
-async def test_evidence_based_not_triggered_by_dimensions_alone():
-    """
-    evidence_based 不能因为“有 dimensions”而变 True。
-    """
-
-    result = await run_compare(
-        real_project("run-a"),
-        real_project(
-            "run-b",
-            repository_id=35,
-        ),
-    )
-
-    assert len(result["comparison"]) == 10
-
-    assert result["evidence_based"] is False
-```
-
-### 📄 `tests/test_comparison_api.py`
-
-**层级**：测试层 · **职责**：Comparison API 测试。
-
-```python
-"""Comparison API 测试。"""
-
-from fastapi.testclient import TestClient
-
-from app.main import app
-
-
-client = TestClient(
-    app
+from app.project_analysis.code_structure_extractor import (
+    CodeStructureExtractor,
 )
 
 
-def test_comparison_route_exists():
-    """
-    验证 Comparison API 已经挂载。
-
-    这里使用非法 Run ID，
-    重点检查路由是否存在，而不是执行真实比较。
-    """
-
-    response = client.post(
-        "/api/v1/comparison",
-        json={
-            "run_ids": [
-                "run-a",
-                "run-b",
-            ]
-        },
-    )
-
-    # 由于 run 不存在，
-    # 应该进入统一业务异常处理，
-    # 而不是 404 路由不存在。
-    assert response.status_code != 404
-
-
-def test_comparison_request_requires_two_runs():
-    """必须提供两个 Run ID。"""
-
-    response = client.post(
-        "/api/v1/comparison",
-        json={
-            "run_ids": [
-                "only-one-run"
-            ]
-        },
-    )
-
-    assert (
-        response.status_code
-        == 422
-    )
-```
-
-### 📄 `tests/test_comparison_real_runmemory_schema.py`
-
-**层级**：测试层 · **职责**：Phase 13 真实结构回归测试。
-
-```python
-"""
-Phase 13 真实结构回归测试。
-
-背景：
-
-修复前 ComparisonAgent 假设 project["analysis"] 存在，
-而 RunMemory.load() 的真实返回中并没有这个 key，
-导致 10 个维度里 9 个恒为 NOT_AVAILABLE，
-evidence_ids 恒为空，evidence_based 恒为 True（硬编码）。
-
-本文件用 RunMemory.load() 的真实结构作为 fixture，
-锁住以下事实：
-
-    1. Agent 维度不再因为缺少 analysis 而直接 NOT_AVAILABLE
-    2. executed_tasks 可以被正确读取
-    3. Evidence 的 id 可以被正确读取
-    4. project["evidences"] 会被真正使用
-    5. evidence_ids 不再全部为 0
-    6. evidence_based 不再硬编码 True
-
-fixture 结构取自当前工作区真实数据
-（run d1d71c3e 的 RunMemory.load() 返回），
-只对长文本与 id 做了缩短处理。
-"""
-
-import pytest
-
-from app.agents.comparison_agent import (
-    ComparisonAgent,
-)
-
-
-def build_real_run(
-    run_id,
-    repository_id,
-    repository_name,
-    technology_stack,
-    evidences=None,
-    language="Python",
-    size_kb=8586,
-):
-    """
-    构造与 RunMemory.load() 完全一致的顶层结构。
-
-    真实顶层 key：
-        run_id / status / current_node / question
-        repository / research_plan / final_report
-        agent_outputs / task_results / evidences
-        workflow_state
-    """
-
-    executed_tasks = [
-        "repository_analysis_agent",
-        "architecture_analysis_agent",
-        "technology_analysis_agent",
-        "evidence_analysis_agent",
-        "critic_agent",
-    ]
-
-    research_plan = {
-        "tasks": list(executed_tasks),
-        "question": "分析这个 GitHub Agent 项目",
-        "plan_version": 1,
-        "analysis_type": "github_agent_project",
-        "evidence_required": True,
-    }
-
-    return {
-        "run_id": run_id,
-        "status": "COMPLETED",
-        "current_node": "end",
-        "question": "分析这个 GitHub Agent 项目",
-
-        # RunMemory 返回的是数据库 Repository 摘要。
-        "repository": {
-            "id": repository_id,
-            "url": (
-                "https://github.com/demo/"
-                f"{repository_name}"
-            ),
-            "owner": "demo",
-            "name": repository_name,
-            "description": None,
-            "language": language,
-        },
-
-        "research_plan": research_plan,
-
-        "final_report": {
-            "report": {
-                "path": f"reports/{run_id}_analysis.md",
-                "format": "markdown",
-            },
-            "content": "## report",
-        },
-
-        # 真实 run 的 agent_outputs 顺序：
-        # planner / repository / architecture /
-        # technology / evidence / critic / final_report
-        "agent_outputs": [
-            {
-                "tasks": list(executed_tasks),
-                "research_plan": research_plan,
-            },
-            {
-                "readme": "# readme",
-                "repository": {},
-                "dependencies": {},
-            },
-            {
-                "files": [],
-                "modules": [],
-            },
-            {
-                "technology_stack": technology_stack,
-            },
-            {
-                "count": len(evidences or []),
-                "evidence": [],
-            },
-            {
-                "errors": [],
-                "passed": True,
-            },
-            {
-                "report": {"format": "markdown"},
-                "content": "# report",
-            },
-        ],
-
-        # 真实 run 中 analysis_tasks 表为空。
-        "task_results": [],
-
-        "evidences": list(evidences or []),
-
-        "workflow_state": {
-            "status": "COMPLETED",
-            "current_node": "end",
-            "errors": [],
-            "retry_count": 0,
-            "pause_reason": None,
-            "human_approved": True,
-            "checkpoint_version": 10,
-            "data": {
-                "run_id": run_id,
-                "repository_id": repository_id,
-                "repository": {
-                    "language": language,
-                    "size": size_kb,
-                },
-                "executed_tasks": list(executed_tasks),
-                "research_plan": research_plan,
-                "technology_stack": technology_stack,
-                "architecture_analysis_agent": {
-                    "files": [],
-                    "modules": [],
-                },
-                "critic_agent": {
-                    "errors": [],
-                    "passed": True,
-                },
-                "evidence_analysis_agent": {
-                    "count": len(evidences or []),
-                    "evidence": [],
-                },
-                "readme": "# readme",
-                "question": "分析这个 GitHub Agent 项目",
-            },
-        },
-    }
-
-
-def real_evidence(
-    evidence_id,
+def extract_one(
+    file_path,
     content,
 ):
-    """真实 Evidence 行的字段结构。"""
+    """抽取单个文件，返回该次结果。"""
 
-    return {
-        "id": evidence_id,
-        "source_type": "github",
-        "file_path": "README.md",
-        "line_start": 1,
-        "line_end": 215,
-        "content": content,
-        "verification_status": "UNVERIFIED",
-    }
-
-
-# 与真实 run d1d71c3e 一致的 technology_stack：
-# database 检测到 PostgreSQL，source_files 只拿到 docker-compose.yml。
-TECH_A = {
-    "llm": [],
-    "database": ["PostgreSQL"],
-    "embedding": [],
-    "deployment": [],
-    "frameworks": [],
-    "source_files": ["docker-compose.yml"],
-}
-
-# 与真实 run 799049b1 一致：技术栈全部为空。
-TECH_B = {
-    "llm": [],
-    "database": [],
-    "embedding": [],
-    "deployment": [],
-    "frameworks": [],
-    "source_files": [],
-}
-
-EVIDENCES_A = [
-    real_evidence(
-        "55c64c81-b22b-4098-81c0-08d0bc5e5355",
-        "This project stores data in PostgreSQL.",
-    ),
-    real_evidence(
-        "35e63b87-8ded-42f7-8389-c6f14ea8fb7a",
-        "Deployment uses Docker.",
-    ),
-]
-
-
-async def compare_two_real_runs():
-    """执行一次真实结构下的比较。"""
-
-    agent = ComparisonAgent(
-        skill_registry=None
-    )
-
-    return await agent.execute(
-        context=None,
-        input_data={
-            "project_a": build_real_run(
-                "d1d71c3e-a9b6-4073-8d3d-bbbfe0b11005",
-                26,
-                "Multi-Agent-Research-Assistant",
-                TECH_A,
-                evidences=EVIDENCES_A,
-            ),
-            "project_b": build_real_run(
-                "799049b1-3d51-4c2f-bbe5-81930ce59a23",
-                35,
-                "enterprise-workflow-agent-platform",
-                TECH_B,
-            ),
-        },
+    return CodeStructureExtractor.extract(
+        [
+            {
+                "file_path": file_path,
+                "content": content,
+            }
+        ]
     )
 
 
-def test_real_fixture_has_no_analysis_key():
-    """
-    fixture 必须与真实结构一致：
+def items_of(
+    result,
+    dimension,
+):
+    return result["dimensions"][dimension]["items"]
 
-    有 workflow_state / evidences，
-    没有 project["analysis"]。
-    """
 
-    project = build_real_run(
-        "run-a",
-        26,
-        "repo-a",
-        TECH_A,
+# ----------------------------------------------------------------
+# 符号识别
+# ----------------------------------------------------------------
+
+
+def test_extracts_agent_classes_with_line_numbers():
+    """Agent 类必须带真实行号。"""
+
+    result = extract_one(
+        "app/agents/finance.py",
+        (
+            "from abc import ABC\n"
+            "\n"
+            "class BaseAgent(ABC):\n"
+            "    pass\n"
+            "\n"
+            "class InvoiceAgent(BaseAgent):\n"
+            "    pass\n"
+        ),
     )
 
-    assert "analysis" not in project
+    agents = result["dimensions"]["agents"]
 
-    assert "workflow_state" in project
+    assert "class BaseAgent(ABC)" in agents["items"]
 
-    assert "evidences" in project
+    assert "class InvoiceAgent(BaseAgent)" in agents["items"]
 
-    assert "agent_outputs" in project
+    # 行号必须指向真实定义位置。
+    base_evidence = next(
+        item
+        for item in agents["evidence"]
+        if item["text"] == "class BaseAgent(ABC)"
+    )
 
-    assert "task_results" in project
+    assert base_evidence["file_path"] == (
+        "app/agents/finance.py"
+    )
+
+    assert base_evidence["line_start"] == 3
 
 
-@pytest.mark.asyncio
-async def test_requirement_1_agent_dimension_is_available():
+def test_camelcase_symbol_boundaries():
     """
-    要求 1：
-    Agent 维度不再因为缺少 analysis 而 NOT_AVAILABLE。
+    camelCase 名字必须被识别。
+
+    回归点：用 [^a-z] 配 re.IGNORECASE 时，
+    大写字母也会被排除，
+    导致 BaseTool / PlannerAgent 这类名字漏掉。
     """
 
-    result = await compare_two_real_runs()
+    result = extract_one(
+        "app/tools/base.py",
+        (
+            "class BaseTool:\n"
+            "    pass\n"
+            "\n"
+            "class MyToolbox:\n"
+            "    pass\n"
+        ),
+    )
 
-    agent_dimension = result["comparison"]["agent"]
+    tools = items_of(result, "tools")
+
+    assert "class BaseTool" in tools
+
+    # 小写紧跟的 Toolkit / Toolbox 不算
+    # （见 _symbol_pattern 的说明）。
+    assert "class MyToolbox" not in tools
+
+
+def test_extracts_workflow_graph_nodes_and_edges():
+    """
+    Workflow 维度最有价值的部分：
+    StateGraph 的节点与边要以源码原文形式记录。
+    """
+
+    result = extract_one(
+        "app/graph.py",
+        (
+            "from langgraph.graph import StateGraph\n"
+            "\n"
+            "graph = StateGraph(AgentState)\n"
+            "graph.add_node('intake', intake)\n"
+            "graph.add_edge('intake', 'approve')\n"
+        ),
+    )
+
+    workflow = result["dimensions"]["workflow"]
+
+    assert "StateGraph(...)" in workflow["items"]
 
     assert (
-        agent_dimension["relation"]
-        != "NOT_AVAILABLE"
-    )
-
-    assert (
-        agent_dimension["project_a"]["available"]
-        is True
+        "graph.add_node('intake', intake)"
+        in workflow["items"]
     )
 
     assert (
-        agent_dimension["project_b"]["available"]
-        is True
+        "graph.add_edge('intake', 'approve')"
+        in workflow["items"]
+    )
+
+    # 节点名必须带得回源码位置。
+    edge = next(
+        item
+        for item in workflow["evidence"]
+        if item["text"]
+        == "graph.add_edge('intake', 'approve')"
+    )
+
+    assert edge["line_start"] == 5
+
+
+def test_langgraph_import_is_not_an_agent_signal():
+    """
+    langgraph 是编排框架，属于 workflow。
+
+    回归点：早期把 langgraph 也算进 agents，
+    于是任何用 LangGraph 的项目
+    都会凭空多出一批 agents 条目。
+    """
+
+    result = extract_one(
+        "app/graph.py",
+        "from langgraph.graph import StateGraph\n",
+    )
+
+    assert (
+        "import langgraph.graph"
+        in items_of(result, "workflow")
+    )
+
+    assert (
+        "import langgraph.graph"
+        not in items_of(result, "agents")
     )
 
 
-@pytest.mark.asyncio
-async def test_requirement_2_executed_tasks_is_read():
-    """
-    要求 2：
-    executed_tasks 可以被正确读取。
-    """
+def test_extracts_tool_decorator():
+    """@tool 装饰器的函数算 Tool。"""
 
-    result = await compare_two_real_runs()
+    result = extract_one(
+        "app/search.py",
+        (
+            "from langchain_core.tools import tool\n"
+            "\n"
+            "@tool\n"
+            "def web_search(query):\n"
+            "    pass\n"
+        ),
+    )
 
-    value = result["comparison"]["agent"][
-        "project_a"
-    ]["value"]
-
-    assert value["count"] == 5
-
-    assert value["agents"] == [
-        "repository_analysis_agent",
-        "architecture_analysis_agent",
-        "technology_analysis_agent",
-        "evidence_analysis_agent",
-        "critic_agent",
-    ]
-
-
-@pytest.mark.asyncio
-async def test_requirement_3_evidence_id_field_is_read():
-    """
-    要求 3：
-    Evidence 使用 id 字段，可以被正确读取。
-    """
-
-    result = await compare_two_real_runs()
-
-    database = result["comparison"]["database"]
-
-    assert database["project_a"][
-        "evidence_ids"
-    ] == [
-        "55c64c81-b22b-4098-81c0-08d0bc5e5355"
-    ]
-
-
-def total_evidence_ids(result, side):
-    """统计某一侧被引用的 Evidence 总数。"""
-
-    return sum(
-        len(entry[side]["evidence_ids"])
-        for entry in result["comparison"].values()
+    assert any(
+        "web_search" in item
+        for item in items_of(result, "tools")
     )
 
 
-@pytest.mark.asyncio
-async def test_requirement_4_project_evidences_is_used():
-    """
-    要求 4：
-    project["evidences"] 会被真正使用。
+def test_extracts_rag_and_memory_signals():
+    """RAG / Memory 从导入与符号识别。"""
 
-    两个项目的 evidences 不同，
-    因此引用情况必须不同：
-    项目 A 有 Evidence 且被引用，
-    项目 B 的 evidences 为空，引用必须为 0。
-    """
+    result = extract_one(
+        "app/store.py",
+        (
+            "from qdrant_client import QdrantClient\n"
+            "from langgraph.checkpoint.sqlite "
+            "import SqliteSaver\n"
+            "\n"
+            "def retrieve_documents(query):\n"
+            "    pass\n"
+            "\n"
+            "class CheckpointStore:\n"
+            "    pass\n"
+        ),
+    )
 
-    result = await compare_two_real_runs()
-
-    assert total_evidence_ids(
+    assert "import qdrant_client" in items_of(
         result,
-        "project_a",
-    ) > 0
+        "rag",
+    )
+
+    assert "def retrieve_documents" in items_of(
+        result,
+        "rag",
+    )
+
+    assert "class CheckpointStore" in items_of(
+        result,
+        "memory",
+    )
+
+
+def test_storage_is_not_rag():
+    """
+    storage 里含 rag 三个字母，但不能算 RAG。
+
+    真实事故：对某个仓库跑真实分析时，
+    src/app/core/config.py 的
+    validate_storage_root 被判成了 RAG 实现，
+    于是 08 章凭空多出一条代码证据。
+    """
+
+    result = extract_one(
+        "src/app/core/config.py",
+        (
+            "def validate_storage_root(value):\n"
+            "    return value\n"
+        ),
+    )
+
+    assert items_of(result, "rag") == []
+
+    assert result["dimensions"]["rag"][
+        "details"
+    ] == []
+
+
+def test_rag_word_boundary_still_matches():
+    """带词边界的 rag 仍要能命中。"""
+
+    result = extract_one(
+        "src/app/rag/store.py",
+        (
+            "def rag_lookup(query):\n"
+            "    return query\n"
+            "\n"
+            "def rerank_results(items):\n"
+            "    return items\n"
+        ),
+    )
+
+    rag = items_of(result, "rag")
+
+    assert "def rag_lookup" in rag
+
+    assert "def rerank_results" in rag
+
+
+def test_generic_search_is_not_rag():
+    """
+    名字里只有 search 的函数不算 RAG。
+
+    否则 search_github_repo 之类
+    会把任何项目都判成有 RAG。
+    """
+
+    result = extract_one(
+        "app/github.py",
+        "def search_github_repos(q):\n    pass\n",
+    )
+
+    assert items_of(result, "rag") == []
+
+
+# ----------------------------------------------------------------
+# 容错
+# ----------------------------------------------------------------
+
+
+def test_syntax_error_is_recorded_not_raised():
+    """
+    语法错误的文件必须记入 unparsed，
+    且不影响其它文件。
+    """
+
+    result = CodeStructureExtractor.extract(
+        [
+            {
+                "file_path": "broken.py",
+                "content": "def f(:\n",
+            },
+            {
+                "file_path": "app/agents/ok.py",
+                "content": "class OkAgent:\n    pass\n",
+            },
+        ]
+    )
+
+    assert len(result["unparsed"]) == 1
 
     assert (
-        total_evidence_ids(
-            result,
-            "project_b",
+        result["unparsed"][0]["file_path"]
+        == "broken.py"
+    )
+
+    assert "SyntaxError" in (
+        result["unparsed"][0]["error"]
+    )
+
+    # 好文件照常产出。
+    assert result["parsed_files"] == 1
+
+    assert "class OkAgent" in items_of(
+        result,
+        "agents",
+    )
+
+
+def test_truncated_python_is_reported_not_guessed():
+    """
+    截断的源码会语法错误，必须如实上报。
+
+    这是为什么 AST 抽取要用未截断的全文：
+    截断过的 Python 抽不出任何符号，
+    但绝不能因此声称「项目没有 Agent」。
+    """
+
+    result = CodeStructureExtractor.extract(
+        [
+            {
+                "file_path": "app/agents/half.py",
+                "content": "class HalfAgent:\n    def ex",
+            }
+        ]
+    )
+
+    assert result["parsed_files"] == 0
+
+    assert result["available"] is False
+
+    assert len(result["unparsed"]) == 1
+
+
+def test_non_python_files_are_skipped():
+    result = CodeStructureExtractor.extract(
+        [
+            {
+                "file_path": "docker-compose.yml",
+                "content": "services:\n  api:\n",
+            }
+        ]
+    )
+
+    assert result["parsed_files"] == 0
+
+
+def test_broken_input_does_not_raise():
+    """结构异常时不能抛异常。"""
+
+    result = CodeStructureExtractor.extract(
+        "not-a-list"
+    )
+
+    assert result["parsed_files"] == 0
+
+    result = CodeStructureExtractor.extract(
+        [None, "x", {"file_path": "a.py"}]
+    )
+
+    assert result["parsed_files"] == 0
+
+
+# ----------------------------------------------------------------
+# 路径信号
+# ----------------------------------------------------------------
+
+
+def test_path_signal_is_deduped_by_directory():
+    """
+    同一目录下的多个文件只记一条路径信号。
+
+    否则 src/agents/ 下有 30 个文件时，
+    路径会把 MAX_ITEMS 刷满，
+    真正有价值的类名被挤出去。
+    """
+
+    result = CodeStructureExtractor.extract(
+        [],
+        extra_paths=[
+            "src/agents/a.py",
+            "src/agents/b.py",
+            "src/agents/c.py",
+        ],
+    )
+
+    agents = items_of(result, "agents")
+
+    assert agents == ["路径 src/agents/"]
+
+
+def test_path_signal_covers_unread_files():
+    """
+    没被读取的文件也要贡献路径信号。
+
+    配额只有 12 个，
+    但「存在 src/agents/ 目录」这条证据
+    不该因为该目录下的文件没被读到而丢失。
+    """
+
+    result = CodeStructureExtractor.extract(
+        [
+            {
+                "file_path": "src/main.py",
+                "content": "print('x')\n",
+            }
+        ],
+        extra_paths=["src/agents/未读取到的.py"],
+    )
+
+    assert "路径 src/agents/" in items_of(
+        result,
+        "agents",
+    )
+
+
+def test_symbols_rank_above_path_signals():
+    """
+    符号条目必须排在路径信号前面。
+
+    _add 是按顺序填满 MAX_ITEMS 就停的，
+    如果路径先写入，
+    第一个类名就可能被挤掉。
+    """
+
+    result = CodeStructureExtractor.extract(
+        [
+            {
+                "file_path": "src/agents/base.py",
+                "content": (
+                    "class RealAgent:\n    pass\n"
+                ),
+            }
+        ]
+    )
+
+    agents = items_of(result, "agents")
+
+    assert agents[0] == "class RealAgent"
+
+    assert agents[-1] == "路径 src/agents/"
+
+
+# ----------------------------------------------------------------
+# 实现明细（下到函数体）
+# ----------------------------------------------------------------
+
+
+GRAPH_SOURCE = (
+    "from langgraph.graph import StateGraph\n"
+    "\n"
+    "class WorkflowService:\n"
+    "    def build(self):\n"
+    "        builder = StateGraph(AgentState)\n"
+    "        builder.add_node('duplicate_check',\n"
+    "                          self._node_duplicate_check)\n"
+    "        builder.add_edge('a', 'b')\n"
+    "        return builder.compile()\n"
+    "\n"
+    "    def _node_duplicate_check(self, state: AgentState)"
+    " -> AgentState:\n"
+    "        found = find_similar_invoices(\n"
+    "            state['vendor'], state['amount'])\n"
+    "        if found.score >= 0.85:\n"
+    "            state['status'] = 'duplicate_suspected'\n"
+    "        return state\n"
+)
+
+
+def test_node_callback_is_resolved_to_definition():
+    """
+    add_node 的处理函数必须被解析到真实定义。
+
+    这是「下到函数体」的核心：
+    从「有这么个节点」变成
+    「这个节点的签名与调用链是什么」。
+    """
+
+    result = extract_one(
+        "src/app/services/workflow_service.py",
+        GRAPH_SOURCE,
+    )
+
+    details = result["dimensions"]["workflow"][
+        "details"
+    ]
+
+    node = next(
+        item
+        for item in details
+        if item["name"] == "duplicate_check"
+    )
+
+    assert node["symbol"] == "_node_duplicate_check"
+
+    assert node["signature"] == (
+        "def _node_duplicate_check("
+        "self, state: AgentState) -> AgentState"
+    )
+
+    assert "find_similar_invoices" in node["calls"]
+
+
+def test_node_detail_carries_threshold_literals():
+    """
+    关键词面量必须被记录下来。
+
+    0.85 这种阈值是理解实现的关键，
+    只记符号名是拿不到的。
+    """
+
+    result = extract_one(
+        "src/app/services/workflow_service.py",
+        GRAPH_SOURCE,
+    )
+
+    node = next(
+        item
+        for item in result["dimensions"][
+            "workflow"
+        ]["details"]
+        if item["name"] == "duplicate_check"
+    )
+
+    assert "0.85" in node["literals"]
+
+    assert "'duplicate_suspected'" in node[
+        "literals"
+    ]
+
+
+def test_add_edge_does_not_produce_a_detail():
+    """
+    add_edge 只记拓扑，不产明细。
+
+    它解析不出处理函数，
+    产一条空明细只会挤占 MAX_DETAILS。
+    """
+
+    result = extract_one(
+        "src/app/services/workflow_service.py",
+        GRAPH_SOURCE,
+    )
+
+    details = result["dimensions"]["workflow"][
+        "details"
+    ]
+
+    signatures = [
+        item["signature"] for item in details
+    ]
+
+    assert not any(
+        "add_edge" in signature
+        for signature in signatures
+    )
+
+
+def test_class_detail_lists_methods():
+    """类明细要给出基类与方法表。"""
+
+    result = extract_one(
+        "src/app/tools/registry.py",
+        (
+            "class ToolRegistry(BaseToolkit):\n"
+            "    def register(self, tool):\n"
+            "        pass\n"
+            "\n"
+            "    def resolve(self, name):\n"
+            "        pass\n"
+        ),
+    )
+
+    detail = result["dimensions"]["tools"][
+        "details"
+    ][0]
+
+    assert detail["signature"] == (
+        "class ToolRegistry(BaseToolkit)"
+    )
+
+    assert detail["methods"] == [
+        "register",
+        "resolve",
+    ]
+
+
+def test_function_detail_has_signature_and_calls():
+    """RAG 函数明细要带签名与调用链。"""
+
+    result = extract_one(
+        "src/app/rag/indexer.py",
+        (
+            "def retrieve_and_rank(query: str,"
+            " top_k: int = 5) -> list:\n"
+            "    vectors = embed_query(query)\n"
+            "    return search_index(vectors, top_k)\n"
+        ),
+    )
+
+    detail = result["dimensions"]["rag"][
+        "details"
+    ][0]
+
+    assert detail["signature"] == (
+        "def retrieve_and_rank(query: str,"
+        " top_k: int = 5) -> list"
+    )
+
+    assert detail["calls"] == [
+        "embed_query",
+        "search_index",
+    ]
+
+
+def test_boring_literals_are_filtered():
+    """
+    噪声字面量不能把真正的阈值挤掉。
+
+    "utf-8" / "id" 这类到处都是，
+    0.0 通常只是初始化占位。
+    """
+
+    result = extract_one(
+        "src/app/rag/loader.py",
+        (
+            "def retrieve_file(path):\n"
+            "    raw = open(path, encoding='utf-8')\n"
+            "    score = 0.0\n"
+            "    limit = 25\n"
+            "    label = 'not_found_in_index'\n"
+            "    return limit\n"
+        ),
+    )
+
+    literals = result["dimensions"]["rag"][
+        "details"
+    ][0]["literals"]
+
+    assert "'utf-8'" not in literals
+
+    assert "0.0" not in literals
+
+    assert "25" in literals
+
+    assert "'not_found_in_index'" in literals
+
+
+def test_builtin_calls_are_filtered():
+    """内建函数不能出现在调用链里。"""
+
+    result = extract_one(
+        "src/app/rag/util.py",
+        (
+            "def retrieve_all(items):\n"
+            "    total = len(items)\n"
+            "    return sorted(items)\n"
+        ),
+    )
+
+    calls = result["dimensions"]["rag"][
+        "details"
+    ][0]["calls"]
+
+    assert "len" not in calls
+
+    assert "sorted" not in calls
+
+
+def test_details_are_capped():
+    """明细数量必须有上限，避免 state 膨胀。"""
+
+    functions = "".join(
+        f"def retrieve_{i}(q):\n"
+        f"    return q\n"
+        for i in range(30)
+    )
+
+    result = extract_one(
+        "src/app/rag/many.py",
+        functions,
+    )
+
+    details = result["dimensions"]["rag"][
+        "details"
+    ]
+
+    assert len(details) == (
+        CodeStructureExtractor.MAX_DETAILS
+    )
+
+
+def test_items_are_capped():
+    """条目数量必须有上限，避免 state 膨胀。"""
+
+    classes = "".join(
+        f"class Agent{i}:\n    pass\n"
+        for i in range(50)
+    )
+
+    result = extract_one(
+        "src/agents/many.py",
+        classes,
+    )
+
+    agents = result["dimensions"]["agents"]
+
+    assert len(agents["items"]) == (
+        CodeStructureExtractor.MAX_ITEMS
+    )
+
+    assert len(agents["evidence"]) == (
+        CodeStructureExtractor.MAX_EVIDENCE
+    )
+
+
+# ----------------------------------------------------------------
+# 代码摘录跳过 import 段
+# ----------------------------------------------------------------
+
+
+def test_meaningful_start_skips_import_block():
+    """
+    摘录必须跳过开头的 import 段。
+
+    真实反馈：「这源码提取了一堆 import 根本没有用」。
+    原因是摘录固定从第 1 行取，
+    而 Python 文件开头必然是 import 块。
+    """
+
+    from app.project_analysis.code_structure_extractor import (
+        CodeStructureExtractor,
+    )
+
+    source = (
+        '"""模块说明。"""\n'
+        "\n"
+        "import os\n"
+        "import uuid\n"
+        "from decimal import Decimal\n"
+        "\n"
+        "\n"
+        "class WorkflowService:\n"
+        "    pass\n"
+    )
+
+    start = CodeStructureExtractor.meaningful_start(
+        source
+    )
+
+    assert source[start:].startswith(
+        "class WorkflowService:"
+    )
+
+
+def test_meaningful_start_handles_multiline_docstring():
+
+    from app.project_analysis.code_structure_extractor import (
+        CodeStructureExtractor,
+    )
+
+    source = (
+        '"""\n'
+        "多行\n"
+        "说明\n"
+        '"""\n'
+        "import os\n"
+        "\n"
+        "class B:\n"
+        "    pass\n"
+    )
+
+    start = CodeStructureExtractor.meaningful_start(
+        source
+    )
+
+    assert source[start:].startswith("class B:")
+
+
+def test_meaningful_start_falls_back_for_import_only_file():
+    """
+    整份文件只有 import 时回退到 0。
+
+    不能返回 len(source)，那样摘录会是空串。
+    """
+
+    from app.project_analysis.code_structure_extractor import (
+        CodeStructureExtractor,
+    )
+
+    source = "import os\nimport sys\n"
+
+    assert (
+        CodeStructureExtractor.meaningful_start(
+            source
         )
         == 0
     )
 
-    assert (
-        result["comparison"]["database"][
-            "project_b"
-        ]["evidence_ids"]
-        == []
+
+def test_module_entry_records_start_line():
+    """
+    摘录跳过了多少行必须记下来 ——
+    否则证据会写成「file:1-30」
+    但内容其实是第 30 行开始的。
+    """
+
+    from app.skills.architecture_analysis_skill import (
+        ArchitectureAnalysisSkill,
     )
 
-    # deployment 维度在真实 run A 中为空列表，
-    # 空值没有 token 可匹配，
-    # 因此不会产生 Evidence 引用。
-    assert (
-        result["comparison"]["deployment"][
-            "project_a"
-        ]["value"]
-        == []
+    source = (
+        "import os\n"
+        "import uuid\n"
+        "\n"
+        "\n"
+        "class Real:\n"
+        "    pass\n"
     )
 
-    assert (
-        result["comparison"]["deployment"][
-            "project_a"
-        ]["evidence_ids"]
-        == []
+    entry = ArchitectureAnalysisSkill()._module_entry(
+        "f.py",
+        source,
     )
 
+    assert entry["content"].startswith("class Real:")
 
-@pytest.mark.asyncio
-async def test_requirement_5_evidence_ids_not_all_empty():
-    """
-    要求 5：
-    evidence_ids 不再全部为 0。
-
-    修复前 10 个维度的 evidence_ids 全为 0。
-    """
-
-    result = await compare_two_real_runs()
-
-    total = 0
-
-    for dimension in result["comparison"].values():
-
-        for side in (
-            "project_a",
-            "project_b",
-        ):
-
-            total += len(
-                dimension[side]["evidence_ids"]
-            )
-
-    assert total > 0
+    assert entry["start_line"] == 5
 
 
-@pytest.mark.asyncio
-async def test_requirement_6_evidence_based_is_computed():
-    """
-    要求 6：
-    evidence_based 不再硬编码 True，而是由真实引用决定。
-    """
+def test_module_entry_without_imports_has_no_start_line():
 
-    with_evidence = await compare_two_real_runs()
-
-    assert with_evidence["evidence_based"] is True
-
-    agent = ComparisonAgent(
-        skill_registry=None
+    from app.skills.architecture_analysis_skill import (
+        ArchitectureAnalysisSkill,
     )
 
-    without_evidence = await agent.execute(
-        context=None,
-        input_data={
-            "project_a": build_real_run(
-                "run-a",
-                26,
-                "repo-a",
-                TECH_A,
-                evidences=[],
-            ),
-            "project_b": build_real_run(
-                "run-b",
-                35,
-                "repo-b",
-                TECH_B,
-                evidences=[],
-            ),
-        },
+    entry = ArchitectureAnalysisSkill()._module_entry(
+        "f.py",
+        "class A:\n    pass\n",
     )
 
-    assert without_evidence["evidence_based"] is False
+    assert "start_line" not in entry
+
+    assert entry["content"].startswith("class A:")
 
 
-@pytest.mark.asyncio
-async def test_real_runs_produce_more_than_one_usable_dimension():
+def test_meaningful_start_handles_multiline_import():
     """
-    修复前只有 workflow 一个维度可用。
+    多行 import 的续行也必须跳过。
 
-    现在 database / deployment / code_complexity /
-    agent / workflow / rag 都应给出真实结果。
-    """
+    真实事故：workflow_service.py 里
 
-    result = await compare_two_real_runs()
-
-    usable = [
-        dimension
-        for dimension, entry in (
-            result["comparison"].items()
-        )
-        if entry["project_a"]["available"]
-    ]
-
-    for expected in (
-        "agent",
-        "workflow",
-        "rag",
-        "database",
-        "deployment",
-        "code_complexity",
-    ):
-        assert expected in usable
-
-    # 真实数据中确实不存在的维度仍然如实返回不可用。
-    for missing in (
-        "skill",
-        "tool",
-        "memory",
-        "extension",
-    ):
-        assert (
-            result["comparison"][missing][
-                "relation"
-            ]
-            == "NOT_AVAILABLE"
+        from app.schemas.agent import (
+            AgentRunListItem,
+            ...
         )
 
-
-@pytest.mark.asyncio
-async def test_database_dimension_is_different_between_real_runs():
-    """
-    真实数据下 database 维度应该能区分两个项目。
-
-    run A 检测到 PostgreSQL，
-    run B 技术栈为空。
+    只看行首的话，扫描器会停在第 2 行
+    （`    AgentRunListItem,` 不以 import 开头），
+    摘录依然是一串 import 名单。
     """
 
-    result = await compare_two_real_runs()
-
-    assert (
-        result["comparison"]["database"][
-            "relation"
-        ]
-        == "DIFFERENT"
+    from app.project_analysis.code_structure_extractor import (
+        CodeStructureExtractor,
     )
 
-    assert (
-        result["comparison"]["database"][
-            "project_a"
-        ]["value"]
-        == ["PostgreSQL"]
-    )
-```
-
-### 📄 `tests/test_comparison_service.py`
-
-**层级**：测试层 · **职责**：Comparison Service 测试。
-
-```python
-"""
-Comparison Service 测试。
-
-fixture 使用 RunMemory.load() 的真实返回结构
-（workflow_state / evidences），
-不再使用真实系统中不存在的 project["analysis"]。
-
-同时这里不再替换 ComparisonAgent，
-而是让真实的 ComparisonAgent 参与测试，
-以验证“服务 → Agent → 真实数据”整条链路。
-"""
-
-from types import SimpleNamespace
-from unittest.mock import AsyncMock
-
-import pytest
-
-from app.schemas.comparison import (
-    ComparisonCreateRequest,
-)
-from app.services.comparison_service import (
-    ComparisonService,
-)
-
-
-EXECUTED_TASKS = [
-    "repository_analysis_agent",
-    "architecture_analysis_agent",
-    "technology_analysis_agent",
-    "evidence_analysis_agent",
-    "critic_agent",
-]
-
-TECH_WITH_DATABASE = {
-    "llm": [],
-    "database": ["PostgreSQL"],
-    "embedding": [],
-    "deployment": [],
-    "frameworks": [],
-    "source_files": ["docker-compose.yml"],
-}
-
-TECH_EMPTY = {
-    "llm": [],
-    "database": [],
-    "embedding": [],
-    "deployment": [],
-    "frameworks": [],
-    "source_files": [],
-}
-
-
-def run_memory_payload(
-    run_id,
-    repository_id,
-    repository_name,
-    technology_stack,
-    evidences=None,
-):
-    """构造 RunMemory.load() 的真实返回结构。"""
-
-    research_plan = {
-        "tasks": list(EXECUTED_TASKS),
-        "plan_version": 1,
-        "analysis_type": "github_agent_project",
-        "evidence_required": True,
-    }
-
-    return {
-        "run_id": run_id,
-        "status": "COMPLETED",
-        "current_node": "end",
-        "question": "分析这个项目",
-        "repository": {
-            "id": repository_id,
-            "url": (
-                "https://github.com/demo/"
-                f"{repository_name}"
-            ),
-            "owner": "demo",
-            "name": repository_name,
-            "description": None,
-            "language": "Python",
-        },
-        "research_plan": research_plan,
-        "final_report": {
-            "report": {
-                "path": f"reports/{run_id}.md",
-                "format": "markdown",
-            },
-            "content": "# report",
-        },
-        "agent_outputs": [],
-        "task_results": [],
-        "evidences": list(evidences or []),
-        "workflow_state": {
-            "status": "COMPLETED",
-            "current_node": "end",
-            "data": {
-                "executed_tasks": list(
-                    EXECUTED_TASKS
-                ),
-                "research_plan": research_plan,
-                "repository": {
-                    "language": "Python",
-                    "size": 8586,
-                },
-                "architecture_analysis_agent": {
-                    "files": [],
-                    "modules": [],
-                },
-                "technology_stack": (
-                    technology_stack
-                ),
-            },
-        },
-    }
-
-
-def real_evidence(evidence_id, content):
-    """真实 Evidence 行的字段结构。"""
-
-    return {
-        "id": evidence_id,
-        "source_type": "github",
-        "file_path": "README.md",
-        "line_start": 1,
-        "line_end": 215,
-        "content": content,
-        "verification_status": "UNVERIFIED",
-    }
-
-
-def install_fakes(
-    monkeypatch,
-    runs,
-    memories,
-):
-    """替换 Service 依赖的 Repository 与 RunMemory。"""
-
-    import app.services.comparison_service as module
-
-    fake_repository = SimpleNamespace(
-        get_by_id=AsyncMock(
-            side_effect=runs
-        )
+    source = (
+        "import os\n"
+        "from app.schemas.agent import (\n"
+        "    AgentRunListItem,\n"
+        "    AgentRunResponse,\n"
+        ")\n"
+        "\n"
+        "class AgentState(TypedDict):\n"
+        "    pass\n"
     )
 
-    fake_memory = SimpleNamespace(
-        load=AsyncMock(
-            side_effect=memories
-        )
+    start = CodeStructureExtractor.meaningful_start(
+        source
     )
 
-    monkeypatch.setattr(
-        module,
-        "AnalysisRunRepository",
-        lambda session: fake_repository,
+    assert source[start:].startswith(
+        "class AgentState"
     )
 
-    monkeypatch.setattr(
-        module,
-        "RunMemory",
-        lambda session: fake_memory,
+
+def test_meaningful_start_handles_backslash_continuation():
+
+    from app.project_analysis.code_structure_extractor import (
+        CodeStructureExtractor,
     )
 
-    return fake_repository, fake_memory
-
-
-@pytest.mark.asyncio
-async def test_create_comparison_with_real_runmemory_schema(
-    monkeypatch,
-):
-    """
-    ComparisonService 在真实 RunMemory 结构下
-    必须产生真实业务结果。
-    """
-
-    session = SimpleNamespace()
-
-    run_a = SimpleNamespace(
-        id="run-a",
-        repository_id=1,
-        status="COMPLETED",
+    source = (
+        "from app.core import a, \\n"
+        "    b, c\n"
+        "\n"
+        "class Real:\n"
+        "    pass\n"
     )
 
-    run_b = SimpleNamespace(
-        id="run-b",
-        repository_id=2,
-        status="COMPLETED",
+    start = CodeStructureExtractor.meaningful_start(
+        source
     )
 
-    install_fakes(
-        monkeypatch,
-        runs=[run_a, run_b],
-        memories=[
-            run_memory_payload(
-                "run-a",
-                1,
-                "project-a",
-                TECH_WITH_DATABASE,
-                evidences=[
-                    real_evidence(
-                        "evidence-real-1",
-                        "Stores data in PostgreSQL.",
-                    )
-                ],
-            ),
-            run_memory_payload(
-                "run-b",
-                2,
-                "project-b",
-                TECH_EMPTY,
-            ),
-        ],
-    )
-
-    service = ComparisonService()
-
-    result = await service.create_comparison(
-        session,
-        ComparisonCreateRequest(
-            run_ids=["run-a", "run-b"]
-        ),
-    )
-
-    assert result.status == "COMPLETED"
-
-    assert len(result.projects) == 2
-
-    assert (
-        result.projects[0].repository_name
-        == "project-a"
-    )
-
-    # Agent 维度来自真实 executed_tasks。
-    agent_dimension = result.comparison["agent"]
-
-    assert agent_dimension["relation"] == "SAME"
-
-    assert (
-        agent_dimension["project_a"]["value"][
-            "count"
-        ]
-        == 5
-    )
-
-    # database 维度来自真实 technology_stack。
-    assert (
-        result.comparison["database"]["relation"]
-        == "DIFFERENT"
-    )
-
-    # evidence_based 由真实 Evidence 引用决定。
-    assert result.evidence_based is True
-
-
-@pytest.mark.asyncio
-async def test_comparison_without_evidence_is_not_evidence_based(
-    monkeypatch,
-):
-    """两个 Run 都没有 Evidence 时 evidence_based 必须为 False。"""
-
-    session = SimpleNamespace()
-
-    run_a = SimpleNamespace(
-        id="run-a",
-        repository_id=1,
-        status="COMPLETED",
-    )
-
-    run_b = SimpleNamespace(
-        id="run-b",
-        repository_id=2,
-        status="COMPLETED",
-    )
-
-    install_fakes(
-        monkeypatch,
-        runs=[run_a, run_b],
-        memories=[
-            run_memory_payload(
-                "run-a",
-                1,
-                "project-a",
-                TECH_EMPTY,
-            ),
-            run_memory_payload(
-                "run-b",
-                2,
-                "project-b",
-                TECH_EMPTY,
-            ),
-        ],
-    )
-
-    service = ComparisonService()
-
-    result = await service.create_comparison(
-        session,
-        ComparisonCreateRequest(
-            run_ids=["run-a", "run-b"]
-        ),
-    )
-
-    assert result.evidence_based is False
-
-
-@pytest.mark.asyncio
-async def test_comparison_requires_two_runs(monkeypatch):
-    """必须提供两个不同的 Run ID。"""
-
-    service = ComparisonService()
-
-    with pytest.raises(
-        Exception,
-        match="must be different",
-    ):
-        await service.create_comparison(
-            SimpleNamespace(),
-            ComparisonCreateRequest(
-                run_ids=["run-a", "run-a"]
-            ),
-        )
-
-
-@pytest.mark.asyncio
-async def test_comparison_requires_completed_runs(
-    monkeypatch,
-):
-    """未完成的 Analysis Run 不能参与比较。"""
-
-    session = SimpleNamespace()
-
-    run = SimpleNamespace(
-        id="run-a",
-        repository_id=1,
-        status="ANALYZING",
-    )
-
-    import app.services.comparison_service as module
-
-    fake_repository = SimpleNamespace(
-        get_by_id=AsyncMock(
-            return_value=run
-        )
-    )
-
-    monkeypatch.setattr(
-        module,
-        "AnalysisRunRepository",
-        lambda session: fake_repository,
-    )
-
-    service = ComparisonService()
-
-    with pytest.raises(
-        Exception,
-        match="Only completed analysis runs",
-    ):
-        await service.create_comparison(
-            session,
-            ComparisonCreateRequest(
-                run_ids=["run-a", "run-b"]
-            ),
-        )
-
-
-@pytest.mark.asyncio
-async def test_comparison_requires_different_repositories(
-    monkeypatch,
-):
-    """两个 Run 必须来自不同仓库。"""
-
-    session = SimpleNamespace()
-
-    run_a = SimpleNamespace(
-        id="run-a",
-        repository_id=1,
-        status="COMPLETED",
-    )
-
-    run_b = SimpleNamespace(
-        id="run-b",
-        repository_id=1,
-        status="COMPLETED",
-    )
-
-    import app.services.comparison_service as module
-
-    fake_repository = SimpleNamespace(
-        get_by_id=AsyncMock(
-            side_effect=[run_a, run_b]
-        )
-    )
-
-    monkeypatch.setattr(
-        module,
-        "AnalysisRunRepository",
-        lambda session: fake_repository,
-    )
-
-    service = ComparisonService()
-
-    with pytest.raises(
-        Exception,
-        match="different repositories",
-    ):
-        await service.create_comparison(
-            session,
-            ComparisonCreateRequest(
-                run_ids=["run-a", "run-b"]
-            ),
-        )
+    assert source[start:].startswith("class Real:")
 ```
 
 ### 📄 `tests/test_config.py`
@@ -14308,6 +24177,67 @@ async def test_evidence_analysis_skill():
         evidence["line_end"]
         is None
     )
+
+@pytest.mark.asyncio
+async def test_evidence_from_architecture_agent_output():
+    """
+    源码证据分支必须能读到真实的 key。
+
+    旧实现只读 input_data["architecture"]，
+    但真实数据结构里没有这个 key
+    （真实 key 是 architecture_analysis_agent，
+    且 PlanExecutorNode 会把 modules 拍平到顶层），
+    因此这个分支以前从未执行过，
+    Evidence 里只有 README、没有源码。
+    """
+
+    skill = EvidenceAnalysisSkill()
+
+    result = await skill.execute(
+        FakeContext(),
+        {
+            "repo_url": "https://github.com/demo/demo",
+            "architecture_analysis_agent": {
+                "files": ["app/main.py"],
+                "modules": [
+                    {
+                        "file_path": "app/main.py",
+                        "content": "class Demo:\n    pass\n",
+                    }
+                ],
+            },
+        },
+    )
+
+    file_paths = [
+        item["file_path"]
+        for item in result["evidence"]
+    ]
+
+    assert "app/main.py" in file_paths
+
+
+@pytest.mark.asyncio
+async def test_failed_module_read_is_not_used_as_evidence():
+    """读取失败的模块不能变成空内容的假证据。"""
+
+    skill = EvidenceAnalysisSkill()
+
+    result = await skill.execute(
+        FakeContext(),
+        {
+            "repo_url": "https://github.com/demo/demo",
+            "modules": [
+                {
+                    "file_path": "app/broken.py",
+                    "content": "",
+                    "error": "Read timeout",
+                }
+            ],
+        },
+    )
+
+    assert result["count"] == 0
 ```
 
 ### 📄 `tests/test_evidence_store.py`
@@ -14502,13 +24432,28 @@ def test_retryable_error():
 """
 FileReaderTool 测试。
 
-覆盖：
+读取策略（Phase 12 网络稳定性修复）：
 
-1. httpx 超时转换为带 URL 的 ToolError
-2. 其他 httpx 错误同样转换为 ToolError
-3. 保持 404 → master fallback 的既有行为
-4. 保持正常读取行为
+    1. 优先 GitHub Contents API
+       api.github.com/repos/{owner}/{name}/contents/{path}
+    2. 失败时回退 raw.githubusercontent.com
+
+原因：部分网络环境下 raw.githubusercontent.com
+极不稳定（实测同一 README：
+Contents API 0.88 秒成功、raw 20 秒后 ReadError），
+而一个文件读取失败曾导致整个 5-Agent 计划 FAILED。
+
+本文件覆盖：
+
+1. Contents API 优先，成功时完全不碰 raw
+2. Contents API 失败时回退 raw
+3. 大文件（encoding != base64）回退 raw
+4. 文件确实不存在时不浪费 raw 超时
+5. 所有来源网络错误时抛 ToolError
+6. main → master 分支回退
 """
+
+import base64
 
 import httpx
 import pytest
@@ -14519,16 +24464,14 @@ from app.tools.file_reader_tool import (
 )
 
 
-BASE = "https://raw.githubusercontent.com"
-
 EXPECTED_MAIN = (
-    f"{BASE}/openai/openai-python/"
-    "main/requirements.txt"
+    "https://api.github.com/repos/openai/"
+    "openai-python/contents/requirements.txt"
 )
 
-EXPECTED_MASTER = (
-    f"{BASE}/openai/openai-python/"
-    "master/requirements.txt"
+EXPECTED_MAIN_RAW = (
+    "https://raw.githubusercontent.com/openai/"
+    "openai-python/main/requirements.txt"
 )
 
 
@@ -14539,34 +24482,56 @@ class FakeResponse:
         self,
         status_code,
         text="",
+        payload=None,
     ):
 
         self.status_code = status_code
 
         self.text = text
 
+        self._payload = payload
+
+    def json(self):
+
+        if self._payload is None:
+            raise ValueError("no json body")
+
+        return self._payload
+
+
+def contents_payload(text):
+    """构造 Contents API 的 base64 响应体。"""
+
+    return {
+        "encoding": "base64",
+        "content": base64.b64encode(
+            text.encode("utf-8")
+        ).decode("ascii"),
+    }
+
 
 class FakeAsyncClient:
     """
-    假 httpx.AsyncClient。
+    按来源分派的假 httpx.AsyncClient。
 
-    支持两种模式：
-
-    - error 不为 None：get() 直接抛异常
-    - 否则按 responses 顺序返回
+    api / raw 都是 {branch: FakeResponse}。
     """
 
     def __init__(
         self,
-        responses=None,
-        error=None,
+        api=None,
+        raw=None,
+        api_error=None,
+        raw_error=None,
     ):
 
-        self.responses = list(
-            responses or []
-        )
+        self.api = api or {}
 
-        self.error = error
+        self.raw = raw or {}
+
+        self.api_error = api_error
+
+        self.raw_error = raw_error
 
         self.urls = []
 
@@ -14581,29 +24546,68 @@ class FakeAsyncClient:
 
         return False
 
+    @staticmethod
+    def _branch_from_url(url):
+        """
+        从 raw URL 的路径里取分支。
+
+        raw 的 URL 形如
+            raw.githubusercontent.com/{owner}/{name}/{branch}/{path}
+        分支在路径里，不在 query 参数里。
+        """
+
+        tail = url.split(
+            "raw.githubusercontent.com/",
+            1,
+        )[-1]
+
+        parts = tail.split("/")
+
+        if len(parts) > 2:
+            return parts[2]
+
+        return None
+
     async def get(
         self,
         url,
+        params=None,
+        headers=None,
         timeout=None,
     ):
 
-        self.urls.append(url)
+        is_api = "api.github.com" in url
 
-        if self.error is not None:
+        if is_api:
 
-            raise self.error
+            branch = (params or {}).get("ref")
 
-        if not self.responses:
+        else:
 
-            return FakeResponse(404)
+            branch = self._branch_from_url(url)
 
-        return self.responses.pop(0)
+        self.urls.append((url, branch))
+
+        if is_api:
+
+            if self.api_error is not None:
+                raise self.api_error
+
+            return self.api.get(
+                branch,
+                FakeResponse(404),
+            )
+
+        if self.raw_error is not None:
+            raise self.raw_error
+
+        return self.raw.get(
+            branch,
+            FakeResponse(404),
+        )
 
 
-def install_client(
-    monkeypatch,
-    client,
-):
+def install_client(monkeypatch, client):
     """把假 Client 注入 FileReaderTool 使用的 httpx 模块。"""
 
     monkeypatch.setattr(
@@ -14615,90 +24619,146 @@ def install_client(
     return client
 
 
-@pytest.mark.asyncio
-async def test_timeout_is_converted_to_tool_error(
-    monkeypatch,
-):
-    """
-    httpx.ReadTimeout 必须转换成 ToolError，
-    并且错误信息包含 URL。
+def api_urls(client):
+    return [
+        url
+        for url, _ in client.urls
+        if "api.github.com" in url
+    ]
 
-    httpx.ReadTimeout('') 的 str() 为空字符串，
-    直接向上抛出会产生 errors == [""]。
+
+def raw_urls(client):
+    return [
+        url
+        for url, _ in client.urls
+        if "raw.githubusercontent.com" in url
+    ]
+
+
+@pytest.mark.asyncio
+async def test_contents_api_is_used_first(monkeypatch):
+    """
+    Contents API 成功时完全不请求 raw。
+
+    这是网络稳定性的关键：
+    raw.githubusercontent.com 不稳定时，
+    读取不应该再受影响。
     """
 
     client = install_client(
         monkeypatch,
         FakeAsyncClient(
-            error=httpx.ReadTimeout("")
+            api={
+                "main": FakeResponse(
+                    200,
+                    payload=contents_payload(
+                        "fastapi==0.1.0"
+                    ),
+                )
+            }
         ),
     )
 
-    with pytest.raises(ToolError) as excinfo:
-
-        await FileReaderTool().execute(
-            owner="openai",
-            name="openai-python",
-            file_path="requirements.txt",
-        )
-
-    message = str(excinfo.value)
-
-    assert "Read timeout" in message
-
-    assert EXPECTED_MAIN in message
-
-    assert message.strip() != ""
-
-    assert client.urls == [EXPECTED_MAIN]
-
-
-@pytest.mark.asyncio
-async def test_connect_error_is_converted_to_tool_error(
-    monkeypatch,
-):
-    """非超时的 httpx 错误同样转换成 ToolError。"""
-
-    install_client(
-        monkeypatch,
-        FakeAsyncClient(
-            error=httpx.ConnectError(
-                "connection refused"
-            )
-        ),
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
     )
 
-    with pytest.raises(ToolError) as excinfo:
+    assert result == "fastapi==0.1.0"
 
-        await FileReaderTool().execute(
-            owner="openai",
-            name="openai-python",
-            file_path="requirements.txt",
-        )
+    assert api_urls(client) == [EXPECTED_MAIN]
 
-    message = str(excinfo.value)
-
-    assert "Read failed" in message
-
-    assert EXPECTED_MAIN in message
-
-    assert "connection refused" in message
+    # 关键断言：完全没有碰 raw
+    assert raw_urls(client) == []
 
 
 @pytest.mark.asyncio
-async def test_404_on_main_falls_back_to_master(
+async def test_falls_back_to_raw_when_api_fails(
     monkeypatch,
 ):
-    """main 返回 404 时回退 master，两者都 404 则返回空字符串。"""
+    """Contents API 网络出错时回退 raw。"""
 
     client = install_client(
         monkeypatch,
         FakeAsyncClient(
-            responses=[
-                FakeResponse(404),
-                FakeResponse(404),
-            ]
+            raw={
+                "main": FakeResponse(
+                    200,
+                    "fastapi==0.1.0",
+                )
+            },
+            api_error=httpx.ReadTimeout(""),
         ),
+    )
+
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
+    )
+
+    assert result == "fastapi==0.1.0"
+
+    assert raw_urls(client) == [EXPECTED_MAIN_RAW]
+
+
+@pytest.mark.asyncio
+async def test_oversized_file_falls_back_to_raw(
+    monkeypatch,
+):
+    """
+    超过 1MB 的文件 Contents API 不返回内容
+    （encoding != base64），此时回退 raw。
+    """
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(
+            api={
+                "main": FakeResponse(
+                    200,
+                    payload={
+                        "encoding": "none",
+                        "content": "",
+                        "size": 5_000_000,
+                    },
+                )
+            },
+            raw={
+                "main": FakeResponse(
+                    200,
+                    "big file",
+                )
+            },
+        ),
+    )
+
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
+    )
+
+    assert result == "big file"
+
+    assert raw_urls(client) == [EXPECTED_MAIN_RAW]
+
+
+@pytest.mark.asyncio
+async def test_missing_file_does_not_waste_raw_timeout(
+    monkeypatch,
+):
+    """
+    文件确实不存在时，不再去 raw 白等超时。
+
+    修复前：Contents API 404 后仍尝试 raw，
+    main + master 两个超时合计 51 秒。
+    """
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(),
     )
 
     result = await FileReaderTool().execute(
@@ -14709,25 +24769,84 @@ async def test_404_on_main_falls_back_to_master(
 
     assert result == ""
 
-    assert client.urls == [
-        EXPECTED_MAIN,
-        EXPECTED_MASTER,
-    ]
+    # 两个分支都问过 Contents API
+    assert len(api_urls(client)) == 2
+
+    # 但一次 raw 都没请求
+    assert raw_urls(client) == []
 
 
 @pytest.mark.asyncio
-async def test_404_on_master_returns_empty_without_retry(
+async def test_all_sources_network_error_raises(
     monkeypatch,
 ):
-    """分支已经是 master 时不再回退，直接返回空字符串。"""
+    """所有来源都是网络错误时抛 ToolError，而不是伪装成文件不存在。"""
+
+    install_client(
+        monkeypatch,
+        FakeAsyncClient(
+            api_error=httpx.ReadTimeout(""),
+            raw_error=httpx.ReadTimeout(""),
+        ),
+    )
+
+    with pytest.raises(ToolError) as excinfo:
+
+        await FileReaderTool().execute(
+            owner="openai",
+            name="openai-python",
+            file_path="requirements.txt",
+        )
+
+    message = str(excinfo.value)
+
+    assert "timeout" in message.lower()
+
+    assert "openai-python" in message
+
+
+@pytest.mark.asyncio
+async def test_branch_fallback_main_to_master(
+    monkeypatch,
+):
+    """main 没有该文件时回退 master。"""
 
     client = install_client(
         monkeypatch,
         FakeAsyncClient(
-            responses=[
-                FakeResponse(404),
-            ]
+            api={
+                "master": FakeResponse(
+                    200,
+                    payload=contents_payload(
+                        "old-style"
+                    ),
+                )
+            }
         ),
+    )
+
+    result = await FileReaderTool().execute(
+        owner="openai",
+        name="openai-python",
+        file_path="requirements.txt",
+    )
+
+    assert result == "old-style"
+
+    assert [
+        branch for _, branch in client.urls
+    ] == ["main", "master"]
+
+
+@pytest.mark.asyncio
+async def test_non_main_branch_does_not_fallback(
+    monkeypatch,
+):
+    """显式指定 master 时不再回退。"""
+
+    client = install_client(
+        monkeypatch,
+        FakeAsyncClient(),
     )
 
     result = await FileReaderTool().execute(
@@ -14739,69 +24858,9 @@ async def test_404_on_master_returns_empty_without_retry(
 
     assert result == ""
 
-    assert client.urls == [EXPECTED_MASTER]
-
-
-@pytest.mark.asyncio
-async def test_master_fallback_success(
-    monkeypatch,
-):
-    """main 404 但 master 命中时返回 master 内容。"""
-
-    client = install_client(
-        monkeypatch,
-        FakeAsyncClient(
-            responses=[
-                FakeResponse(404),
-                FakeResponse(
-                    200,
-                    "fastapi==0.1.0",
-                ),
-            ]
-        ),
-    )
-
-    result = await FileReaderTool().execute(
-        owner="openai",
-        name="openai-python",
-        file_path="requirements.txt",
-    )
-
-    assert result == "fastapi==0.1.0"
-
-    assert client.urls == [
-        EXPECTED_MAIN,
-        EXPECTED_MASTER,
-    ]
-
-
-@pytest.mark.asyncio
-async def test_success_returns_text_unchanged(
-    monkeypatch,
-):
-    """200 时原样返回文本，且不回退 master。"""
-
-    client = install_client(
-        monkeypatch,
-        FakeAsyncClient(
-            responses=[
-                FakeResponse(
-                    200,
-                    "fastapi==0.1.0",
-                ),
-            ]
-        ),
-    )
-
-    result = await FileReaderTool().execute(
-        owner="openai",
-        name="openai-python",
-        file_path="requirements.txt",
-    )
-
-    assert result == "fastapi==0.1.0"
-
-    assert client.urls == [EXPECTED_MAIN]
+    assert [
+        branch for _, branch in client.urls
+    ] == ["master"]
 ```
 
 ### 📄 `tests/test_github_client.py`
@@ -15036,6 +25095,227 @@ The system supports workflow execution and task recovery.
 
     assert chunk_count == 3
 ```
+
+### 📄 `tests/test_json_output.py`
+
+**层级**：测试层 · **职责**：LLM JSON 输出解析测试。
+
+````python
+"""
+LLM JSON 输出解析测试。
+
+这套容错逻辑是真实事故换来的：
+综合分析要输出六个维度的判断段落，
+回复一旦触到 max_tokens 上限就会被切断，
+而截断的 JSON 用 json.loads 必然失败，
+报告整章退化成「综合分析不可用」。
+"""
+
+import json
+
+from app.skills.json_output import (
+    parse_json_object,
+    strip_code_fence,
+)
+
+
+FULL = json.dumps(
+    {
+        "summary": {
+            "one_line": "结论",
+            "core_design": ["设计一", "设计二"],
+            "highlights": ["亮点"],
+        },
+        "dimensions": {
+            "agents": "Agent 判断段落",
+            "workflow": "Workflow 判断段落",
+            "rag": "RAG 判断段落",
+        },
+    },
+    ensure_ascii=False,
+    indent=2,
+)
+
+
+# ----------------------------------------------------------------
+# 正常形态
+# ----------------------------------------------------------------
+
+
+def test_parses_plain_json():
+
+    parsed = parse_json_object(FULL)
+
+    assert parsed["summary"]["one_line"] == "结论"
+
+
+def test_parses_fenced_json():
+
+    parsed = parse_json_object(
+        "```json\n" + FULL + "\n```"
+    )
+
+    assert parsed["dimensions"]["rag"] == "RAG 判断段落"
+
+
+def test_parses_json_with_surrounding_prose():
+    """模型在 JSON 前后加解释文字时要能救回来。"""
+
+    parsed = parse_json_object(
+        "好的，以下是分析结果：\n"
+        + FULL
+        + "\n希望对你有帮助。"
+    )
+
+    assert parsed["summary"]["core_design"] == [
+        "设计一",
+        "设计二",
+    ]
+
+
+def test_returns_none_for_non_json():
+
+    assert parse_json_object("这不是 JSON") is None
+
+    assert parse_json_object("") is None
+
+    assert parse_json_object(None) is None
+
+
+def test_returns_none_for_json_array():
+    """只接受对象；顶层是数组时不算成功。"""
+
+    assert parse_json_object("[1, 2, 3]") is None
+
+
+# ----------------------------------------------------------------
+# 截断修复
+# ----------------------------------------------------------------
+
+
+def test_repairs_truncation_inside_string():
+    """截断在字符串中间 —— 补引号与括号。"""
+
+    truncated = FULL[: len(FULL) - 30]
+
+    parsed = parse_json_object(truncated)
+
+    assert parsed is not None
+
+    assert parsed["summary"]["one_line"] == "结论"
+
+
+def test_repairs_truncation_between_values():
+    """截断在值之后 —— 补括号。"""
+
+    parsed = parse_json_object(FULL.rstrip()[:-1])
+
+    assert parsed is not None
+
+    assert parsed["summary"]["one_line"] == "结论"
+
+
+def test_repairs_truncation_after_key():
+    """截断在半个键值上 —— 回退到最后一个逗号。"""
+
+    cut = FULL[: FULL.rindex('"rag"') + 6]
+
+    parsed = parse_json_object(cut)
+
+    assert parsed is not None
+
+    assert parsed["summary"]["one_line"] == "结论"
+
+
+def test_repairs_truncation_inside_array():
+
+    text = json.dumps(
+        {
+            "summary": {
+                "one_line": "x",
+                "core_design": ["a", "b"],
+            },
+            "dimensions": {},
+        },
+        ensure_ascii=False,
+    )
+
+    parsed = parse_json_object(text[:55])
+
+    assert parsed is not None
+
+    assert parsed["summary"]["one_line"] == "x"
+
+
+def test_repair_never_invents_content():
+    """
+    修不出来就返回 None。
+
+    降级成「综合分析不可用」是可接受的；
+    把半截内容当结论展示是不可接受的。
+    """
+
+    # 值缺失，补括号与回退逗号都救不回来。
+    assert parse_json_object('{"a": , "b": 1') is None
+
+    assert parse_json_object("纯粹的一段说明文字。") is None
+
+
+def test_repair_may_yield_empty_containers():
+    """
+    补全后是「合法的空结构」时应当接受。
+
+    这不是编造内容：{"summary": {}} 是真实解析出来的，
+    调用方会看到 summary 为空并如实降级。
+    把它当成解析失败反而会丢掉已经拿到的部分。
+    """
+
+    parsed = parse_json_object('{"summary": {')
+
+    assert parsed == {"summary": {}}
+
+
+def test_repair_handles_braces_inside_strings():
+    """字符串里的花括号不能干扰配平。"""
+
+    parsed = parse_json_object(
+        '{"a": "包含 } 和 ] 的文本", "b": 1'
+    )
+
+    assert parsed is not None
+
+    assert parsed["b"] == 1
+
+
+def test_repair_handles_escaped_quotes():
+    """转义引号不能让扫描器误判字符串结束。"""
+
+    parsed = parse_json_object(
+        '{"a": "带 \\" 转义引号的值", "b": 2'
+    )
+
+    assert parsed is not None
+
+    assert parsed["b"] == 2
+
+
+# ----------------------------------------------------------------
+# 代码块剥离
+# ----------------------------------------------------------------
+
+
+def test_strip_code_fence():
+
+    assert strip_code_fence(
+        "```json\n{}\n```"
+    ) == "{}"
+
+    assert strip_code_fence("{}") == "{}"
+
+    assert strip_code_fence(
+        "```\n{}\n```"
+    ) == "{}"
+````
 
 ### 📄 `tests/test_memory.py`
 
@@ -15276,6 +25556,647 @@ async def test_project_memory_filters_current_run():
         == "agent"
     )
 ```
+
+### 📄 `tests/test_module_deep_dive_skill.py`
+
+**层级**：测试层 · **职责**：ModuleDeepDiveSkill 测试。
+
+````python
+"""
+ModuleDeepDiveSkill 测试。
+
+深挖是「默认报告只看要点，细节按需展开」的
+那一半能力，覆盖：
+
+1. 模块名校验
+2. 只挑该模块相关文件，且配额远大于默认报告
+3. 明细带签名 / 调用链 / 常量 / 源码片段
+4. 图节点能解析到真实定义
+5. LLM 不可用 / 返回非法 JSON 时降级，
+   仍然保留实现明细
+6. 如实交代采集范围（读了哪些、哪些失败）
+
+全程使用假 Tool，不联网。
+"""
+
+import json
+
+import pytest
+
+from app.core.exceptions import ToolError
+from app.skills.module_deep_dive_skill import (
+    ModuleDeepDiveSkill,
+)
+
+TREE = (
+    "src/app/services/workflow_service.py",
+    "src/app/services/other_service.py",
+    "src/app/models/agent_run.py",
+    "src/app/rag/retriever.py",
+    "src/app/main.py",
+    "tests/test_workflow.py",
+)
+
+
+WORKFLOW_SOURCE = (
+    "from langgraph.graph import StateGraph\n"
+    "\n"
+    "\n"
+    "class WorkflowService:\n"
+    "    def build(self):\n"
+    "        builder = StateGraph(AgentState)\n"
+    "        builder.add_node('duplicate_check',\n"
+    "                          self._node_duplicate_check)\n"
+    "        return builder.compile()\n"
+    "\n"
+    "    def _node_duplicate_check(self, state) -> dict:\n"
+    "        found = find_similar(state['vendor'])\n"
+    "        if found.score >= 0.85:\n"
+    "            state['status'] = 'suspected'\n"
+    "        return state\n"
+)
+
+
+SOURCES = {
+    "src/app/services/workflow_service.py": WORKFLOW_SOURCE,
+    "src/app/services/other_service.py": (
+        "def helper():\n    pass\n"
+    ),
+    "src/app/models/agent_run.py": (
+        "class AgentRun(Base):\n    pass\n"
+    ),
+    "src/app/rag/retriever.py": (
+        "from qdrant_client import QdrantClient\n"
+        "\n"
+        "def retrieve_documents(query):\n"
+        "    return query\n"
+    ),
+    "src/app/main.py": (
+        "from fastapi import FastAPI\n\napp = FastAPI()\n"
+    ),
+}
+
+
+VALID_REPLY = json.dumps(
+    {
+        "responsibility": ["负责把录入流程编排成状态图。"],
+        "key_implementations": [
+            "duplicate_check 节点用 0.85 阈值判定重复"
+        ],
+        "data_structures": ["state 字典承载 vendor"],
+        "call_flow": ["build() 注册节点后交给图执行"],
+        "boundaries": ["数据不足：未见重试逻辑"],
+        "risks": ["0.85 是硬编码常量"],
+        "open_questions": ["human_review 未在本次范围内"],
+    },
+    ensure_ascii=False,
+)
+
+
+class FakeRepositoryTool:
+
+    async def get_tree(self, **kwargs):
+        return [
+            {"path": path, "type": "blob"}
+            for path in TREE
+        ]
+
+
+class FakeFileReader:
+
+    def __init__(self, missing=()):
+        self.missing = set(missing)
+        self.read = []
+
+    async def execute(
+        self,
+        owner,
+        name,
+        file_path,
+        branch,
+    ):
+        self.read.append(file_path)
+
+        if file_path in self.missing:
+            raise ToolError("HTTP 404: Not Found")
+
+        if file_path in SOURCES:
+            return SOURCES[file_path]
+
+        raise ToolError("HTTP 404: Not Found")
+
+
+class FakeLLMTool:
+
+    def __init__(
+        self,
+        content=VALID_REPLY,
+        available=True,
+        reason=None,
+    ):
+        self.content = content
+        self.available = available
+        self.reason = reason
+        self.calls = []
+
+    async def execute(self, messages, **kwargs):
+        self.calls.append(messages)
+
+        if not self.available:
+            return {
+                "available": False,
+                "reason": self.reason,
+            }
+
+        return {
+            "available": True,
+            "content": self.content,
+        }
+
+
+class FakeExporter:
+
+    def __init__(self):
+        self.calls = []
+
+    async def execute(
+        self,
+        *,
+        title,
+        content,
+        filename,
+    ):
+        self.calls.append(
+            {
+                "title": title,
+                "content": content,
+                "filename": filename,
+            }
+        )
+
+        return {
+            "path": f"reports/{filename}",
+            "format": "markdown",
+        }
+
+
+class FakeContext:
+
+    def __init__(
+        self,
+        reader=None,
+        llm=None,
+        exporter=None,
+    ):
+        self.tools = {
+            "github_repository": FakeRepositoryTool(),
+            "file_reader": reader or FakeFileReader(),
+        }
+
+        if llm is not None:
+            self.tools["llm_chat"] = llm
+
+        if exporter is not None:
+            self.tools["report_export"] = exporter
+
+
+def run_deep_dive(
+    module="workflow",
+    reader=None,
+    llm=None,
+    exporter=None,
+    **extra,
+):
+    import asyncio
+
+    input_data = {
+        "module": module,
+        "owner": "demo",
+        "repo": "demo",
+        "run_id": "run-1",
+    }
+
+    input_data.update(extra)
+
+    return asyncio.run(
+        ModuleDeepDiveSkill().execute(
+            FakeContext(reader, llm, exporter),
+            input_data,
+        )
+    )
+
+
+# ----------------------------------------------------------------
+# 入参校验
+# ----------------------------------------------------------------
+
+
+def test_rejects_unknown_module():
+    """不在六个模块内的名字必须直接拒绝。"""
+
+    with pytest.raises(ValueError) as error:
+
+        run_deep_dive(module="database")
+
+    assert "Unsupported module" in str(
+        error.value
+    )
+
+    # 提示里要列出合法值，便于调用方纠正。
+    assert "workflow" in str(error.value)
+
+
+def test_requires_owner_and_repo():
+
+    import asyncio
+
+    with pytest.raises(ValueError):
+
+        asyncio.run(
+            ModuleDeepDiveSkill().execute(
+                FakeContext(),
+                {"module": "workflow"},
+            )
+        )
+
+
+def test_module_name_is_case_insensitive():
+    """模块名大小写不敏感。"""
+
+    result = run_deep_dive(
+        module="WorkFlow",
+        llm=FakeLLMTool(),
+    )
+
+    assert result["module"] == "workflow"
+
+
+# ----------------------------------------------------------------
+# 取材
+# ----------------------------------------------------------------
+
+
+def test_reads_module_relevant_files_first():
+    """
+    该模块相关的文件必须优先读。
+
+    深挖的价值在于「比默认报告看得多」，
+    因此配额要给到 40，并且优先命中该模块的文件。
+    """
+
+    result = run_deep_dive(
+        module="workflow",
+        llm=FakeLLMTool(),
+    )
+
+    assert (
+        "src/app/services/workflow_service.py"
+        in result["files_read"]
+    )
+
+    # 配额远大于默认报告的 20。
+    assert ModuleDeepDiveSkill.MAX_FILES == 40
+
+
+def test_unreadable_files_are_reported():
+    """读取失败的文件必须如实带出来。"""
+
+    reader = FakeFileReader(
+        missing=["src/app/rag/retriever.py"]
+    )
+
+    result = run_deep_dive(
+        module="workflow",
+        reader=reader,
+        llm=FakeLLMTool(),
+    )
+
+    assert (
+        "## 本次采集范围" in result["content"]
+    )
+
+    assert "读取失败" in result["content"]
+
+    assert (
+        "src/app/rag/retriever.py"
+        in result["content"]
+    )
+
+
+def test_fallback_skips_tests_and_migrations():
+    """
+    兜底补充文件时不能把配额喂给测试与迁移。
+
+    真实案例：workflow 模块只有 workflow_service.py
+    一个文件命中，其余 39 个名额全被 tests/ 和
+    alembic/ 吃掉 —— 每个文件都是一次 GitHub 请求。
+    """
+
+    result = run_deep_dive(
+        module="workflow",
+        llm=FakeLLMTool(),
+    )
+
+    assert not any(
+        "tests/" in path or "alembic/" in path
+        for path in result["files_read"]
+    )
+
+    # 命中目标模块的文件仍要读到。
+    assert (
+        "src/app/services/workflow_service.py"
+        in result["files_read"]
+    )
+
+
+def test_fallback_is_capped():
+    """
+    兜底补充文件必须封顶。
+
+    实测：workflow 只有 1 个文件命中，
+    剩余 39 个名额全用无关文件填满，
+    深挖一次要 69 秒、40 次 GitHub 请求，
+    而其中 39 个文件对 workflow 维度毫无贡献。
+    """
+
+    tree = (
+        "src/app/services/workflow_service.py",
+        *[
+            f"src/app/core/mod{i}.py"
+            for i in range(60)
+        ],
+    )
+
+
+    class Repo:
+
+        async def get_tree(self, **kwargs):
+            return [
+                {"path": path, "type": "blob"}
+                for path in tree
+            ]
+
+    class Context:
+        tools = {
+            "github_repository": Repo(),
+            "file_reader": FakeFileReader(),
+        }
+
+    skill = ModuleDeepDiveSkill()
+
+    picked = skill._select_files(
+        [
+            {"path": path, "type": "blob"}
+            for path in tree
+        ],
+        "workflow",
+    )
+
+    assert (
+        "src/app/services/workflow_service.py"
+        in picked
+    )
+
+    assert len(picked) == (
+        1 + ModuleDeepDiveSkill.MAX_FALLBACK_FILES
+    )
+
+    assert len(picked) <= (
+        ModuleDeepDiveSkill.MAX_FILES
+    )
+
+
+def test_rag_module_selects_rag_files():
+    """RAG 深挖要优先挑到 rag 相关文件。"""
+
+    result = run_deep_dive(
+        module="rag",
+        llm=FakeLLMTool(),
+    )
+
+    assert (
+        "src/app/rag/retriever.py"
+        in result["files_read"]
+    )
+
+
+# ----------------------------------------------------------------
+# 实现明细
+# ----------------------------------------------------------------
+
+
+def test_details_include_source_snippet():
+    """
+    深挖与默认报告最大的差别：
+    明细要带源码片段，而不只是签名。
+    """
+
+    result = run_deep_dive(
+        module="workflow",
+        llm=FakeLLMTool(),
+    )
+
+    content = result["content"]
+
+    assert "## 实现明细" in content
+
+    # 节点解析到真实定义。
+    assert "`duplicate_check`" in content
+
+    assert (
+        "def _node_duplicate_check(self, state) -> dict"
+        in content
+    )
+
+    assert "- 调用：`find_similar`" in content
+
+    assert "`0.85`" in content
+
+    # 源码片段真的被展开了。
+    assert (
+        "found = find_similar(state['vendor'])"
+        in content
+    )
+
+
+def test_details_cap_is_larger_than_default():
+    """深挖的明细上限必须大于默认报告的 6。"""
+
+    assert ModuleDeepDiveSkill.MAX_DETAILS > 6
+
+
+# ----------------------------------------------------------------
+# 降级
+# ----------------------------------------------------------------
+
+
+def test_degrades_without_llm():
+    """
+    LLM 不可用时不能抛异常，
+    实现明细仍要完整产出。
+    """
+
+    result = run_deep_dive(
+        llm=FakeLLMTool(
+            available=False,
+            reason="未配置 LLM_API_KEY。",
+        ),
+    )
+
+    assert (
+        result["analysis"]["available"] is False
+    )
+
+    content = result["content"]
+
+    assert "本模块的结论分析不可用" in content
+
+    assert "未配置 LLM_API_KEY。" in content
+
+    # 关键：确定性部分不受影响。
+    assert "## 实现明细" in content
+
+    assert (
+        "def _node_duplicate_check(self, state) -> dict"
+        in content
+    )
+
+
+def test_degrades_without_llm_tool():
+    """连 llm_chat 工具都没有时同样降级。"""
+
+    result = run_deep_dive()
+
+    assert (
+        result["analysis"]["available"] is False
+    )
+
+    assert "## 实现明细" in result["content"]
+
+
+def test_degrades_on_invalid_json():
+
+    result = run_deep_dive(
+        llm=FakeLLMTool(
+            content="这不是 JSON"
+        ),
+    )
+
+    assert (
+        result["analysis"]["available"] is False
+    )
+
+    assert "JSON" in result["analysis"]["reason"]
+
+
+def test_parses_fenced_json():
+
+    result = run_deep_dive(
+        llm=FakeLLMTool(
+            content=(
+                "好的：\n```json\n"
+                f"{VALID_REPLY}\n```"
+            )
+        ),
+    )
+
+    assert (
+        result["analysis"]["available"] is True
+    )
+
+    assert (
+        result["analysis"]["sections"][
+            "responsibility"
+        ][0]
+        == "负责把录入流程编排成状态图。"
+    )
+
+
+# ----------------------------------------------------------------
+# 渲染与导出
+# ----------------------------------------------------------------
+
+
+def test_renders_all_analysis_sections():
+
+    content = run_deep_dive(
+        llm=FakeLLMTool()
+    )["content"]
+
+    for label in (
+        "职责",
+        "关键实现",
+        "涉及的数据结构",
+        "调用流程",
+        "边界与限制",
+        "风险与可疑之处",
+        "需要人工确认",
+    ):
+
+        assert f"### {label}" in content
+
+
+def test_exports_to_module_specific_filename():
+    """导出文件名要能区分 run 与模块。"""
+
+    exporter = FakeExporter()
+
+    result = run_deep_dive(
+        llm=FakeLLMTool(),
+        exporter=exporter,
+    )
+
+    assert exporter.calls[0]["filename"] == (
+        "run-1_workflow_deep_dive.md"
+    )
+
+    assert result["report"]["format"] == (
+        "markdown"
+    )
+
+
+def test_filename_falls_back_to_repo_without_run_id():
+
+    import asyncio
+
+    exporter = FakeExporter()
+
+    asyncio.run(
+        ModuleDeepDiveSkill().execute(
+            FakeContext(exporter=exporter),
+            {
+                "module": "tools",
+                "owner": "demo",
+                "repo": "demo",
+            },
+        )
+    )
+
+    assert exporter.calls[0]["filename"] == (
+        "demo_tools_deep_dive.md"
+    )
+
+
+def test_prompt_forbids_speculation():
+    """深挖同样受「只归纳不推测」约束。"""
+
+    llm = FakeLLMTool()
+
+    run_deep_dive(llm=llm)
+
+    system = llm.calls[0][0]["content"]
+
+    user = llm.calls[0][1]["content"]
+
+    assert "只能使用" in system
+
+    assert "数据不足" in system
+
+    # declared_by 的语义必须交代清楚。
+    assert "readme" in system
+
+    assert "<facts>" in user
+````
 
 ### 📄 `tests/test_mysql_query_tool.py`
 
@@ -15776,7 +26697,7 @@ async def test_non_retryable_error():
 
 **层级**：测试层 · **职责**：Phase 12：单项目完整业务闭环测试。
 
-```python
+````python
 """Phase 12：单项目完整业务闭环测试。"""
 
 import pytest
@@ -15838,6 +26759,46 @@ class FakeReportSkill:
                     "# Project Intelligence Report"
                 ),
             }
+        }
+
+
+class FakeSynthesisSkill:
+    """
+    报告综合分析 Skill 的假实现。
+
+    记录收到的 input_data，
+    便于断言 synthesis 节点确实
+    把各 Agent 的产出转发给了它。
+    """
+
+    name = "report_synthesis"
+
+    def __init__(self):
+        self.calls = []
+
+    async def execute(
+        self,
+        context,
+        input_data,
+    ):
+        self.calls.append(
+            dict(input_data)
+        )
+
+        return {
+            "available": True,
+            "reason": None,
+            "summary": {
+                "one_line": "这是一个演示项目。",
+                "core_design": ["显式状态机"],
+                "technology_choices": [],
+                "highlights": [],
+                "risks": [],
+                "use_cases": [],
+            },
+            "dimensions": {
+                "agents": "单 Agent 结构。",
+            },
         }
 
 
@@ -15935,6 +26896,8 @@ def build_context():
         skills={
             "report_generation":
                 FakeReportSkill(),
+            "report_synthesis":
+                FakeSynthesisSkill(),
         },
         config={},
     )
@@ -16041,7 +27004,7 @@ async def test_phase12_full_business_loop():
     )
 
     # -------------------------------------------------
-    # 3. Human Review Approve -> Finalizer
+    # 3. Human Review Approve -> Synthesis -> Finalizer
     # -------------------------------------------------
 
     result.approve()
@@ -16076,6 +27039,41 @@ async def test_phase12_full_business_loop():
             "final_report"
         ]["report"]["format"]
         == "markdown"
+    )
+
+    # Synthesis 节点必须真的跑过，
+    # 且拿到了前面各 Agent 的产出
+    # （而不是只看自己那一次调用的入参）。
+    synthesis = result.data["synthesis"]
+
+    assert synthesis["available"] is True
+
+    assert (
+        synthesis["summary"]["one_line"]
+        == "这是一个演示项目。"
+    )
+
+    synthesis_skill = context.skills[
+        "report_synthesis"
+    ]
+
+    assert len(synthesis_skill.calls) == 1
+
+    # 入参必须已经带上前面各 Agent 拍平后的产出，
+    # 而不是只有启动时那几个字段。
+    assert (
+        synthesis_skill.calls[0]["repository"]
+        == {"name": "demo"}
+    )
+
+    assert (
+        synthesis_skill.calls[0]["readme"]
+        == "# Demo"
+    )
+
+    assert (
+        "architecture_analysis_agent"
+        in synthesis_skill.calls[0]
     )
 
 
@@ -16133,7 +27131,574 @@ async def test_phase12_checkpoint_survives_design_gate():
         ]["plan_version"]
         == 1
     )
-```
+
+# ==========================================================
+# Phase 12 契约补充测试
+#
+# 覆盖文档 15.2 / 15.3 中此前没有实现的部分：
+#   目录结构、Agent/Workflow/Skill/Tool 自述结构、
+#   以及报告不得再使用硬编码内容。
+# ==========================================================
+
+
+class FakeTreeRepositoryTool:
+    """带 get_tree 的假 GitHub Repository Tool。"""
+
+    async def execute(self, *, owner, name):
+        return {"owner": owner, "name": name}
+
+    async def get_tree(self, *, owner, name, branch):
+        return [
+            {"type": "blob", "path": "README.md"},
+            {"type": "blob", "path": "requirements.txt"},
+            {"type": "blob", "path": "app/main.py"},
+            {"type": "blob", "path": "app/agent/base.py"},
+            {"type": "blob", "path": "tests/test_app.py"},
+            {"type": "tree", "path": "app"},
+        ]
+
+
+class FakeEmptyCodeSearchTool:
+    """模拟 Code Search 返回 0 条结果的真实情况。"""
+
+    async def execute(self, *, keyword, repo):
+        return []
+
+
+class FakeModuleReaderTool:
+    async def execute(self, *, owner, name, file_path, branch):
+        return "class Demo:\n    pass\n"
+
+
+def build_architecture_context():
+    return WorkflowContext(
+        agents={},
+        tools={
+            "github_repository": FakeTreeRepositoryTool(),
+            "github_code_search": FakeEmptyCodeSearchTool(),
+            "file_reader": FakeModuleReaderTool(),
+        },
+        skills={},
+        config={},
+    )
+
+
+@pytest.mark.asyncio
+async def test_directory_structure_comes_from_git_tree():
+    """
+    Code Search 返回 0 条结果时，
+    目录结构必须来自 Git Trees API，
+    而不是留空。
+    """
+
+    from app.skills.architecture_analysis_skill import (
+        ArchitectureAnalysisSkill,
+    )
+
+    result = await ArchitectureAnalysisSkill().execute(
+        build_architecture_context(),
+        {
+            "owner": "demo",
+            "repo": "demo",
+        },
+    )
+
+    structure = result["directory_structure"]
+
+    assert structure["available"] is True
+
+    assert structure["total_files"] == 5
+
+    assert structure["by_extension"][".py"] == 3
+
+    assert (
+        structure["source"]
+        == "github git trees api"
+    )
+
+    # files 也必须被文件树补全。
+    assert "app/main.py" in result["files"]
+
+
+@pytest.mark.asyncio
+async def test_module_read_failure_does_not_break_analysis():
+    """
+    单个源码文件读取失败不能中断整个分析。
+
+    旧行为：抛异常 → 整个 Workflow FAILED。
+    """
+
+    from app.core.exceptions import ToolError
+    from app.skills.architecture_analysis_skill import (
+        ArchitectureAnalysisSkill,
+    )
+
+    class FlakyReader:
+        async def execute(self, *, owner, name, file_path, branch):
+            raise ToolError(f"Read failed: {file_path}")
+
+    context = WorkflowContext(
+        agents={},
+        tools={
+            "github_repository": FakeTreeRepositoryTool(),
+            "github_code_search": FakeEmptyCodeSearchTool(),
+            "file_reader": FlakyReader(),
+        },
+        skills={},
+        config={},
+    )
+
+    result = await ArchitectureAnalysisSkill().execute(
+        context,
+        {"owner": "demo", "repo": "demo"},
+    )
+
+    # 目录结构仍然可用。
+    assert (
+        result["directory_structure"]["available"]
+        is True
+    )
+
+    # 失败被逐条记录，而不是抛出。
+    assert result["modules"]
+
+    assert all(
+        module.get("error")
+        for module in result["modules"]
+    )
+
+
+def test_report_contains_documented_sections():
+    """
+    报告必须包含 00 结论摘要与 01-11 章。
+
+    注意：文档 15.3 要求的「关键源码」章已移除 ——
+    它展示的是文件开头固定字符数，
+    而 Python 文件开头必然是 import 块，
+    渲染出来只有一堆 import，
+    对理解项目没有帮助。
+    """
+
+    from app.skills.report_generation_skill import (
+        ReportGenerationSkill,
+    )
+
+    content = ReportGenerationSkill._build_report({})
+
+    for title in (
+        "## 00 结论摘要",
+        "## 01 项目概览",
+        "## 02 技术栈",
+        "## 03 目录结构",
+        "## 04 Agent 架构",
+        "## 05 Workflow",
+        "## 06 Skill",
+        "## 07 Tool",
+        "## 08 RAG",
+        "## 09 Memory",
+        "## 10 数据库",
+        "## 11 Evidence",
+    ):
+        assert title in content
+
+    # 关键源码章必须确实不在了。
+    assert "关键源码" not in content
+
+
+def test_report_has_no_hardcoded_content():
+    """
+    报告不得再出现硬编码内容。
+
+    旧版本把 AIPI 自己的 Tool 列表和
+    {"context_enabled": true} 写进报告，
+    让报告看起来完整但内容是假的。
+    """
+
+    from app.skills.report_generation_skill import (
+        ReportGenerationSkill,
+    )
+
+    content = ReportGenerationSkill._build_report({})
+
+    assert "GitHub Repository Tool" not in content
+
+    assert "context_enabled" not in content
+
+    assert "memory_enabled" not in content
+
+    # 取不到数据时必须明确说明。
+    assert "真实数据不存在" in content
+
+
+def test_report_uses_project_structure():
+    """04/05/06/07/09 必须来自被分析项目的自述结构。"""
+
+    from app.skills.report_generation_skill import (
+        ReportGenerationSkill,
+    )
+
+    data = {
+        "project_structure": {
+            "available": True,
+            "basis": "readme+topics",
+            "dimensions": {
+                "agents": {
+                    "declared": True,
+                    "items": ["Planner", "Critic"],
+                    "topics": ["multi-agent"],
+                    "evidence": [
+                        {
+                            "file_path": "README.md",
+                            "line_start": 92,
+                            "text": "- **Planner** ...",
+                        }
+                    ],
+                },
+                "tools": {
+                    "declared": True,
+                    "items": ["web_search"],
+                    "topics": [],
+                    "evidence": [],
+                },
+                "skills": {
+                    "declared": False,
+                    "items": [],
+                    "topics": [],
+                    "evidence": [],
+                    "reason": "被分析项目未声明 skills。",
+                },
+            },
+        }
+    }
+
+    content = ReportGenerationSkill._build_report(data)
+
+    assert "Planner" in content
+
+    assert "web_search" in content
+
+    # 证据必须带可回溯的行号。
+    assert "README.md" in content
+
+    # 未声明的维度必须给出原因，
+    # 而不是留空或编造内容。
+    assert "被分析项目未声明 skills。" in content
+
+
+def test_report_is_rendered_as_markdown_not_json_dump():
+    """
+    01-12 章必须是可读的 markdown，
+    不能再把中间数据结构直接 dump 成 JSON 代码块。
+    """
+
+    from app.skills.report_generation_skill import (
+        ReportGenerationSkill,
+    )
+
+    data = {
+        "repository": {
+            "full_name": "demo/demo",
+            "language": "Python",
+            "topics": ["agents"],
+            "stargazers_count": 1,
+            "html_url": "https://github.com/demo/demo",
+        },
+        "technology_stack": {
+            "frameworks": ["FastAPI"],
+            "source_files": ["pyproject.toml"],
+        },
+        "directory_structure": {
+            "available": True,
+            "total_files": 10,
+            "by_extension": {".py": 8},
+            "top_level_dirs": [
+                {"name": "src", "file_count": 8}
+            ],
+            "key_files": ["README.md"],
+        },
+        "project_structure": {
+            "available": True,
+            "basis": "readme+topics",
+            "dimensions": {
+                "agents": {
+                    "declared": True,
+                    "items": ["Planner"],
+                    "topics": [],
+                    "evidence": [],
+                },
+            },
+        },
+        "architecture_analysis_agent": {
+            "modules": [
+                {
+                    "file_path": "src/main.py",
+                    "content": "print('demo')\n",
+                }
+            ]
+        },
+        "evidence": [
+            {
+                "file_path": "README.md",
+                "line_start": 1,
+                "line_end": 5,
+                "content": "# Demo\n",
+            }
+        ],
+    }
+
+    content = ReportGenerationSkill._build_report(
+        data
+    )
+
+    # 只看 01 章之后：00 章在综合分析不可用时
+    # 会用一个 ```text 小块写「不可用 + 原因」，
+    # 那是刻意的提示块，不是数据 dump。
+    body = content[
+        content.index("## 01 项目概览"):
+    ]
+
+    assert "```text" not in body
+
+    # 表格渲染出来了。
+    assert "| 字段 | 值 |" in content
+
+    assert "| 类别 | 检测结果 |" in content
+
+    # 证据带行号。
+    assert "`README.md:1-5`" in content
+
+
+def test_report_rag_chapter_renders_declared_dimension():
+    """
+    08 RAG 在被分析项目声明了 rag 时，
+    必须渲染自述条目与向量库检测结果。
+
+    回归点：_structure_dimension 成功时
+    返回的 dict 不带 "available" 键，
+    旧代码用 declared.get("available") 判断，
+    导致 RAG 章永远走「不可用」分支。
+    """
+
+    from app.skills.report_generation_skill import (
+        ReportGenerationSkill,
+    )
+
+    data = {
+        "technology_stack": {
+            "embedding": ["Qdrant"],
+        },
+        "project_structure": {
+            "available": True,
+            "basis": "readme+topics",
+            "dimensions": {
+                "rag": {
+                    "declared": True,
+                    "items": ["semantic retrieval"],
+                    "topics": [],
+                    "evidence": [
+                        {
+                            "file_path": "README.md",
+                            "line_start": 40,
+                            "text": "- semantic retrieval",
+                        }
+                    ],
+                },
+            },
+        },
+    }
+
+    content = ReportGenerationSkill._build_report(
+        data
+    )
+
+    rag = content[
+        content.index("## 08 RAG"):
+        content.index("## 09 Memory")
+    ]
+
+    assert "semantic retrieval" in rag
+
+    assert "Qdrant" in rag
+
+    assert "README.md:40" in rag
+
+
+def test_report_renders_synthesis_summary_and_judgments():
+    """
+    综合分析可用时，
+    报告必须渲染 00 章与各章末尾的综合判断。
+    """
+
+    from app.skills.report_generation_skill import (
+        ReportGenerationSkill,
+    )
+
+    data = {
+        "project_structure": {
+            "available": True,
+            "basis": "readme+topics",
+            "dimensions": {
+                "agents": {
+                    "declared": True,
+                    "items": ["Planner"],
+                    "topics": [],
+                    "evidence": [],
+                },
+            },
+        },
+        "synthesis": {
+            "available": True,
+            "reason": None,
+            "summary": {
+                "one_line": "这是一个发票审批 Agent。",
+                "core_design": ["draft-only"],
+                "technology_choices": [],
+                "highlights": [],
+                "risks": ["RAG 维度数据不足"],
+                "use_cases": [],
+            },
+            "dimensions": {
+                "agents": "单 Agent + 显式状态机。",
+            },
+        },
+    }
+
+    content = ReportGenerationSkill._build_report(data)
+
+    assert "## 00 结论摘要" in content
+
+    assert "这是一个发票审批 Agent。" in content
+
+    assert "### 风险与缺口" in content
+
+    assert "RAG 维度数据不足" in content
+
+    # 04 章末尾必须带上判断。
+    assert "**综合判断**：单 Agent + 显式状态机。" in content
+
+    # 没有判断的维度不应凭空多出一个空段落。
+    assert content.count("**综合判断**") == 1
+
+
+def test_report_states_when_synthesis_unavailable():
+    """
+    综合分析不可用时，
+    00 章必须说明原因，
+    且后续原始数据章节必须完整保留。
+    """
+
+    from app.skills.report_generation_skill import (
+        ReportGenerationSkill,
+    )
+
+    content = ReportGenerationSkill._build_report(
+        {
+            "synthesis": {
+                "available": False,
+                "reason": "未配置 LLM_API_KEY。",
+            }
+        }
+    )
+
+    assert "## 00 结论摘要" in content
+
+    assert "综合分析不可用。" in content
+
+    assert "未配置 LLM_API_KEY。" in content
+
+    # 降级不能牵连原始数据章节。
+    assert "## 01 项目概览" in content
+
+    assert "## 11 Evidence" in content
+
+    # 不可用时不应出现任何综合判断段落。
+    assert "**综合判断**" not in content
+
+
+def test_plan_executor_does_not_duplicate_agent_results():
+    """
+    Agent 结果不能被重复存储。
+
+    回归点：同名结果曾被写三遍
+    （state.data[agent_name] + 拍平 + outputs），
+    architecture 57KB、evidence 29KB，
+    把 state_data 推到 263KB，
+    越过 asyncmy 单字段 256KB 的缓冲区分片上限，
+    报告接口读 checkpoint 直接
+    Lost connection to MySQL server。
+    """
+
+    from app.workflow.nodes.plan_executor_node import (
+        PlanExecutorNode,
+    )
+
+    big = {
+        "project_structure": {"dimensions": {}},
+        "modules": [{"file_path": "a.py"}],
+        "files": ["a.py"],
+        "directory_structure": {"available": True},
+    }
+
+    # architecture：只留读取方需要的子字段，
+    # 最大的一块 project_structure 被剔掉。
+    slim = PlanExecutorNode._slim_agent_result(
+        "architecture_analysis_agent",
+        big,
+    )
+
+    assert set(slim) == {
+        "files",
+        "modules",
+        "directory_structure",
+    }
+
+    assert "project_structure" not in slim
+
+    # evidence：没有任何读取方，整键不写。
+    assert (
+        PlanExecutorNode._slim_agent_result(
+            "evidence_analysis_agent",
+            {"evidence": [{"content": "x" * 1000}]},
+        )
+        is None
+    )
+
+    # 其余 Agent 原样保留 —— 删了会破坏断言它们的测试。
+    small = {"passed": True, "errors": []}
+
+    assert (
+        PlanExecutorNode._slim_agent_result(
+            "critic_agent",
+            small,
+        )
+        == small
+    )
+
+
+def test_outputs_stores_marker_not_payload():
+    """outputs 只留运行痕迹，不复制正文。"""
+
+    from app.workflow.nodes.plan_executor_node import (
+        PlanExecutorNode,
+    )
+
+    marker = PlanExecutorNode._output_marker(
+        "architecture_analysis_agent",
+        {
+            "modules": [{"content": "x" * 5000}],
+            "files": ["a.py"],
+        },
+    )
+
+    assert marker["agent"] == (
+        "architecture_analysis_agent"
+    )
+
+    assert marker["fields"] == ["files", "modules"]
+
+    # 正文不在里面。
+    assert "x" * 100 not in str(marker)
+````
 
 ### 📄 `tests/test_pre_phase12_integration.py`
 
@@ -16699,6 +28264,67 @@ async def test_critic_accepts_agent_output_keys():
         config={},
     )
 
+    # Phase 12: Critic 现在除了 key 存在性，
+    # 还校验字段是否真的带有数据，
+    # 因此这里提供真实形状的最小内容。
+    result = await critic.execute(
+        context,
+        {
+            "repository_analysis_agent": {
+                "repository": {
+                    "name": "test-project"
+                }
+            },
+            "architecture_analysis_agent": {
+                "files": ["app/main.py"],
+                "modules": [
+                    {
+                        "file_path": "app/main.py",
+                        "content": "class DemoApp: pass",
+                    }
+                ],
+                "directory_structure": {
+                    "available": True
+                },
+            },
+            "technology_analysis_agent": {
+                "technology_stack": {
+                    "frameworks": ["FastAPI"]
+                }
+            },
+            "project_structure": {
+                "available": True,
+                "basis": "readme+topics",
+                "dimensions": {},
+            },
+        },
+    )
+
+    assert result["passed"] is True
+    assert result["errors"] == []
+
+
+@pytest.mark.asyncio
+async def test_critic_rejects_empty_analysis():
+    """
+    Phase 12: 只有 key、没有数据的分析结果不能被判为通过。
+
+    旧实现只检查 key 是否存在，
+    因此 {"files": [], "modules": []} 也会 passed=True，
+    让「跑过了但什么都没产出」看起来是成功的。
+    """
+
+    critic = CriticAgent(
+        FakeSkillRegistry()
+    )
+
+    context = WorkflowContext(
+        agents={},
+        tools={},
+        skills={},
+        config={},
+    )
+
     result = await critic.execute(
         context,
         {
@@ -16706,16 +28332,33 @@ async def test_critic_accepts_agent_output_keys():
                 "repository": {}
             },
             "architecture_analysis_agent": {
-                "architecture": {}
+                "files": [],
+                "modules": [],
             },
             "technology_analysis_agent": {
-                "technology": {}
+                "technology_stack": {}
             },
         },
     )
 
-    assert result["passed"] is True
-    assert result["errors"] == []
+    assert result["passed"] is False
+
+    assert (
+        "architecture is empty" in result["errors"]
+    )
+
+    assert (
+        "repository is empty" in result["errors"]
+    )
+
+    assert (
+        "technology is empty" in result["errors"]
+    )
+
+    assert (
+        "project_structure missing"
+        in result["errors"]
+    )
 ```
 
 ### 📄 `tests/test_pre_phase12_structure.py`
@@ -17077,6 +28720,622 @@ async def test_report_export():
     )
 ```
 
+### 📄 `tests/test_report_synthesis_skill.py`
+
+**层级**：测试层 · **职责**：ReportSynthesisSkill / LLMChatTool / SynthesisNode 测试。
+
+````python
+"""
+ReportSynthesisSkill / LLMChatTool / SynthesisNode 测试。
+
+覆盖三条关键路径：
+
+1. 正常路径：LLM 返回合法 JSON → 规整成 summary + dimensions
+2. 降级路径：无 Key / 调用异常 / 非法 JSON → available=False 且不抛异常
+3. 约束路径：prompt 中「只归纳不推测」的规则必须存在，
+   且事实里缺失的维度必须以 available=False 呈现给 LLM
+
+全程不发起任何真实网络请求：
+LLM 通过 llm_chat 工具注入假实现。
+"""
+
+import json
+
+import pytest
+
+from app.skills.report_synthesis_skill import (
+    ReportSynthesisSkill,
+)
+from app.tools.llm_chat_tool import LLMChatTool
+from app.workflow.nodes.synthesis_node import (
+    SynthesisNode,
+)
+from app.workflow.state import WorkflowState
+
+VALID_REPLY = json.dumps(
+    {
+        "summary": {
+            "one_line": "这是一个 LangGraph 发票审批 Agent。",
+            "core_design": [
+                "draft-only + human-in-the-loop",
+                "单 Agent 状态机",
+            ],
+            "technology_choices": ["FastAPI + LangGraph"],
+            "highlights": ["有审计轨迹"],
+            "risks": ["RAG 维度数据不足"],
+            "use_cases": ["参考其 human-in-the-loop 设计"],
+        },
+        "dimensions": {
+            "agents": "单 Agent + 显式状态机。",
+            "workflow": "LangGraph StateGraph。",
+            "skills": "数据不足：README 未声明 skills。",
+            "tools": "4 个校验工具。",
+            "rag": "数据不足：README 未声明 rag。",
+            "memory": "SQLite checkpoint 持久化。",
+        },
+    },
+    ensure_ascii=False,
+)
+
+
+class FakeLLMTool:
+    """假的 llm_chat 工具。"""
+
+    def __init__(
+        self,
+        content=VALID_REPLY,
+        available=True,
+        reason=None,
+    ):
+        self.content = content
+        self.available = available
+        self.reason = reason
+        self.calls = []
+
+    async def execute(
+        self,
+        messages,
+        **kwargs,
+    ):
+        self.calls.append(messages)
+
+        if not self.available:
+            return {
+                "available": False,
+                "reason": self.reason,
+            }
+
+        return {
+            "available": True,
+            "content": self.content,
+        }
+
+
+class FakeContext:
+
+    def __init__(self, tool=None):
+        self.tools = {}
+
+        if tool is not None:
+            self.tools["llm_chat"] = tool
+
+
+def build_data():
+    """一份接近真实结构的 state.data。"""
+
+    return {
+        "question": "分析这个项目",
+        "repository": {
+            "name": "enterprise-finance-agent",
+            "full_name": "demo/enterprise-finance-agent",
+            "description": "Enterprise finance workflow agent.",
+            "language": "Python",
+            "topics": ["langgraph"],
+            "stargazers_count": 1,
+            "forks_count": 1,
+            "open_issues_count": 0,
+            "license": {"name": "MIT License"},
+            "size": 64,
+            "created_at": "2026-07-22T02:17:59Z",
+            "pushed_at": "2026-07-22T02:31:46Z",
+        },
+        "readme": "# Demo\n- supplier lookup\n",
+        "technology_stack": {
+            "llm": ["OpenAI"],
+            "database": ["SQLAlchemy"],
+            "frameworks": ["FastAPI", "LangGraph"],
+            "embedding": [],
+            "deployment": [],
+        },
+        "directory_structure": {
+            "available": True,
+            "total_files": 107,
+            "by_extension": {".py": 88},
+        },
+        "project_structure": {
+            "available": True,
+            "basis": "readme+topics",
+            "dimensions": {
+                "agents": {
+                    "declared": True,
+                    "items": ["Agent may extract fields"],
+                    "topics": [],
+                    "evidence": [
+                        {
+                            "file_path": "README.md",
+                            "line_start": 10,
+                            "text": "- agent state model",
+                        }
+                    ],
+                },
+                "rag": {
+                    "declared": False,
+                    "reason": "README 中没有 rag 相关声明。",
+                    "items": [],
+                    "topics": [],
+                    "evidence": [],
+                },
+            },
+        },
+        "modules": [
+            {
+                "file_path": "docker-compose.yml",
+                "content": "services:\n  api:\n",
+            }
+        ],
+        "evidence": [
+            {
+                "file_path": "README.md",
+                "line_start": 1,
+                "line_end": 30,
+                "content": "x" * 400,
+            }
+        ],
+    }
+
+
+# ----------------------------------------------------------------
+# ReportSynthesisSkill
+# ----------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_synthesis_returns_normalized_result():
+
+    tool = FakeLLMTool()
+
+    skill = ReportSynthesisSkill()
+
+    result = await skill.execute(
+        FakeContext(tool),
+        build_data(),
+    )
+
+    assert result["available"] is True
+
+    assert result["reason"] is None
+
+    assert (
+        result["summary"]["one_line"]
+        == "这是一个 LangGraph 发票审批 Agent。"
+    )
+
+    assert result["summary"]["core_design"] == [
+        "draft-only + human-in-the-loop",
+        "单 Agent 状态机",
+    ]
+
+    # dimensions 只保留已知维度。
+    assert set(result["dimensions"]) == {
+        "agents",
+        "workflow",
+        "skills",
+        "tools",
+        "rag",
+        "memory",
+    }
+
+    assert (
+        result["dimensions"]["rag"]
+        == "数据不足：README 未声明 rag。"
+    )
+
+
+@pytest.mark.asyncio
+async def test_synthesis_unavailable_when_tool_missing():
+    """没有注册 llm_chat 工具时必须降级而不是抛异常。"""
+
+    skill = ReportSynthesisSkill()
+
+    result = await skill.execute(
+        FakeContext(),
+        build_data(),
+    )
+
+    assert result["available"] is False
+
+    assert "llm_chat" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_synthesis_unavailable_when_llm_unavailable():
+    """LLM 侧失败的原因必须原样透传，便于排查。"""
+
+    tool = FakeLLMTool(
+        available=False,
+        reason="未配置 LLM_API_KEY，无法调用 LLM。",
+    )
+
+    skill = ReportSynthesisSkill()
+
+    result = await skill.execute(
+        FakeContext(tool),
+        build_data(),
+    )
+
+    assert result["available"] is False
+
+    assert (
+        result["reason"]
+        == "未配置 LLM_API_KEY，无法调用 LLM。"
+    )
+
+
+@pytest.mark.asyncio
+async def test_synthesis_unavailable_on_invalid_json():
+
+    tool = FakeLLMTool(
+        content="这不是 JSON，只是一段解释文字。"
+    )
+
+    skill = ReportSynthesisSkill()
+
+    result = await skill.execute(
+        FakeContext(tool),
+        build_data(),
+    )
+
+    assert result["available"] is False
+
+    assert "JSON" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_synthesis_parses_fenced_json():
+    """LLM 用 markdown 代码块包裹、并在前后加解释文字时仍要能解析。"""
+
+    tool = FakeLLMTool(
+        content=(
+            "好的，以下是结果：\n"
+            "```json\n"
+            f"{VALID_REPLY}\n"
+            "```\n"
+            "希望对你有帮助。"
+        )
+    )
+
+    skill = ReportSynthesisSkill()
+
+    result = await skill.execute(
+        FakeContext(tool),
+        build_data(),
+    )
+
+    assert result["available"] is True
+
+    assert len(result["dimensions"]) == 6
+
+
+@pytest.mark.asyncio
+async def test_synthesis_prompt_forbids_speculation():
+    """
+    prompt 必须带上「只归纳不推测」的约束。
+
+    这是本 Skill 的核心约束，
+    被放宽会让报告重新变成「看起来合理但内容是编的」。
+    """
+
+    tool = FakeLLMTool()
+
+    skill = ReportSynthesisSkill()
+
+    await skill.execute(
+        FakeContext(tool),
+        build_data(),
+    )
+
+    messages = tool.calls[0]
+
+    system = messages[0]["content"]
+
+    user = messages[1]["content"]
+
+    assert messages[0]["role"] == "system"
+
+    assert "只能使用" in system
+
+    assert "数据不足" in system
+
+    assert "禁止使用你自己的外部知识" in system
+
+    # 事实必须以 <facts> 包裹交给模型。
+    assert "<facts>" in user
+
+    assert "</facts>" in user
+
+
+@pytest.mark.asyncio
+async def test_synthesis_facts_expose_missing_dimensions():
+    """
+    事实摘要里缺失的维度必须以 available=False + reason 呈现。
+
+    否则 LLM 会把「没采集到」误读成「项目没有这个能力」，
+    进而写出「该项目未使用 RAG」这种错误结论。
+    """
+
+    tool = FakeLLMTool()
+
+    skill = ReportSynthesisSkill()
+
+    await skill.execute(
+        FakeContext(tool),
+        build_data(),
+    )
+
+    user = tool.calls[0][1]["content"]
+
+    facts = json.loads(
+        user[
+            user.index("<facts>")
+            + len("<facts>"):
+            user.index("</facts>")
+        ]
+    )
+
+    declared = facts["declared_structure"]
+
+    assert declared["agents"]["available"] is True
+
+    assert declared["rag"]["available"] is False
+
+    assert (
+        declared["rag"]["reason"]
+        == "README 中没有 rag 相关声明。"
+    )
+
+    # 没有采集到的维度（本次数据里没有 skills）也必须显式标注。
+    assert declared["skills"]["available"] is False
+
+    # README 是主要事实来源，必须带上。
+    assert facts["readme"]["available"] is True
+
+    # 真实读到的源码也要给到，用于交叉验证 README 自述。
+    assert (
+        facts["source_files"][0]["file_path"]
+        == "docker-compose.yml"
+    )
+
+
+@pytest.mark.asyncio
+async def test_synthesis_survives_broken_data():
+    """state.data 结构异常时不能抛异常。"""
+
+    skill = ReportSynthesisSkill()
+
+    tool = FakeLLMTool()
+
+    result = await skill.execute(
+        FakeContext(tool),
+        {
+            "repository": "not-a-dict",
+            "readme": 123,
+            "project_structure": None,
+            "modules": "not-a-list",
+            "evidence": None,
+        },
+    )
+
+    assert result["available"] is True
+
+
+# ----------------------------------------------------------------
+# LLMChatTool
+# ----------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_llm_chat_tool_without_api_key(monkeypatch):
+    """
+    没有配置 API Key 时必须返回 available=False，
+    而不是抛异常让整个 Workflow 失败。
+    """
+
+    import app.tools.llm_chat_tool as module
+
+    class FakeSettings:
+        LLM_API_KEY = ""
+        LLM_MODEL = "deepseek-chat"
+        LLM_BASE_URL = "https://api.deepseek.com"
+        LLM_TIMEOUT = 60.0
+
+    monkeypatch.setattr(
+        module,
+        "get_settings",
+        lambda: FakeSettings(),
+    )
+
+    tool = LLMChatTool()
+
+    result = await tool.execute(
+        messages=[
+            {"role": "user", "content": "hi"}
+        ]
+    )
+
+    assert result["available"] is False
+
+    assert "LLM_API_KEY" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_llm_chat_tool_wraps_llm_error():
+    """LLM 抛异常时必须转成 available=False 并带上原因。"""
+
+    class ExplodingLLM:
+
+        async def chat(self, messages, **kwargs):
+            raise RuntimeError("connection reset")
+
+    tool = LLMChatTool(llm=ExplodingLLM())
+
+    result = await tool.execute(
+        messages=[
+            {"role": "user", "content": "hi"}
+        ]
+    )
+
+    assert result["available"] is False
+
+    assert "connection reset" in result["reason"]
+
+
+@pytest.mark.asyncio
+async def test_llm_chat_tool_rejects_empty_content():
+    """LLM 返回空内容算失败，不能当成合法回答。"""
+
+    class EmptyLLM:
+
+        async def chat(self, messages, **kwargs):
+            return "   "
+
+    tool = LLMChatTool(llm=EmptyLLM())
+
+    result = await tool.execute(
+        messages=[
+            {"role": "user", "content": "hi"}
+        ]
+    )
+
+    assert result["available"] is False
+
+
+@pytest.mark.asyncio
+async def test_llm_chat_tool_uses_injected_llm():
+    """注入 LLM 时不应读取配置、不应创建网络客户端。"""
+
+    class EchoLLM:
+
+        def __init__(self):
+            self.seen = None
+
+        async def chat(self, messages, **kwargs):
+            self.seen = messages
+            return "ok"
+
+    llm = EchoLLM()
+
+    tool = LLMChatTool(llm=llm)
+
+    result = await tool.execute(
+        messages=[
+            {"role": "user", "content": "hello"}
+        ]
+    )
+
+    assert result == {
+        "available": True,
+        "content": "ok",
+    }
+
+    assert llm.seen[0]["content"] == "hello"
+
+
+# ----------------------------------------------------------------
+# SynthesisNode
+# ----------------------------------------------------------------
+
+
+class FakeSkill:
+
+    def __init__(
+        self,
+        result=None,
+        error=None,
+    ):
+        self.result = result
+        self.error = error
+        self.calls = []
+
+    async def execute(
+        self,
+        context,
+        input_data,
+    ):
+        self.calls.append(input_data)
+
+        if self.error is not None:
+            raise self.error
+
+        return self.result
+
+
+@pytest.mark.asyncio
+async def test_synthesis_node_writes_state_data():
+
+    skill = FakeSkill(
+        result={
+            "available": True,
+            "reason": None,
+            "summary": {"one_line": "结论"},
+            "dimensions": {},
+        }
+    )
+
+    node = SynthesisNode(skill=skill)
+
+    state = WorkflowState(run_id="synthesis-node")
+
+    state.data = {
+        "repository": {"name": "demo"},
+        "_internal": "should be skipped",
+    }
+
+    result = await node.execute(state, FakeContext())
+
+    assert result.data["synthesis"]["available"] is True
+
+    assert len(result.outputs) == 1
+
+    # 下划线开头的内部键不转发。
+    assert "_internal" not in skill.calls[0]
+
+
+@pytest.mark.asyncio
+async def test_synthesis_node_degrades_on_skill_error():
+    """
+    Skill 抛异常时节点必须降级。
+
+    否则综合分析这一章的失败会让
+    整个 Analysis Workflow 变成 FAILED。
+    """
+
+    node = SynthesisNode(
+        skill=FakeSkill(
+            error=RuntimeError("boom")
+        )
+    )
+
+    state = WorkflowState(run_id="synthesis-node-error")
+
+    state.data = {}
+
+    result = await node.execute(state, FakeContext())
+
+    assert result.data["synthesis"]["available"] is False
+
+    assert "boom" in result.data["synthesis"]["reason"]
+````
+
 ### 📄 `tests/test_repository_analysis_workflow.py`
 
 **层级**：测试层 · **职责**：Skill 驱动的 Workflow 集成测试（Mock Tool → RepositoryAnalysisSkill → SkillNode → Transition 串联执行）
@@ -17284,13 +29543,17 @@ async def test_repository_analysis_skill_workflow():
         in result.data
     )
 
+    # Phase 12: RepositoryAnalysisSkill 现在只保留
+    # 真实 GitHub API 里存在的字段。
+    # 旧断言用的 "repo" 并不是 GitHub API 字段，
+    # 因此改用 name。
     assert (
         result.data[
             "repository_analysis"
         ][
             "repository"
         ][
-            "repo"
+            "name"
         ]
         ==
         "test-project"
@@ -17823,6 +30086,31 @@ def test_skill_registry():
             "repository_analysis"
         )
         is not None
+    )
+
+
+
+    # Analysis Workflow 依赖这两个 Skill：
+    # 缺任何一个 build_analysis_workflow 都会直接报错。
+    assert (
+        "report_generation"
+        in registry.skills
+    )
+
+
+
+    assert (
+        "report_synthesis"
+        in registry.skills
+    )
+
+
+
+    # 单模块深挖：默认报告只看要点时，
+    # 用户点名某个模块靠这个 Skill 展开细节。
+    assert (
+        "module_deep_dive"
+        in registry.skills
     )
 ```
 
@@ -22111,4 +34399,4 @@ class RunMemory:
 
 ---
 
-*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **163 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*
+*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **169 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*

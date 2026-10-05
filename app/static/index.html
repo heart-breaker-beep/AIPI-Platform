@@ -1,1265 +1,281 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="light">
 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AIPI · 项目智能分析</title>
-  <style>
-    :root {
-      --line: #e3e6ea;
-      --muted: #6b7280;
-      --accent: #2563eb;
-      --bg: #f7f8fa;
-      --amber: #d97706;
-    }
+  <title>AIPI · GitHub 项目智能分析</title>
+  <meta name="description" content="AI Agent GitHub Project Intelligence Platform">
 
-    * { box-sizing: border-box; }
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%233b82f6'/><path d='M9 22V10h4l6 8v-8h4v12h-4l-6-8v8z' fill='white'/></svg>">
 
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: #111827;
-      font: 15px/1.7 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-    }
+  <!-- 主题必须在首屏绘制前定好，否则会闪一下白底。 -->
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("aipi-theme");
+        var theme = saved || (
+          window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark" : "light"
+        );
+        document.documentElement.dataset.theme = theme;
+      } catch (e) { /* 隐私模式下 localStorage 会抛错，忽略 */ }
+    })();
+  </script>
 
-    /* ---------- 布局 ---------- */
-
-    header {
-      background: #fff;
-      border-bottom: 1px solid var(--line);
-      padding: 14px 24px;
-      font-weight: 600;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-
-    .wrap {
-      display: grid;
-      grid-template-columns: 300px minmax(0, 1fr);
-      gap: 20px;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 20px 24px;
-      align-items: start;
-    }
-
-    @media (max-width: 900px) {
-      .wrap { grid-template-columns: 1fr; }
-    }
-
-    aside { position: sticky; top: 74px; }
-
-    .card {
-      background: #fff;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      padding: 18px;
-      margin-bottom: 16px;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-
-    input, textarea {
-      width: 100%;
-      padding: 9px 11px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      font: inherit;
-      margin-bottom: 12px;
-      resize: vertical;
-    }
-
-    button {
-      padding: 9px 16px;
-      border: 0;
-      border-radius: 6px;
-      background: var(--accent);
-      color: #fff;
-      font: inherit;
-      cursor: pointer;
-    }
-
-    button.ghost {
-      background: #fff;
-      color: #111827;
-      border: 1px solid var(--line);
-    }
-
-    button:disabled { opacity: .5; cursor: not-allowed; }
-
-    .muted { color: var(--muted); font-size: 13px; }
-    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .hidden { display: none !important; }
-
-    /* ---------- 历史列表 ---------- */
-
-    .hist {
-      max-height: 52vh;
-      overflow-y: auto;
-      margin: -6px -6px 0;
-    }
-
-    .hist-item {
-      padding: 9px 10px;
-      margin: 4px 6px;
-      border-radius: 6px;
-      cursor: pointer;
-      border: 1px solid transparent;
-    }
-
-    .hist-item:hover { background: #f3f4f6; }
-
-    .hist-item.active {
-      background: #eff6ff;
-      border-color: #bfdbfe;
-    }
-
-    .hist-item .name {
-      font-size: 13px;
-      font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .hist-item .meta {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    /* ---------- 状态 ---------- */
-
-    .status {
-      display: inline-block;
-      padding: 2px 9px;
-      border-radius: 999px;
-      font-size: 12px;
-      background: #eef2ff;
-      color: #3730a3;
-    }
-
-    .status.waiting { background: #fef3c7; color: #92400e; }
-    .status.running { background: #dbeafe; color: #1e40af; }
-    .status.done    { background: #dcfce7; color: #166534; }
-    .status.failed  { background: #fee2e2; color: #991b1b; }
-
-    .bar {
-      height: 6px;
-      border-radius: 3px;
-      background: var(--line);
-      overflow: hidden;
-      margin: 10px 0;
-    }
-
-    .bar > i {
-      display: block;
-      height: 100%;
-      background: var(--accent);
-      width: 0;
-      transition: width .3s;
-    }
-
-    .bar.waiting > i { background: #f59e0b; }
-
-    .bar.running > i {
-      background-image: linear-gradient(
-        45deg,
-        rgba(255,255,255,.35) 25%, transparent 25%,
-        transparent 50%, rgba(255,255,255,.35) 50%,
-        rgba(255,255,255,.35) 75%, transparent 75%
-      );
-      background-size: 14px 14px;
-      animation: move .7s linear infinite;
-    }
-
-    @keyframes move {
-      from { background-position: 0 0; }
-      to   { background-position: 14px 0; }
-    }
-
-    /* 需要人工操作时的提示框 */
-    .callout {
-      margin-top: 14px;
-      padding: 14px;
-      border: 1px solid #fcd34d;
-      border-left-width: 4px;
-      border-radius: 6px;
-      background: #fffbeb;
-    }
-
-    .callout .head {
-      font-weight: 600;
-      color: #92400e;
-      margin-bottom: 4px;
-      font-size: 16px;
-    }
-
-    .callout button {
-      margin-top: 10px;
-      background: var(--amber);
-      padding: 11px 20px;
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    .callout button:hover { background: #b45309; }
-
-    .step {
-      display: inline-block;
-      padding: 1px 8px;
-      margin-right: 8px;
-      border-radius: 4px;
-      background: #fde68a;
-      color: #78350f;
-      font-size: 12px;
-      font-weight: 600;
-      vertical-align: 2px;
-    }
-
-    .callout.pulse { animation: breathe 2s ease-in-out infinite; }
-
-    @keyframes breathe {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(217,119,6,.35); }
-      50%      { box-shadow: 0 0 0 7px rgba(217,119,6,0); }
-    }
-
-    /* ---------- 报告 ---------- */
-
-    .done {
-      border: 1px solid #86efac;
-      border-left-width: 4px;
-      border-radius: 6px;
-      background: #f0fdf4;
-      padding: 14px;
-      margin-bottom: 16px;
-    }
-
-    .done .head {
-      font-weight: 600;
-      color: #166534;
-      margin-bottom: 8px;
-      font-size: 16px;
-    }
-
-    .file {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      margin-top: 6px;
-    }
-
-    .file code {
-      background: #fff;
-      border: 1px solid #bbf7d0;
-      padding: 5px 9px;
-      border-radius: 4px;
-      font-family: Consolas, Monaco, monospace;
-      font-size: 13px;
-      overflow-wrap: anywhere;
-    }
-
-    .file button {
-      padding: 5px 12px;
-      font-size: 13px;
-      background: #16a34a;
-    }
-
-    .file button:hover { background: #15803d; }
-
-    .md { overflow-wrap: anywhere; }
-
-    .md h1 { font-size: 22px; }
-
-    .md h2 {
-      font-size: 19px;
-      margin-top: 30px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .md h3 { font-size: 15px; margin-top: 20px; }
-
-    .md table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 14px;
-      margin: 10px 0;
-    }
-
-    .md th, .md td {
-      border: 1px solid var(--line);
-      padding: 6px 10px;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    .md th { background: #fafbfc; }
-
-    .md code {
-      background: #f3f4f6;
-      padding: 1px 5px;
-      border-radius: 4px;
-      font-size: 13px;
-      font-family: Consolas, Monaco, monospace;
-    }
-
-    .md pre {
-      background: #0f172a;
-      color: #e2e8f0;
-      padding: 14px;
-      border-radius: 6px;
-      overflow: auto;
-      font-size: 13px;
-    }
-
-    .md pre code { background: none; color: inherit; padding: 0; }
-
-    .md blockquote {
-      margin: 12px 0;
-      padding: 8px 14px;
-      border-left: 3px solid var(--accent);
-      background: #f8fafc;
-      color: #374151;
-    }
-
-    .md ul { padding-left: 22px; }
-    .md :first-child { margin-top: 0; }
-
-    .err {
-      color: #991b1b;
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      border-radius: 6px;
-      padding: 10px 12px;
-      white-space: pre-wrap;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    .err:empty { display: none; }
-  </style>
+  <link rel="stylesheet" href="/static/app.css">
 </head>
 
 <body>
 
-<header>AIPI · GitHub 项目智能分析</header>
+<!-- ================= 图标精灵 =================
+     全部内联，避免任何外部请求。 -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></symbol>
+  <symbol id="i-fork" viewBox="0 0 24 24"><circle cx="6" cy="5" r="2.6"/><circle cx="18" cy="5" r="2.6"/><circle cx="12" cy="19" r="2.6"/><path d="M6 7.6v2.4a2 2 0 002 2h8a2 2 0 002-2V7.6M12 12v4.4"/></symbol>
+  <symbol id="i-issue" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.4v.1"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 3v18M7 7H3l2.2 6a2.6 2.6 0 004.6 0L7 7zm10 0h4l-2.2 6a2.6 2.6 0 01-4.6 0L17 7zM8 20h8"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 18l-6-6 6-6M15 6l6 6-6 6"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 00-2 2v16a2 2 0 002 2h10a2 2 0 002-2V7l-5-5z"/><path d="M14 2v5h5"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h3.6l2 2H19a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.2l3.4 2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l9.5 16.5h-19L12 3z"/><path d="M12 10v4M12 17.2v.1"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5l12 7.5-12 7.5v-15z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M8.5 5v14M15.5 5v14"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 6.3"/><path d="M20 4v7h-7"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7.5 10.5L12 15l4.5-4.5M4 20h16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.3A8.5 8.5 0 019.7 3.5a8.5 8.5 0 1010.8 10.8z"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7.5 3v6c0 4.6-3.1 8.2-7.5 9.5C7.6 20.2 4.5 16.6 4.5 12V6L12 3z"/><path d="M9.2 12.2l2 2 3.6-4"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4.5A2.5 2.5 0 016.5 2H20v17H6.5A2.5 2.5 0 004 21.5v-17z"/><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11l-1 8.5L19.5 10.5H13L13 2z"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M8.5 5.5l6.5 6.5-6.5 6.5"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M15.5 5.5v-1a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2h1"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10.5 13.5a4 4 0 005.7 0l3-3a4 4 0 10-5.7-5.7L12 6.3"/><path d="M13.5 10.5a4 4 0 00-5.7 0l-3 3a4 4 0 105.7 5.7l1.5-1.5"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5 5h14l2 8v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6l2-8z"/></symbol>
+  <symbol id="i-branch" viewBox="0 0 24 24"><circle cx="7" cy="5" r="2.2"/><circle cx="7" cy="19" r="2.2"/><circle cx="17" cy="9" r="2.2"/><path d="M7 7.2v9.6M17 11.2c0 3-4 3.4-7 3.4"/></symbol>
+</svg>
 
-<div class="wrap">
+<!-- ================= 顶栏 ================= -->
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="url(#bg)"/>
+        <path d="M9 22.5V9.5h4.1l6 8.2V9.5H23v13h-4.1l-6-8.2v8.2z" fill="#fff"/>
+        <defs>
+          <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#3b82f6"/>
+            <stop offset="1" stop-color="#6366f1"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </span>
+    <span class="brand-text">
+      <strong>AIPI</strong>
+      <span class="brand-sub">GitHub 项目智能分析</span>
+    </span>
+  </div>
 
-  <!-- ================= 侧栏 ================= -->
-  <aside>
+  <div class="topbar-actions">
+    <span class="health" id="health" title="服务状态">
+      <i class="dot"></i><span id="healthText">连接中…</span>
+    </span>
+    <button id="themeToggle" class="icon-btn" title="切换主题" aria-label="切换主题">
+      <svg class="ico ico-sun"><use href="#i-sun"/></svg>
+      <svg class="ico ico-moon"><use href="#i-moon"/></svg>
+    </button>
+  </div>
+</header>
 
-    <div class="card">
-      <label>GitHub 仓库地址</label>
-      <input id="repo" value="https://github.com/rafaelMartinsAndrade/enterprise-finance-agent">
+<!-- ================= 主体 ================= -->
+<div class="layout">
 
-      <label>分析问题（可留空）</label>
-      <textarea id="question" rows="2"
-        placeholder="例如：分析项目的 agent&#10;留空 = 全量等深分析"></textarea>
+  <!-- ---------- 侧栏 ---------- -->
+  <aside class="sidebar">
 
-      <div class="muted" style="margin:-4px 0 10px">
-        点名某个模块（agent / workflow / skill / tool / rag / memory）
-        时，该模块会展开，其余压缩。
+    <section class="panel">
+      <h2 class="panel-title">
+        <svg class="ico"><use href="#i-zap"/></svg> 新建分析
+      </h2>
+
+      <form id="startForm" class="form" autocomplete="off">
+        <label class="field">
+          <span class="field-label">GitHub 仓库地址</span>
+          <input id="repo" type="text" spellcheck="false"
+                 placeholder="https://github.com/owner/repo"
+                 value="https://github.com/rafaelMartinsAndrade/enterprise-finance-agent">
+        </label>
+
+        <label class="field">
+          <span class="field-label">
+            分析问题 <span class="optional">选填</span>
+          </span>
+          <textarea id="question" rows="3"
+            placeholder="例如：重点分析 agent 与 workflow 的协作方式"></textarea>
+          <span class="field-hint">
+            留空 = 全量等深分析。点名某个模块（agents / workflow / skills /
+            tools / rag / memory）时，该模块会展开，其余压缩。
+          </span>
+        </label>
+
+        <button id="start" class="btn btn-primary btn-block" type="submit">
+          <svg class="ico"><use href="#i-play"/></svg> 开始分析
+        </button>
+      </form>
+    </section>
+
+    <section class="panel panel-grow">
+      <h2 class="panel-title">
+        <svg class="ico"><use href="#i-clock"/></svg> 历史记录
+        <button id="refreshHistory" class="icon-btn icon-btn-sm" title="刷新">
+          <svg class="ico"><use href="#i-refresh"/></svg>
+        </button>
+      </h2>
+      <div id="history" class="history">
+        <div class="history-placeholder">加载中…</div>
       </div>
-
-      <button id="start" style="width:100%">开始分析</button>
-    </div>
-
-    <div class="card">
-      <div class="row" style="justify-content:space-between">
-        <strong style="font-size:14px">历史记录</strong>
-        <button id="refreshHistory" class="ghost"
-                style="padding:3px 10px;font-size:12px">刷新</button>
-      </div>
-      <div id="history" class="hist" style="margin-top:10px">
-        <div class="muted">加载中…</div>
-      </div>
-    </div>
+    </section>
 
   </aside>
 
-  <!-- ================= 主区 ================= -->
-  <main>
+  <!-- ---------- 主区 ---------- -->
+  <main class="main">
 
-    <div class="card hidden" id="statusCard">
-      <div class="row">
-        <span class="status" id="status">—</span>
-        <span class="muted" id="node"></span>
-        <span class="muted" id="progressText"></span>
+    <!-- 空态 -->
+    <div id="emptyState" class="empty-state">
+      <div class="empty-art">
+        <svg class="ico"><use href="#i-search"/></svg>
+      </div>
+      <h3>还没有选中的分析</h3>
+      <p>
+        填入一个 GitHub 仓库地址，平台会调度 6 个 Agent 读取源码、
+        抽取架构与技术栈，产出一份带证据出处的项目智能报告。
+      </p>
+      <ul class="empty-facts">
+        <li><svg class="ico"><use href="#i-shield"/></svg> 结论均附源码行号与出处</li>
+        <li><svg class="ico"><use href="#i-layers"/></svg> 六个维度：Agent / Workflow / Skill / Tool / RAG / Memory</li>
+        <li><svg class="ico"><use href="#i-book"/></svg> 支持深挖单模块与生成学习路线</li>
+      </ul>
+    </div>
+
+    <!-- 运行状态 -->
+    <section id="statusPanel" class="panel status-panel hidden">
+      <div class="status-head">
+        <span class="pill" id="status">—</span>
+        <span class="status-node" id="node"></span>
+        <span class="status-progress" id="progressText"></span>
       </div>
 
-      <div class="bar" id="bar"><i id="progress"></i></div>
+      <div class="progress" id="bar"><i id="progress"></i></div>
 
       <div id="callout" class="callout hidden">
-        <div class="head" id="calloutHead"></div>
-        <div class="muted" id="calloutBody"></div>
-        <div id="actions" class="row"></div>
+        <div class="callout-head" id="calloutHead"></div>
+        <div class="callout-body" id="calloutBody"></div>
+        <div class="callout-actions" id="actions"></div>
       </div>
 
-      <div id="runId" class="muted" style="margin-top:10px"></div>
-      <div id="error" class="err" style="margin-top:10px"></div>
-    </div>
+      <div class="status-foot">
+        <span class="runid" id="runId"></span>
+        <div class="status-controls" id="statusControls"></div>
+      </div>
 
-    <div class="card hidden" id="reportCard">
+      <div id="error" class="alert alert-danger"></div>
+    </section>
 
-      <div class="done" id="doneBanner">
-        <div class="head" id="doneHead">✅ 分析完成，报告已生成</div>
-        <div class="muted" id="doneHint">报告文件：</div>
-        <div class="file">
-          <code id="reportFile">—</code>
-          <button id="copyPath">复制路径</button>
-          <button id="download" class="ghost">下载 MD</button>
-          <button id="downloadJson" class="ghost">下载 JSON</button>
-          <button id="backToMain" class="ghost hidden">← 返回主报告</button>
+    <!-- 报告区 -->
+    <section id="reportArea" class="hidden">
+
+      <!-- 报告头 -->
+      <header class="report-hero panel">
+        <div class="hero-main">
+          <div class="hero-title">
+            <h1 id="reportTitle">分析报告</h1>
+            <a id="repoLink" class="hero-repo" target="_blank" rel="noopener"></a>
+          </div>
+          <div class="hero-meta" id="heroMeta"></div>
         </div>
+
+        <div class="hero-actions">
+          <button id="copyPath" class="btn btn-ghost btn-sm" title="复制报告文件路径">
+            <svg class="ico"><use href="#i-copy"/></svg> 复制路径
+          </button>
+          <button id="download" class="btn btn-ghost btn-sm">
+            <svg class="ico"><use href="#i-download"/></svg> MD
+          </button>
+          <button id="downloadJson" class="btn btn-ghost btn-sm">
+            <svg class="ico"><use href="#i-download"/></svg> JSON
+          </button>
+          <button id="backToMain" class="btn btn-ghost btn-sm hidden">
+            <svg class="ico"><use href="#i-chevron"/></svg> 返回主报告
+          </button>
+        </div>
+      </header>
+
+      <!-- 标签页 -->
+      <nav class="tabs" id="tabs" role="tablist">
+        <button class="tab is-active" data-view="dashboard" role="tab">
+          <svg class="ico"><use href="#i-layers"/></svg> 数据看板
+        </button>
+        <button class="tab" data-view="markdown" role="tab">
+          <svg class="ico"><use href="#i-book"/></svg> 报告原文
+        </button>
+        <button class="tab" data-view="json" role="tab">
+          <svg class="ico"><use href="#i-code"/></svg> JSON
+        </button>
+
+        <div class="tabs-tools">
+          <div class="dropdown" id="deepDiveMenu">
+            <button class="btn btn-ghost btn-sm" type="button">
+              <svg class="ico"><use href="#i-search"/></svg> 深挖模块
+              <svg class="ico ico-caret"><use href="#i-chevron"/></svg>
+            </button>
+            <div class="dropdown-menu">
+              <button data-module="agents">Agent 架构</button>
+              <button data-module="workflow">Workflow</button>
+              <button data-module="skills">Skill</button>
+              <button data-module="tools">Tool</button>
+              <button data-module="rag">RAG</button>
+              <button data-module="memory">Memory</button>
+            </div>
+          </div>
+          <button id="learningPath" class="btn btn-accent btn-sm">
+            <svg class="ico"><use href="#i-book"/></svg> 学习路线
+          </button>
+        </div>
+      </nav>
+
+      <div id="viewHint" class="view-hint hidden"></div>
+
+      <!-- 视图：数据看板 -->
+      <div id="viewDashboard" class="view"></div>
+
+      <!-- 视图：报告原文 -->
+      <div id="viewMarkdown" class="view hidden">
+        <article id="report" class="md"></article>
       </div>
 
-      <div class="row" style="justify-content:space-between">
-        <strong id="reportTitle">分析报告</strong>
-        <span class="muted" id="reportPath"></span>
+      <!-- 视图：JSON -->
+      <div id="viewJson" class="view hidden">
+        <div class="json-toolbar">
+          <button class="btn btn-ghost btn-sm" id="jsonExpand">全部展开</button>
+          <button class="btn btn-ghost btn-sm" id="jsonCollapse">全部折叠</button>
+        </div>
+        <div id="jsonTree" class="json-tree"></div>
       </div>
 
-      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
-
-      <div class="muted">
-        深挖某个模块（展开签名 / 调用链 / 关键常量 / 源码片段）：
-      </div>
-
-      <div class="row" style="margin-top:8px">
-        <button class="ghost module" data-module="agents">Agent 架构</button>
-        <button class="ghost module" data-module="workflow">Workflow</button>
-        <button class="ghost module" data-module="skills">Skill</button>
-        <button class="ghost module" data-module="tools">Tool</button>
-        <button class="ghost module" data-module="rag">RAG</button>
-        <button class="ghost module" data-module="memory">Memory</button>
-      </div>
-
-      <div class="row" style="margin-top:10px">
-        <button id="learningPath"
-                style="background:#7c3aed">生成学习路线</button>
-        <span class="muted">
-          基于已有分析结果，不重新采集；产出独立的 md 文件
-        </span>
-      </div>
-
-      <div id="deepDiveHint" class="muted" style="margin-top:10px"></div>
-
-      <hr style="border:0;border-top:1px solid var(--line);margin:14px 0">
-
-      <div id="report" class="md"></div>
-    </div>
+    </section>
 
   </main>
-
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<div id="toast" class="toast"></div>
 
-<script>
-const API = "/api/v1";
-
-let runId = null;
-let timer = null;
-
-/* 是否有一个人工操作请求正在路上。
-   poll() 与按钮点击都要看它 ——
-   见 poll() 里的说明。 */
-let inFlight = false;
-
-/* 主报告的正文与路径。
-   做深挖时把它缓存起来，
-   否则「返回主报告」就没东西可回。 */
-let mainReport = null;
-
-/* 只自动滚动一次，避免每次轮询都把页面拽走。 */
-let scrolledFor = null;
-
-const $ = (id) => document.getElementById(id);
-
-/* ---------- markdown ----------
-   marked 从 CDN 加载；拿不到就退回纯文本，
-   保证离线也能看到报告内容。 */
-function renderMarkdown(text) {
-  if (window.marked) {
-    return marked.parse(text);
-  }
-  const escaped = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;");
-  return "<pre><code>" + escaped + "</code></pre>";
-}
-
-async function api(path, options) {
-  const res = await fetch(API + path, options);
-  const body = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    const detail = body.detail
-      ? JSON.stringify(body.detail)
-      : res.status + " " + res.statusText;
-    throw new Error(detail);
-  }
-  return body;
-}
-
-function showError(message) {
-  $("error").textContent = message || "";
-}
-
-function button(text, onClick) {
-  const el = document.createElement("button");
-  el.textContent = text;
-  el.onclick = onClick;
-  return el;
-}
-
-function baseName(path) {
-  return String(path || "").split(/[\\/]/).pop();
-}
-
-/* ---------- 状态 ---------- */
-
-/* 每个状态需要人工做什么。
-   tone 决定配色：waiting 琥珀 / running 蓝 /
-   done 绿 / failed 红 ——
-   只靠一个进度条时，
-   用户在「等你点」和「卡死了」之间分不出来。 */
-const STATUS = {
-  CREATED: { text: "已创建", tone: "running" },
-  PLANNING: { text: "规划中", tone: "running" },
-  ANALYZING: { text: "执行分析中", tone: "running" },
-  RETRYING: { text: "重试中", tone: "running" },
-  pending: { text: "排队中", tone: "running" },
-
-  WAITING_DESIGN: {
-    text: "已暂停 · 等你确认",
-    tone: "waiting",
-    head: "需要你的确认：分析方案已生成",
-    body: "工作流已暂停。批准后将执行 5 个 Agent 的分析" +
-          "（读取仓库文件、抽取架构与技术栈），大仓库约 1-2 分钟。",
-    actionLabel: "批准分析方案",
-  },
-
-  WAITING_HUMAN: {
-    text: "已暂停 · 等你确认",
-    tone: "waiting",
-    head: "需要你的确认：分析已完成，等待撰写报告",
-    body: "5 个 Agent 已跑完。批准后将生成结论摘要与最终报告。",
-    actionLabel: "批准并生成报告",
-  },
-
-  PAUSED: {
-    text: "已暂停",
-    tone: "waiting",
-    head: "已手动暂停",
-    body: "恢复后会从当前节点继续。",
-    actionLabel: "恢复",
-    action: "resume",
-  },
-
-  FAILED: {
-    text: "失败",
-    tone: "failed",
-    head: "分析失败",
-    body: "可以重试；若反复失败，请查看服务端终端的 traceback。",
-    actionLabel: "重试",
-    action: "retry",
-  },
-
-  COMPLETED: { text: "已完成", tone: "done" },
-};
-
-const CONFIRM_STEP = { WAITING_DESIGN: 1, WAITING_HUMAN: 2 };
-const TOTAL_CONFIRMS = 2;
-
-/* 标签页标题随状态变化。
-   用户常切到别的标签去等，
-   只靠页面内的提示框是看不见的。 */
-const TITLE = {
-  waiting: "⚠ 需要你确认",
-  running: "⏳ 分析中",
-  done: "✅ 报告已生成",
-  failed: "❌ 分析失败",
-};
-
-const BASE_TITLE = "AIPI · 项目智能分析";
-
-function statusMeta(status) {
-  return STATUS[status] || { text: status, tone: "" };
-}
-
-function renderStatus(data) {
-  const meta = statusMeta(data.status);
-
-  $("statusCard").classList.remove("hidden");
-
-  const pill = $("status");
-  pill.textContent = meta.text;
-  pill.className = "status " + (meta.tone || "");
-
-  $("node").textContent = data.current_node ? "· " + data.current_node : "";
-  $("runId").textContent = "run_id：" + data.run_id;
-
-  const waiting = meta.tone === "waiting";
-  const running = meta.tone === "running";
-
-  $("progressText").textContent =
-    data.progress + "%" + (waiting ? " · 进度已暂停" : "");
-
-  $("progress").style.width = data.progress + "%";
-  $("bar").className = "bar " + (waiting ? "waiting" : running ? "running" : "");
-
-  document.title = meta.tone && TITLE[meta.tone]
-    ? TITLE[meta.tone] + " · " + BASE_TITLE
-    : BASE_TITLE;
-
-  renderActions(meta, data);
-}
-
-function renderActions(meta, data) {
-  const callout = $("callout");
-  const actions = $("actions");
-
-  actions.innerHTML = "";
-
-  if (!meta.actionLabel) {
-    callout.classList.add("hidden");
-    callout.classList.remove("pulse");
-    return;
-  }
-
-  const step = CONFIRM_STEP[data.status];
-
-  $("calloutHead").innerHTML = (
-    step
-      ? '<span class="step">第 ' + step + " 步 / 共 " +
-        TOTAL_CONFIRMS + " 步</span>"
-      : ""
-  ) + meta.head;
-
-  $("calloutBody").textContent = meta.body;
-
-  actions.appendChild(
-    button(
-      meta.actionLabel,
-      () => act(meta.action || "approve"),
-    )
-  );
-
-  callout.classList.remove("hidden");
-  callout.classList.add("pulse");
-
-  const key = data.status + ":" + data.run_id;
-
-  if (scrolledFor !== key) {
-    scrolledFor = key;
-    callout.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-}
-
-/* ---------- 流程 ---------- */
-
-async function start() {
-  const repoUrl = $("repo").value.trim();
-  const question = $("question").value.trim();
-
-  if (!repoUrl) {
-    alert("请填写仓库地址");
-    return;
-  }
-
-  clearInterval(timer);
-  showError("");
-  resetReport();
-  $("start").disabled = true;
-  $("statusCard").classList.remove("hidden");
-
-  scrolledFor = null;
-  $("status").className = "status running";
-  $("status").textContent = "启动中…";
-  $("bar").className = "bar running";
-  $("callout").classList.add("hidden");
-  $("callout").classList.remove("pulse");
-  document.title = TITLE.running + " · " + BASE_TITLE;
-
-  try {
-    const data = await api("/analysis", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        repo_url: repoUrl,
-        question: question || null,
-      }),
-    });
-
-    runId = data.run_id;
-    mainReport = null;
-    renderStatus(data);
-    poll();
-    loadHistory();
-  } catch (e) {
-    showError("启动失败：" + e.message);
-    $("status").textContent = "失败";
-  } finally {
-    $("start").disabled = false;
-  }
-}
-
-async function poll() {
-  clearInterval(timer);
-
-  timer = setInterval(async () => {
-    // 人工操作进行中时不刷新状态。
-    //
-    // 关键：approve 这种请求会阻塞几十秒
-    // （跑 5 个 Agent），
-    // 而 analysis_runs.status 要到请求结束
-    // 时的 _sync_run 才更新。
-    // 期间轮询读到的还是旧的 WAITING_*，
-    // 于是会把「执行中」覆盖回
-    // 「已暂停 · 等你确认」，
-    // 并把批准按钮重新渲染出来 ——
-    // 用户看到「明明点了批准，页面还说在等我批准」，
-    // 而且能再点一次触发并发执行。
-    if (inFlight) return;
-
-    try {
-      const data = await api("/analysis/" + runId);
-      renderStatus(data);
-
-      if (data.status === "COMPLETED") {
-        clearInterval(timer);
-        await loadReport();
-        loadHistory();
-      } else if (data.status === "FAILED") {
-        clearInterval(timer);
-        loadHistory();
-      }
-    } catch (e) {
-      clearInterval(timer);
-      showError("查询状态失败：" + e.message);
-    }
-  }, 2000);
-}
-
-async function act(name) {
-  // 防重复提交：
-  // 轮询会把按钮重新渲染出来，
-  // 没有这道闸门时用户连点两次
-  // 会让同一个 run 并发跑两遍。
-  if (inFlight) return;
-
-  inFlight = true;
-
-  showError("");
-
-  // 立刻切成「执行中」，否则用户会以为点击没生效。
-  $("callout").classList.add("hidden");
-  $("callout").classList.remove("pulse");
-  $("actions").innerHTML = "";
-  $("status").className = "status running";
-  $("status").textContent = "执行中…";
-  $("bar").className = "bar running";
-  $("progressText").textContent = "正在跑，大仓库约 1-2 分钟";
-  document.title = TITLE.running + " · " + BASE_TITLE;
-
-  try {
-    const data = await api(
-      "/analysis/" + runId + "/" + name,
-      { method: "POST" }
-    );
-
-    inFlight = false;
-
-    renderStatus(data);
-
-    if (data.status === "COMPLETED") {
-      await loadReport();
-      loadHistory();
-    } else if (data.status !== "FAILED") {
-      poll();
-    } else {
-      loadHistory();
-    }
-
-  } catch (e) {
-    inFlight = false;
-    await handleActionFailure(name, e);
-  }
-}
-
-/* 人工操作请求失败后的处理。
- *
- * 关键事实：工作流是逐节点落盘的，
- * 每个节点跑完就存一次 checkpoint。
- * 所以请求返回 500 时，
- * 前面已完成的工作早就提交了 ——
- * 「请求失败」不等于「任务失败」。
- *
- * 真实事故：checkpoint 超过 asyncmy 的
- * 256KB 单字段上限后，收尾阶段某次读操作崩了，
- * 请求返回 500，但任务其实已经 COMPLETED。
- * 当时页面只弹了个错误就没管，
- * 状态还停在手动设的「执行中…」，
- * 提示框和按钮都不见了。
- *
- * 因此这里必须立刻回读一次真实状态。
- */
-async function handleActionFailure(name, error) {
-  let data = null;
-
-  try {
-    data = await api("/analysis/" + runId);
-  } catch (e) {
-    showError(
-      name + " 请求失败：" + error.message +
-      "\n重新查询状态也失败：" + e.message
-    );
-    return;
-  }
-
-  renderStatus(data);
-
-  if (data.status === "COMPLETED") {
-    // 任务其实已经完成 —— 用户要的结果拿到了，
-    // 不必再用一个 500 去吓他。
-    showError("");
-    await loadReport();
-    return;
-  }
-
-  showError(
-    name + " 请求失败：" + error.message +
-    "\n\n注意：这不代表分析失败。" +
-    "工作流逐节点落盘，请求失败时已完成的部分仍然有效。" +
-    "\n当前真实状态：" + data.status +
-    "（" + data.progress + "%）" +
-    "\n若状态是等待确认，可直接重新点击上面的按钮。" +
-    "\n服务端终端里有完整 traceback（找 \"unexpected error\" 那行）。"
-  );
-
-  if (
-    data.status !== "FAILED" &&
-    data.status !== "WAITING_DESIGN" &&
-    data.status !== "WAITING_HUMAN" &&
-    data.status !== "PAUSED"
-  ) {
-    poll();
-  }
-}
-
-/* ---------- 报告 ---------- */
-
-/* 两个接口返回的嵌套层级不一样，这里统一取：
-     /report    -> { report: { report: { path }, content } }
-     /deep-dive -> { report: { path }, content }            */
-function extractReport(data) {
-  const outer = data.report || {};
-
-  if (typeof outer.content === "string") {
-    return {
-      content: outer.content,
-      path: (outer.report || {}).path || "",
-    };
-  }
-
-  return {
-    content: data.content || "",
-    path: outer.path || "",
-  };
-}
-
-function resetReport() {
-  mainReport = null;
-  $("reportCard").classList.add("hidden");
-  $("report").innerHTML = "";
-  $("deepDiveHint").textContent = "";
-  $("reportTitle").textContent = "分析报告";
-  $("backToMain").classList.add("hidden");
-  $("download").classList.remove("hidden");
-  $("downloadJson").classList.remove("hidden");
-}
-
-/* 把报告落盘路径显示到完成横幅上。 */
-function showReportFile(path, label) {
-  $("doneHint").textContent = label || "报告文件：";
-
-  $("reportFile").textContent = path
-    ? baseName(path)
-    : "（接口未返回文件路径）";
-
-  $("reportFile").title = path || "";
-
-  $("reportPath").textContent = path || "";
-}
-
-function showReport(content, path) {
-  $("reportCard").classList.remove("hidden");
-  showReportFile(path);
-  $("report").innerHTML = renderMarkdown(content);
-}
-
-async function loadReport(forRunId) {
-  const target = forRunId || runId;
-
-  try {
-    const data = await api("/analysis/" + target + "/report");
-    const { content, path } = extractReport(data);
-
-    if (!content) {
-      showError("报告为空。");
-      return;
-    }
-
-    mainReport = { run_id: target, content, path };
-
-    $("reportTitle").textContent = "分析报告";
-    $("backToMain").classList.add("hidden");
-    $("download").classList.remove("hidden");
-    $("downloadJson").classList.remove("hidden");
-
-    showReport(content, path);
-
-    document.title = TITLE.done + " · " + BASE_TITLE;
-
-    $("reportCard").scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-
-  } catch (e) {
-    showError("获取报告失败：" + e.message);
-  }
-}
-
-/* 深挖报告是另一个文件，横幅要跟着切过去，
-   否则用户会以为主报告被覆盖了。 */
-async function deepDive(module) {
-  if (!runId) return;
-
-  const hint = $("deepDiveHint");
-  hint.textContent =
-    "正在深挖 " + module + "（会重新联网读取更多文件，约 30 秒）…";
-
-  const buttons = document.querySelectorAll(".module");
-  buttons.forEach((b) => (b.disabled = true));
-
-  try {
-    const data = await api(
-      "/analysis/" + runId + "/deep-dive?module=" + module,
-      { method: "POST" }
-    );
-
-    const { content, path } = extractReport(data);
-
-    hint.textContent =
-      "已深挖 " + module +
-      "：读取 " + (data.files_read || []).length +
-      " 个文件，展开 " + data.details + " 项实现明细";
-
-    $("reportTitle").textContent = "深挖报告 · " + module;
-
-    // 只有确实拿着主报告时才给返回入口。
-    if (mainReport) {
-      $("backToMain").classList.remove("hidden");
-    }
-
-    $("download").classList.add("hidden");
-    $("downloadJson").classList.add("hidden");
-
-    showReportFile(path, "深挖报告文件（主报告未被修改）：");
-
-    showReport(content, path);
-
-    $("reportCard").scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-
-  } catch (e) {
-    hint.textContent = "";
-    showError("深挖失败：" + e.message);
-  } finally {
-    buttons.forEach((b) => (b.disabled = false));
-  }
-}
-
-/* ---------- 学习路线（Phase 14.1） ---------- */
-
-async function generateLearningPath() {
-  if (!runId) return;
-
-  const hint = $("deepDiveHint");
-  const btn = $("learningPath");
-
-  hint.textContent = "正在生成学习路线（约 10 秒）…";
-  btn.disabled = true;
-
-  try {
-    const data = await api(
-      "/analysis/" + runId + "/learning-path",
-      { method: "POST" }
-    );
-
-    if (!data.available) {
-      hint.textContent = "";
-      showError(
-        "学习路线不可用：" + (data.reason || "未知原因")
-      );
-      return;
-    }
-
-    const path = (data.report || {}).path || "";
-
-    hint.textContent = "学习路线已生成，独立文件，未修改主报告";
-
-    $("reportTitle").textContent = "学习路线";
-
-    if (mainReport) {
-      $("backToMain").classList.remove("hidden");
-    }
-
-    $("download").classList.add("hidden");
-    $("downloadJson").classList.add("hidden");
-
-    showReportFile(path, "学习路线文件（主报告未被修改）：");
-
-    showReport(data.content || "", path);
-
-    $("reportCard").scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-
-  } catch (e) {
-    hint.textContent = "";
-    showError("生成学习路线失败：" + e.message);
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-/* 下载结构化报告（Phase 14.2） */
-async function downloadJsonReport() {
-  const target = runId;
-
-  if (!target) return;
-
-  try {
-    const data = await api(
-      "/analysis/" + target + "/report/json"
-    );
-
-    const doc = data.document;
-
-    if (!doc) {
-      showError("结构化报告为空。");
-      return;
-    }
-
-    const blob = new Blob(
-      [JSON.stringify(doc, null, 2)],
-      { type: "application/json;charset=utf-8" },
-    );
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-
-    a.href = url;
-    a.download = target + "_analysis.json";
-    a.click();
-
-    URL.revokeObjectURL(url);
-
-  } catch (e) {
-    showError("获取结构化报告失败：" + e.message);
-  }
-}
-
-function backToMainReport() {
-  if (!mainReport) return;
-
-  $("deepDiveHint").textContent = "";
-  $("reportTitle").textContent = "分析报告";
-  $("backToMain").classList.add("hidden");
-  $("download").classList.remove("hidden");
-  $("downloadJson").classList.remove("hidden");
-
-  showReportFile(mainReport.path);
-
-  showReport(mainReport.content, mainReport.path);
-}
-
-function downloadReport() {
-  const content = mainReport
-    ? (mainReport.content || "")
-    : "";
-
-  if (!content) return;
-
-  const path = mainReport.path || "";
-  const name = baseName(path) || "report.md";
-
-  const blob = new Blob([content], {
-    type: "text/markdown;charset=utf-8",
-  });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-
-  a.href = url;
-  a.download = name;
-  a.click();
-
-  URL.revokeObjectURL(url);
-}
-
-/* ---------- 历史记录 ---------- */
-
-function relativeTime(value) {
-  if (!value) return "";
-
-  const then = new Date(value).getTime();
-
-  if (Number.isNaN(then)) return "";
-
-  const seconds = Math.floor((Date.now() - then) / 1000);
-
-  if (seconds < 60) return "刚刚";
-  if (seconds < 3600) return Math.floor(seconds / 60) + " 分钟前";
-  if (seconds < 86400) return Math.floor(seconds / 3600) + " 小时前";
-
-  return Math.floor(seconds / 86400) + " 天前";
-}
-
-async function loadHistory() {
-  const box = $("history");
-
-  try {
-    const runs = await api("/analysis?limit=30");
-
-    if (!runs.length) {
-      box.innerHTML = '<div class="muted">还没有分析记录</div>';
-      return;
-    }
-
-    box.innerHTML = "";
-
-    runs.forEach((run) => {
-      const meta = statusMeta(run.status);
-
-      const item = document.createElement("div");
-      item.className = "hist-item" +
-        (run.run_id === runId ? " active" : "");
-
-      const name = String(run.repo_url || "")
-        .split("/")
-        .slice(-2)
-        .join("/")
-        .split("?")[0];
-
-      item.innerHTML =
-        '<div class="name"></div>' +
-        '<div class="meta"></div>';
-
-      item.querySelector(".name").textContent =
-        name || run.run_id.slice(0, 8);
-
-      item.querySelector(".meta").textContent =
-        meta.text + " · " + relativeTime(run.created_at);
-
-      item.onclick = () => openRun(run);
-
-      box.appendChild(item);
-    });
-
-  } catch (e) {
-    box.innerHTML = '<div class="muted">历史记录加载失败</div>';
-  }
-}
-
-/* 打开一条历史记录。
-   只读不写：不 approve、不重跑。 */
-async function openRun(run) {
-  clearInterval(timer);
-
-  runId = run.run_id;
-  mainReport = null;
-  scrolledFor = null;
-
-  showError("");
-  resetReport();
-
-  renderStatus(run);
-
-  if (run.status === "COMPLETED") {
-    // 已完成的 run 只取报告：
-    // 再起轮询只会让 loadReport 白跑第二遍。
-    await loadReport(run.run_id);
-
-  } else if (
-    run.status === "WAITING_DESIGN" ||
-    run.status === "WAITING_HUMAN" ||
-    run.status === "ANALYZING" ||
-    run.status === "PAUSED"
-  ) {
-    poll();
-  }
-
-  loadHistory();
-}
-
-/* ---------- 事件绑定 ---------- */
-
-$("start").onclick = start;
-$("refreshHistory").onclick = loadHistory;
-
-document.querySelectorAll(".module").forEach((el) => {
-  el.onclick = () => deepDive(el.dataset.module);
-});
-
-$("backToMain").onclick = backToMainReport;
-$("download").onclick = downloadReport;
-$("downloadJson").onclick = downloadJsonReport;
-$("learningPath").onclick = generateLearningPath;
-
-/* 复制报告路径。
-   优先 clipboard API；http 页面或旧浏览器下降级到
-   选中文本，让用户自己按 Ctrl+C。 */
-$("copyPath").onclick = async () => {
-  const btn = $("copyPath");
-  const text = $("reportPath").textContent;
-
-  if (!text) return;
-
-  try {
-    await navigator.clipboard.writeText(text);
-    btn.textContent = "已复制";
-  } catch (e) {
-    const range = document.createRange();
-    range.selectNodeContents($("reportFile"));
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-    btn.textContent = "请按 Ctrl+C";
-  }
-
-  setTimeout(() => (btn.textContent = "复制路径"), 1800);
-};
-
-/* 首次进入加载历史。 */
-loadHistory();
-</script>
+<script src="/static/app.js"></script>
 
 </body>
-
 </html>

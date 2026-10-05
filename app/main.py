@@ -14,6 +14,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.analysis import (
     router as analysis_router,
@@ -31,6 +32,10 @@ from app.core.logging import (
 
 
 settings = get_settings()
+
+
+# 前端静态资源目录。
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 # 应用启动时初始化全局日志。
@@ -73,6 +78,19 @@ app.include_router(
 )
 
 
+# 样式与脚本走静态挂载。
+#
+# 挂在 /static 而不是根路径，
+# 免得和 /api/v1、/health 抢路由。
+if STATIC_DIR.is_dir():
+
+    app.mount(
+        "/static",
+        StaticFiles(directory=str(STATIC_DIR)),
+        name="static",
+    )
+
+
 @app.get(
     "/health",
     tags=["System"],
@@ -94,21 +112,17 @@ async def health_check():
 )
 async def root():
     """
-    根路径直接返回操作页面。
+    根路径返回操作页面。
 
-    这是给人工跑一次分析用的最简前端：
-    单文件、无构建步骤，
-    只调用本服务已有的 /api/v1 接口。
+    前端无构建步骤（index.html + app.css + app.js），
+    只调用本服务已有的 /api/v1 接口，
+    静态资源由 /static 挂载提供。
 
     文件缺失时退回 JSON，
     保证 API 本身不受影响。
     """
 
-    index = (
-        Path(__file__).parent
-        / "static"
-        / "index.html"
-    )
+    index = STATIC_DIR / "index.html"
 
     if index.is_file():
 

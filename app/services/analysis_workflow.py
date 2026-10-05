@@ -25,7 +25,13 @@ from app.agents.agent_registry import (
 from app.context.manager import (
     ContextManager,
 )
+from app.core.config import (
+    get_settings,
+)
 from app.core.logging import get_logger
+from app.embeddings.ollama import (
+    OllamaEmbedding,
+)
 from app.memory.manager import (
     MemoryManager,
 )
@@ -60,8 +66,14 @@ from app.tools.mysql_query_tool import (
 from app.tools.qdrant_search_tool import (
     QdrantSearchTool,
 )
+from app.tools.rag_retrieval_tool import (
+    RagRetrievalTool,
+)
 from app.tools.report_export_tool import (
     ReportExportTool,
+)
+from app.vector_store.qdrant import (
+    QdrantVectorStore,
 )
 from app.workflow.analysis_workflow import (
     build_analysis_workflow,
@@ -152,6 +164,24 @@ class AnalysisWorkflowRunner:
                 LLMChatTool(),
         }
 
+        # RAG 检索工具常驻注册。
+        #
+        # 原因：RAG 现在可以**按次开启**（请求里的 enable_rag），
+        # 而 build_context 不知道这一次的开关状态 ——
+        # 若按全局 RAG_ENABLED 决定是否注册，
+        # 全局关、单次开的组合就会拿不到这个工具，
+        # 开关看起来"点了没反应"。
+        #
+        # 构造开销可以忽略：OllamaEmbedding 与 QdrantVectorStore
+        # 都是惰性客户端，只记地址、不建连接。
+        # 真正的启用判断在 EvidenceAnalysisSkill._from_rag 里。
+        tools["rag_retrieval"] = (
+            RagRetrievalTool(
+                embedding=OllamaEmbedding(),
+                vector_store=QdrantVectorStore(),
+            )
+        )
+
         memory_manager = (
             MemoryManager(
                 self.session
@@ -179,8 +209,17 @@ class AnalysisWorkflowRunner:
     async def start(
         self,
         run_id: str,
+        enable_rag: bool | None = None,
     ):
-        """启动新的 Analysis Workflow。"""
+        """
+        启动新的 Analysis Workflow。
+
+        enable_rag：
+            按次覆盖 RAG 开关。
+            留空则跟随服务端 RAG_ENABLED 配置。
+            结果写进 state.data，由证据环节读取 ——
+            这样不必为此加数据库列，也不会影响其它 run。
+        """
 
         run_repo = AnalysisRunRepository(
             self.session
@@ -216,6 +255,12 @@ class AnalysisWorkflowRunner:
             "repo_url": repository.url,
             "owner": repository.owner,
             "repo": repository.name,
+            # RAG 按次开关：请求没指定就跟服务端配置走。
+            "rag_enabled": (
+                get_settings().RAG_ENABLED
+                if enable_rag is None
+                else bool(enable_rag)
+            ),
             "question": (
                 run.question
                 or (
@@ -409,6 +454,94 @@ class AnalysisWorkflowRunner:
         return await self._sync_run(
             result
         )
+
+    async def cancel(
+        self,
+        run_id: str,
+    ):
+        """
+        人工放弃本次分析。
+
+        只置状态，不删数据 ——
+        报告文件、已落库的 evidence 都保留，
+        用户之后仍能在历史里查看这个 run 走到过哪一步。
+        """
+
+        state = await self.checkpoint.load(
+            run_id
+        )
+
+        if state is None:
+            raise ValueError(
+                f"Checkpoint not found: {run_id}"
+            )
+
+        state = await self.engine.cancel(state)
+
+        return await self._sync_run(state)
+
+    async def replan(
+        self,
+        run_id: str,
+        question: str,
+    ):
+        """
+        改问题后重新规划。
+
+        做法：把 state 的 current_node 拨回 planner_agent，
+        清掉上一轮规划产物，然后用不带 resume_from 的
+        engine.run 重新执行该节点 ——
+        引擎遇到"已有 current_node 的 state"会重跑这个节点，
+        而不是像 resume 那样跳到下一个。
+        重跑完 planner 会经 transition 自动回到 design_gate 停住。
+        """
+
+        run_repo = AnalysisRunRepository(
+            self.session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValueError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        # run 表里的 question 也要更新：
+        # 历史列表、报告头、后续 deep-dive 都读它，
+        # 只改 state 会导致同一件事在两处显示不一致。
+        run.question = question
+
+        await self.session.commit()
+
+        state = await self.checkpoint.load(
+            run_id
+        )
+
+        if state is None:
+            raise ValueError(
+                f"Checkpoint not found: {run_id}"
+            )
+
+        state.replan(question)
+
+        context = self.build_context(
+            repository_id=run.repository_id
+        )
+
+        workflow = build_analysis_workflow(
+            context
+        )
+
+        result = await self.engine.run(
+            workflow,
+            state,
+            context,
+        )
+
+        return await self._sync_run(result)
 
     async def get_report(
         self,

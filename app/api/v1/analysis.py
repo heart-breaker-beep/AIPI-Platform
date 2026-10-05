@@ -8,6 +8,7 @@ from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisDeepDiveResponse,
     AnalysisJsonReportResponse,
+    AnalysisReplanRequest,
     AnalysisReportResponse,
     AnalysisResponse,
     LearningPathResponse,
@@ -142,6 +143,51 @@ async def retry_analysis(
     return await analysis_service.retry_analysis(
         session,
         run_id,
+    )
+
+
+@router.post(
+    "/{run_id}/cancel",
+    response_model=AnalysisResponse,
+)
+async def cancel_analysis(
+    run_id: str,
+    session: AsyncSession = Depends(get_db),
+) -> AnalysisResponse:
+    """
+    放弃本次分析。
+
+    与 retry 相对：retry 是「再试一次」，
+    cancel 是「不做了」。
+    状态置为 CANCELED，数据全部保留。
+    """
+
+    return await analysis_service.cancel_analysis(
+        session,
+        run_id,
+    )
+
+
+@router.post(
+    "/{run_id}/replan",
+    response_model=AnalysisResponse,
+)
+async def replan_analysis(
+    run_id: str,
+    request: AnalysisReplanRequest,
+    session: AsyncSession = Depends(get_db),
+) -> AnalysisResponse:
+    """
+    在设计闸门修改问题并重新规划。
+
+    回到 Planner 用新问题重跑，再回到同一个闸门等待确认。
+    只在 WAITING_DESIGN 时可用。
+    """
+
+    return await analysis_service.replan_analysis(
+        session,
+        run_id,
+        request,
     )
 
 

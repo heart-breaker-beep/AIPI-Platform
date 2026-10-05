@@ -1,8 +1,8 @@
 """Analysis API 请求与响应模型。"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class AnalysisCreateRequest(BaseModel):
@@ -18,6 +18,25 @@ class AnalysisCreateRequest(BaseModel):
         default=None,
         max_length=5000,
         description="本次项目分析问题",
+    )
+
+    enable_rag: bool | None = Field(
+        default=None,
+        description=(
+            "本次分析是否启用 RAG 语义检索。"
+            "留空则跟随服务端 RAG_ENABLED 配置。"
+        ),
+    )
+
+
+class AnalysisReplanRequest(BaseModel):
+    """在设计闸门修改问题并重新规划。"""
+
+    question: str = Field(
+        ...,
+        min_length=1,
+        max_length=5000,
+        description="修改后的分析问题",
     )
 
 
@@ -36,7 +55,52 @@ class AnalysisResponse(BaseModel):
 
     progress: int = 0
 
+    # 分析方案。只在设计闸门等待审批时返回。
+    #
+    # 以前这个字段不存在，用户被要求「批准分析方案」，
+    # 但接口根本不返回方案内容 —— 页面上只能看到一个确认按钮，
+    # 等于让人盲签。
+    research_plan: dict | None = None
+
+    # 本次 run 是否启用 RAG（跟随配置时为 None）。
+    # 前端据此回显开关状态。
+    rag_enabled: bool | None = None
+
     created_at: datetime
+
+    @field_validator(
+        "created_at",
+        mode="before",
+    )
+    @classmethod
+    def _assume_utc(
+        cls,
+        value,
+    ):
+        """
+        给 naive 时间戳补上 UTC 时区。
+
+        由来：模型用的是 `datetime.utcnow()`，
+        存进 MySQL 的是**不带时区**的 UTC 时间。
+        直接序列化出来是 `2026-10-05T08:05:57` ——
+        JS 的 `new Date()` 会把它当**本地时间**解析，
+        于是在 UTC+8 环境下，"刚刚跑完"的分析
+        在页面上显示成「8 小时前」。
+
+        修在这里而不是前端：
+        接口本来就不该输出语义不明的时间戳，
+        补上时区后所有消费方（前端、curl、脚本）拿到的都是准确时刻。
+        """
+
+        if (
+            isinstance(value, datetime)
+            and value.tzinfo is None
+        ):
+            return value.replace(
+                tzinfo=timezone.utc
+            )
+
+        return value
 
 
 class AnalysisReportResponse(BaseModel):

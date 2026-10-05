@@ -33,6 +33,14 @@ class WorkflowStatus:
 
     COMPLETED = "COMPLETED"
 
+    # 人工放弃。
+    #
+    # 与 FAILED 刻意分开：
+    # FAILED 是「跑出错了」，CANCELED 是「我改主意了」。
+    # 混用会让失败率统计失真，
+    # 用户也分不清是自己的操作还是系统故障。
+    CANCELED = "CANCELED"
+
 
 @dataclass
 class WorkflowState:
@@ -106,6 +114,37 @@ class WorkflowState:
 
         self.status = WorkflowStatus.ANALYZING
         self.pause_reason = None
+
+    def cancel(
+        self,
+        reason: str = "manual_cancel",
+    ) -> None:
+        """人工放弃本次分析。"""
+
+        self.status = WorkflowStatus.CANCELED
+        self.pause_reason = reason
+
+    def replan(self, question: str) -> None:
+        """
+        回到 Planner 重新规划。
+
+        清掉上一轮的规划产物，否则重新执行 planner_agent 时
+        它读到的还是旧结果，方案不会变 ——
+        用户改了问题却看不到方案变化，会以为功能失效。
+        """
+
+        self.data["question"] = question
+
+        for key in (
+            "planner_agent",
+            "research_plan",
+            "executed_tasks",
+            "count",
+        ):
+            self.data.pop(key, None)
+
+        self.current_node = "planner_agent"
+        self.status = WorkflowStatus.PLANNING
 
     def start_retry(self) -> None:
         """进入 Retry 状态。"""

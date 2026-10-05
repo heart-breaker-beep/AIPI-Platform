@@ -53,10 +53,32 @@
     return (n / 1e6).toFixed(1).replace(/\.0$/, "") + "M";
   }
 
+  /*
+   * 把服务端返回的时间字符串转成时间戳。
+   *
+   * 关键：不带时区标记的字符串，`new Date()` 会按**本地时间**解析。
+   * 而服务端历史上存的是 naive UTC（datetime.utcnow），
+   * 在 UTC+8 环境下会把「刚刚跑完」显示成「8 小时前」。
+   *
+   * 后端现在已经补上 UTC 时区（schemas.analysis._assume_utc），
+   * 这里再兜一层：万一遇到不带时区的字符串（旧接口、其它端点），
+   * 一律按 UTC 解释，而不是交给浏览器猜。
+   */
+  function parseServerTime(value) {
+    if (!value) return NaN;
+
+    const text = String(value);
+
+    const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(text);
+
+    return new Date(hasZone ? text : text + "Z").getTime();
+  }
+
   function formatDate(value) {
     if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return String(value);
+    const ms = parseServerTime(value);
+    if (Number.isNaN(ms)) return String(value);
+    const d = new Date(ms);
     const pad = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
            `${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -64,7 +86,7 @@
 
   function relativeTime(value) {
     if (!value) return "";
-    const then = new Date(value).getTime();
+    const then = parseServerTime(value);
     if (Number.isNaN(then)) return "";
     const s = Math.floor((Date.now() - then) / 1000);
     if (s < 60) return "刚刚";
@@ -323,6 +345,7 @@
     evidenceFilter: "",
     inFlight: false,    // 人工操作请求在途，轮询必须让路
     scrolledFor: null,  // 只在状态首次出现时自动滚动一次
+    replanOpen: false,  // 「修改问题」面板是否展开
     timer: null,
   };
 
@@ -338,7 +361,7 @@
       text: "已暂停 · 等你确认",
       tone: "waiting",
       head: "需要你的确认：分析方案已生成",
-      body: "工作流已暂停。批准后将执行 6 个 Agent 的分析" +
+      body: "工作流已暂停。批准后将串行执行 5 个 Agent 的分析" +
             "（读取仓库文件、抽取架构与技术栈），大仓库约 1-2 分钟。",
       actionLabel: "批准分析方案",
     },
@@ -369,11 +392,29 @@
       action: "retry",
     },
 
+    CANCELED: {
+      text: "已放弃",
+      tone: "cancelled",
+      head: "本次分析已放弃",
+      body: "数据保留：已生成的部分仍可在历史里查看。",
+    },
+
     COMPLETED: { text: "已完成", tone: "done" },
   };
 
   const CONFIRM_STEP = { WAITING_DESIGN: 1, WAITING_HUMAN: 2 };
   const TOTAL_CONFIRMS = 2;
+
+  /* 这些状态不会再自行推进，轮询到它们就停下。
+     只会因用户操作而改变，而操作都由本页发起。 */
+  const RESTING_STATUSES = [
+    "COMPLETED",
+    "FAILED",
+    "CANCELED",
+    "WAITING_DESIGN",
+    "WAITING_HUMAN",
+    "PAUSED",
+  ];
 
   const BASE_TITLE = "AIPI · GitHub 项目智能分析";
   const TITLE = {
@@ -395,6 +436,15 @@
     { key: "memory",   label: "Memory" },
     { key: "extension", label: "扩展点" },
   ];
+
+  /* 待执行 Agent 的中文名（设计闸门展示方案时用）。 */
+  const AGENT_LABELS = {
+    repository_analysis_agent: "仓库分析 · 拉取元数据与目录结构",
+    architecture_analysis_agent: "架构分析 · 解析模块与调用关系",
+    technology_analysis_agent: "技术栈分析 · 识别框架与依赖",
+    evidence_analysis_agent: "证据提取 · 生成可追溯的源码证据",
+    critic_agent: "批判审查 · 交叉校验结论与证据",
+  };
 
   /* ============================================================
    * 主题
@@ -469,6 +519,17 @@
 
     actions.innerHTML = "";
 
+    // 设计闸门单独处理：要展示分析方案，动作也不止一个
+    if (run.status === "WAITING_DESIGN") {
+      renderDesignGate(run, callout, actions);
+      return;
+    }
+
+    // 其它状态不涉及方案，把方案区收起来
+    $("planBox").classList.add("hidden");
+    $("planBox").innerHTML = "";
+    $("replanBox").classList.add("hidden");
+
     if (!meta.actionLabel) {
       callout.classList.add("hidden");
       callout.classList.remove("pulse");
@@ -498,6 +559,125 @@
       state.scrolledFor = key;
       callout.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+  }
+
+  /* ============================================================
+   * 设计闸门
+   * ------------------------------------------------------------
+   * 旧版本在这里只给了一个「批准分析方案」按钮，
+   * 而接口根本不返回方案内容 ——
+   * 用户被要求批准一份自己看不到的东西，等于盲签。
+   * 现在展示方案，并给出批准 / 暂停 / 放弃 / 修改问题四个出口。
+   * ============================================================ */
+
+  function renderDesignGate(run, callout, actions) {
+    const meta = statusMeta(run.status);
+
+    $("calloutHead").innerHTML =
+      `<span class="step-tag">第 1 步 / 共 ${TOTAL_CONFIRMS} 步</span>` +
+      esc(meta.head);
+
+    $("calloutBody").textContent = meta.body;
+
+    // 方案
+    const planBox = $("planBox");
+    planBox.innerHTML = renderPlan(run.research_plan);
+    planBox.classList.remove("hidden");
+
+    const add = (label, cls, onClick) => {
+      const btn = document.createElement("button");
+      btn.className = cls;
+      btn.textContent = label;
+      btn.onclick = onClick;
+      actions.appendChild(btn);
+    };
+
+    add("批准分析方案", "btn", () => act("approve"));
+    add("暂停", "btn btn-secondary", () => act("pause"));
+    add("修改问题", "btn btn-secondary", () => {
+      $("replanQuestion").value = run.question || "";
+      $("replanBox").classList.remove("hidden");
+      $("replanQuestion").focus();
+      state.replanOpen = true;
+    });
+    add("放弃本次分析", "btn btn-danger-ghost", cancelRun);
+
+    // 轮询重绘会把面板收起来，这里按用户上次的选择恢复
+    $("replanBox").classList.toggle("hidden", !state.replanOpen);
+
+    callout.classList.remove("hidden");
+    callout.classList.add("pulse");
+
+    const key = run.status + ":" + run.run_id;
+    if (state.scrolledFor !== key) {
+      state.scrolledFor = key;
+      callout.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  /** 把 research_plan 渲染成可读的方案。 */
+  function renderPlan(plan) {
+    if (!plan || typeof plan !== "object") {
+      return (
+        `<div style="padding:var(--s-4)">` +
+        fallback("服务端未返回分析方案，可以直接批准继续。") +
+        `</div>`
+      );
+    }
+
+    const rows = [];
+
+    const row = (label, html) => {
+      rows.push(
+        `<div class="plan-row">
+           <div class="plan-label">${esc(label)}</div>
+           <div class="plan-value">${html}</div>
+         </div>`
+      );
+    };
+
+    row(
+      "分析问题",
+      esc(plan.question || "（未指定，将做全量等深分析）")
+    );
+
+    const focus = plan.focus || {};
+    const dims = focus.dimensions || [];
+    const dimTitles = {};
+    DIMENSIONS.forEach((d) => (dimTitles[d.key] = d.label));
+
+    row(
+      "分析重点",
+      dims.length
+        ? `<div class="chips">${dims
+            .map(
+              (d) =>
+                `<span class="chip accent">${esc(dimTitles[d] || d)}</span>`
+            )
+            .join("")}</div>`
+        : `<span class="muted">未点名模块，六个维度等深分析</span>`
+    );
+
+    const tasks = plan.tasks || [];
+
+    row(
+      "待执行",
+      tasks.length
+        ? `<ol class="plan-steps">${tasks
+            .map(
+              (t, i) =>
+                `<li><span class="idx">${i + 1}</span>` +
+                `<span>${esc(AGENT_LABELS[t] || t)}</span></li>`
+            )
+            .join("")}</ol>`
+        : `<span class="muted">—</span>`
+    );
+
+    if (plan.evidence_required) {
+      row("证据要求", "每条结论须附源码出处（文件 + 行号）");
+    }
+
+    return rows.join("");
   }
 
   /** 运行中给一个「暂停」入口；其余状态靠 callout 的按钮。 */
@@ -535,7 +715,7 @@
       /*
        * 人工操作在途时绝不刷新。
        *
-       * approve 会阻塞几十秒（要跑 6 个 Agent），
+       * approve 会阻塞几十秒（要跑 5 个 Agent），
        * 而 run.status 直到请求结束才更新。
        * 期间轮询读到的仍是旧的 WAITING_*，
        * 会把「执行中」覆盖回「等你确认」，
@@ -550,12 +730,19 @@
         state.run = run;
         renderStatus(run);
 
-        if (run.status === "COMPLETED") {
+        // 停顿态停止轮询。
+        //
+        // 这些状态只会因为用户操作而改变，而操作都由本页发起并即时处理，
+        // 继续每 2 秒轮询没有收益 ——
+        // 反而会把 callout 反复重绘，用户正在里面读分析方案、
+        // 或往「修改问题」框里打字时，面板会被一次次重建。
+        if (RESTING_STATUSES.includes(run.status)) {
           stopPolling();
-          await loadReport(run.run_id);
-          loadHistory();
-        } else if (run.status === "FAILED") {
-          stopPolling();
+
+          if (run.status === "COMPLETED") {
+            await loadReport(run.run_id);
+          }
+
           loadHistory();
         }
       } catch (e) {
@@ -592,11 +779,15 @@
       state.run = run;
       renderStatus(run);
 
-      if (run.status === "COMPLETED") {
-        await loadReport(run.run_id);
+      // 与 poll() 同一套判断：操作完落到停顿态就不必再轮询。
+      if (RESTING_STATUSES.includes(run.status)) {
+
+        if (run.status === "COMPLETED") {
+          await loadReport(run.run_id);
+        }
+
         loadHistory();
-      } else if (run.status === "FAILED") {
-        loadHistory();
+
       } else {
         poll();
       }
@@ -656,6 +847,80 @@
   }
 
   /* ============================================================
+   * 放弃 / 重新规划
+   * ============================================================ */
+
+  async function cancelRun() {
+    if (state.inFlight || !state.runId) return;
+
+    if (!confirm("确定放弃本次分析？\n\n已经产生的数据会保留，但不会再继续执行。")) {
+      return;
+    }
+
+    state.inFlight = true;
+    stopPolling();
+
+    try {
+      const run = await post(`/analysis/${state.runId}/cancel`);
+      state.run = run;
+      state.replanOpen = false;
+      renderStatus(run);
+      loadHistory();
+    } catch (e) {
+      showError("放弃失败：" + e.message);
+    } finally {
+      state.inFlight = false;
+    }
+  }
+
+  async function replanRun() {
+    if (state.inFlight || !state.runId) return;
+
+    const question = $("replanQuestion").value.trim();
+
+    if (!question) {
+      toast("请填写新的分析问题");
+      $("replanQuestion").focus();
+      return;
+    }
+
+    state.inFlight = true;
+    stopPolling();
+
+    // 重新规划要重跑 Planner（含一次 LLM 调用），会有几秒无响应，
+    // 先把按钮禁用并提示，免得用户以为没点上而重复点击。
+    const submit = $("replanSubmit");
+    submit.disabled = true;
+    submit.textContent = "重新规划中…";
+
+    try {
+      const run = await api(`/analysis/${state.runId}/replan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+
+      state.run = run;
+      state.replanOpen = false;
+      renderStatus(run);
+      loadHistory();
+      toast("已按新问题重新规划");
+    } catch (e) {
+      showError("重新规划失败：" + e.message);
+    } finally {
+      submit.disabled = false;
+      submit.textContent = "用新问题重新规划";
+      state.inFlight = false;
+    }
+  }
+
+  $("replanSubmit").onclick = replanRun;
+  $("replanCancel").onclick = () => {
+    state.replanOpen = false;
+    $("replanBox").classList.add("hidden");
+  };
+
+  /* ============================================================
    * 启动分析
    * ============================================================ */
 
@@ -691,7 +956,12 @@
       const run = await api("/analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ repo_url: repoUrl, question: question || null }),
+        body: JSON.stringify({
+          repo_url: repoUrl,
+          question: question || null,
+          // 按次开关。true/false 都显式传，让服务端不必猜。
+          enable_rag: $("ragToggle").checked,
+        }),
       });
 
       state.runId = run.run_id;
@@ -730,6 +1000,7 @@
     state.mainReport = null;
     state.dim = null;
     state.evidenceFilter = "";
+    state.replanOpen = false;
 
     $("reportArea").classList.add("hidden");
     $("viewDashboard").innerHTML = "";
@@ -1862,6 +2133,34 @@
   });
 
   $("refreshHistory").onclick = loadHistory;
+
+  /* ---------- RAG 开关 ---------- */
+
+  /*
+   * 选择存 localStorage：RAG 是一个「我这次想不想等」的决定，
+   * 每次进来都要重设一遍会很烦。
+   * 默认值由服务端配置决定，首次访问时不给前端预设。
+   */
+  try {
+    const saved = localStorage.getItem("aipi-rag");
+
+    if (saved !== null) {
+      $("ragToggle").checked = saved === "1";
+    }
+  } catch (e) { /* 隐私模式忽略 */ }
+
+  function syncRagWarning() {
+    $("ragWarning").classList.toggle("hidden", !$("ragToggle").checked);
+  }
+
+  $("ragToggle").onchange = () => {
+    try {
+      localStorage.setItem("aipi-rag", $("ragToggle").checked ? "1" : "0");
+    } catch (e) { /* 忽略 */ }
+    syncRagWarning();
+  };
+
+  syncRagWarning();
 
   /* ============================================================
    * 深链 #/run/<id>

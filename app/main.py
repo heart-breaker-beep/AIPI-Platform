@@ -16,6 +16,36 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+
+class NoCacheStaticFiles(StaticFiles):
+    """
+    静态资源每次都让浏览器回源校验。
+
+    为什么需要这个
+    ==============
+
+    StaticFiles 默认**不发 Cache-Control**。
+    浏览器遇到这种响应会启用启发式缓存
+    （按 RFC 9111，通常取 Last-Modified 之后 10% 的时间做新鲜期），
+    期间直接拿本地副本，不发请求。
+
+    结果是：代码改了、容器重建了，页面却还是旧的。
+    这一现象极难判断 —— 用户会以为是功能没生效、
+    或者后端没改对，而真正的问题只是浏览器揣着一份旧 JS。
+
+    加 no-cache 之后，浏览器每次带 If-None-Match 回源：
+    文件没变就是 304（几十字节，开销可忽略），
+    变了立刻拿到新的。
+    """
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+
+        # no-cache = 先校验再用，不是「不缓存」。
+        response.headers["Cache-Control"] = "no-cache"
+
+        return response
+
 from app.api.v1.analysis import (
     router as analysis_router,
 )
@@ -86,7 +116,9 @@ if STATIC_DIR.is_dir():
 
     app.mount(
         "/static",
-        StaticFiles(directory=str(STATIC_DIR)),
+        NoCacheStaticFiles(
+            directory=str(STATIC_DIR)
+        ),
         name="static",
     )
 

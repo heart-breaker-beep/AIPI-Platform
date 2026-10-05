@@ -30,6 +30,10 @@ class WorkflowEngine:
         WorkflowStatus.PAUSED,
         WorkflowStatus.WAITING_HUMAN,
         WorkflowStatus.WAITING_DESIGN,
+        # CANCELED 也停下来：
+        # 放弃是一次终态决定，
+        # 不该让循环继续往后推进节点。
+        WorkflowStatus.CANCELED,
     }
 
     def __init__(
@@ -242,6 +246,20 @@ class WorkflowEngine:
     ):
 
         state.pause(
+            reason=reason
+        )
+
+        await self._save(state)
+
+        return state
+
+    async def cancel(
+        self,
+        state,
+        reason: str = "manual_cancel",
+    ):
+
+        state.cancel(
             reason=reason
         )
 

@@ -14,6 +14,9 @@ from app.models.repository import Repository
 from app.repositories.analysis_run import (
     AnalysisRunRepository,
 )
+from app.repositories.checkpoint import (
+    CheckpointRepository,
+)
 from app.repositories.repository_basic import (
     RepositoryRepository,
 )
@@ -21,6 +24,7 @@ from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisDeepDiveResponse,
     AnalysisJsonReportResponse,
+    AnalysisReplanRequest,
     AnalysisReportResponse,
     AnalysisResponse,
     LearningPathResponse,
@@ -164,7 +168,8 @@ class AnalysisService:
         # POST /analysis 不再只是创建数据库记录，
         # 而是真正启动 Workflow。
         await runner.start(
-            run_id
+            run_id,
+            enable_rag=request.enable_rag,
         )
 
         run = await analysis_run_repo.get_by_id(
@@ -204,6 +209,127 @@ class AnalysisService:
         return await self._to_response(
             session,
             run,
+            include_plan=True,
+        )
+
+    async def cancel_analysis(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisResponse:
+        """
+        放弃本次分析。
+
+        只允许从「等人工决策」或「已暂停」这些停顿态放弃。
+        正在跑（ANALYZING / PLANNING）时不允许 ——
+        那种情况下后台还有节点在执行，
+        置成 CANCELED 会被随后的 _sync_run 覆盖回 ANALYZING，
+        用户会看到"点了放弃却还在跑"。
+        """
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        if run.status not in {
+            "WAITING_DESIGN",
+            "WAITING_HUMAN",
+            "PAUSED",
+        }:
+            raise ValidationError(
+                f"Analysis run cannot be canceled "
+                f"from status: {run.status}"
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        await runner.cancel(run_id)
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        return await self._to_response(
+            session,
+            run,
+            include_plan=True,
+        )
+
+    async def replan_analysis(
+        self,
+        session: AsyncSession,
+        run_id: str,
+        request: AnalysisReplanRequest,
+    ) -> AnalysisResponse:
+        """
+        在设计闸门修改问题并重新规划。
+
+        只允许在 WAITING_DESIGN 时调用：
+        方案已经执行到一半再改问题没有意义，
+        那些 Agent 的结果对应的是旧问题。
+        """
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        if run.status != "WAITING_DESIGN":
+            raise ValidationError(
+                f"Analysis run can only be replanned "
+                f"at the design gate, current status: "
+                f"{run.status}"
+            )
+
+        question = request.question.strip()
+
+        if not question:
+            raise ValidationError(
+                "Question cannot be empty."
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        await runner.replan(
+            run_id,
+            question,
+        )
+
+        run = await run_repo.get_by_id(
+            run_id
+        )
+
+        # 重规划后停在同一个闸门，
+        # 因此把新方案一并带回，前端可直接刷新显示。
+        return await self._to_response(
+            session,
+            run,
+            include_plan=True,
         )
 
     async def approve_analysis(
@@ -655,8 +781,19 @@ class AnalysisService:
         self,
         session: AsyncSession,
         run,
+        include_plan: bool = False,
     ) -> AnalysisResponse:
-        """将 AnalysisRun 转成 API Response。"""
+        """
+        将 AnalysisRun 转成 API Response。
+
+        include_plan：
+            是否把分析方案一起带上。方案存在 checkpoint 的
+            state_data 里，可能数百 KB，
+            因此**默认不读** ——
+            历史列表一次要出 30 条，逐条读大 JSON 会明显拖慢。
+
+            只有单条查询（前端轮询当前 run）才需要它。
+        """
 
         if run is None:
             raise ValidationError(
@@ -674,6 +811,34 @@ class AnalysisService:
                 f"{run.repository_id}"
             )
 
+        research_plan = None
+        rag_enabled = None
+
+        # 只在设计闸门等待审批时去读 checkpoint：
+        # 那时用户确实需要看到方案才能决定批不批。
+        if include_plan and run.status == "WAITING_DESIGN":
+
+            try:
+                state = await CheckpointRepository(
+                    session
+                ).get_latest(run.id)
+
+            except Exception as error:  # noqa: BLE001
+                # 读不到方案不该让状态查询整体失败 ——
+                # 那样用户连"当前在等审批"都看不到。
+                logger.warning(
+                    "读取 research_plan 失败 | run=%s | %s",
+                    run.id,
+                    error,
+                )
+                state = None
+
+            if state is not None:
+                data = getattr(state, "data", None) or {}
+
+                research_plan = data.get("research_plan")
+                rag_enabled = data.get("rag_enabled")
+
         return AnalysisResponse(
             run_id=run.id,
             status=run.status,
@@ -684,6 +849,8 @@ class AnalysisService:
                 run.status,
                 run.current_node,
             ),
+            research_plan=research_plan,
+            rag_enabled=rag_enabled,
             created_at=run.created_at,
         )
 

@@ -115,6 +115,7 @@ AIPI Platform/
 │   │   ├── analysis_service.py
 │   │   ├── analysis_workflow.py
 │   │   ├── evidence_service.py
+│   │   ├── report_service.py
 │   │   └── repository_service.py
 │   ├── skills/                                                      # ── Skill 能力层 ──
 │   │   ├── __init__.py
@@ -122,6 +123,7 @@ AIPI Platform/
 │   │   ├── base.py
 │   │   ├── evidence_analysis_skill.py
 │   │   ├── json_output.py
+│   │   ├── learning_path_skill.py
 │   │   ├── module_deep_dive_skill.py
 │   │   ├── registry.py
 │   │   ├── report_generation_skill.py
@@ -177,11 +179,18 @@ AIPI Platform/
 │   ├── __init__.py                                                  # (空)
 │   └── main.py
 ├── reports/
+│   ├── 0e337186-e3f5-4389-9ebd-9cce684ff7ae_agents_deep_dive.md
+│   ├── 0e337186-e3f5-4389-9ebd-9cce684ff7ae_analysis.json
+│   ├── 0e337186-e3f5-4389-9ebd-9cce684ff7ae_analysis.md
+│   ├── 0e337186-e3f5-4389-9ebd-9cce684ff7ae_learning_path.md
 │   ├── 3730e4e2-2014-43c8-91c3-382a65b2dab3_analysis.md
 │   ├── 375e3b6b-1b6f-4c2c-ad6e-d8557071a816_analysis.md
 │   ├── 478567aa-f3e4-4dd0-8190-02e529c7fa9b_analysis.md
 │   ├── 48319961-f784-4f02-9495-d918067dd72f_analysis.md
 │   ├── 5348dfc4-90be-40ed-b831-7a7c898e280c_analysis.md
+│   ├── 53b5c1bf-f4b7-465f-90a5-99bc2455cd12_analysis.json
+│   ├── 53b5c1bf-f4b7-465f-90a5-99bc2455cd12_analysis.md
+│   ├── 53b5c1bf-f4b7-465f-90a5-99bc2455cd12_memory_deep_dive.md
 │   ├── 74955586-c729-404f-9a77-f9d35c2f914a_analysis.md
 │   ├── 773fa941-7723-4ae2-99f0-e1e000b2e63c_analysis.md
 │   ├── 799049b1-3d51-4c2f-bbe5-81930ce59a23_analysis.md
@@ -209,6 +218,7 @@ AIPI Platform/
 │   ├── _b.mjs
 │   ├── api_flow_run_id.txt
 │   ├── focus_run.txt
+│   ├── json_run.txt
 │   ├── last_run.txt
 │   ├── latest_run.txt
 │   ├── preview.md
@@ -256,6 +266,7 @@ AIPI Platform/
 │   ├── test_mysql_query_tool.py
 │   ├── test_phase10.py
 │   ├── test_phase12.py
+│   ├── test_phase14.py
 │   ├── test_pre_phase12_integration.py
 │   ├── test_pre_phase12_structure.py
 │   ├── test_qdrant.py
@@ -281,11 +292,8 @@ AIPI Platform/
 ├── .gitignore
 ├── a.py                                                             # Agent Loop 实验草稿（未纳入 app/）
 ├── agent loop.py                                                    # Agent Loop 草稿片段
-├── AI-Agent-GitHub-Project-Intelligence-Platform-详细Phase开发实施文档.md
-├── AI-Agent-GitHub-Project-Intelligence-Platform-项目设计文档.md
 ├── alembic.ini                                                      # Alembic 配置
 ├── generate_project_code.py                                         # 本文档生成脚本
-├── Phase12-Phase13-数据契约审查报告.md
 ├── PROJECT_CODE.md
 ├── pytest.ini                                                       # Pytest 配置
 └── requirements.txt                                                 # 依赖清单
@@ -531,13 +539,14 @@ from app.db.session import get_db
 from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisDeepDiveResponse,
+    AnalysisJsonReportResponse,
     AnalysisReportResponse,
     AnalysisResponse,
+    LearningPathResponse,
 )
 from app.services.analysis_service import (
     analysis_service,
 )
-
 
 router = APIRouter(
     prefix="/analysis",
@@ -684,6 +693,65 @@ async def get_analysis_report(
     )
 
 
+@router.get(
+    "/{run_id}/report/json",
+    response_model=AnalysisJsonReportResponse,
+)
+async def get_analysis_json_report(
+    run_id: str,
+    session: AsyncSession = Depends(get_db),
+) -> AnalysisJsonReportResponse:
+    """
+    获取结构化报告（JSON）。
+
+    markdown 报告是给人读的排版结果；
+    这一份是同一份数据的结构化形态，
+    供程序消费。
+
+    优先读落盘的 .json；
+    读不到就用 ReportService 现场重建，
+    因此早期 run 也能拿到。
+    """
+
+    return await analysis_service.get_report_json(
+        session,
+        run_id,
+    )
+
+
+@router.post(
+    "/{run_id}/learning-path",
+    response_model=LearningPathResponse,
+)
+async def learning_path(
+    run_id: str,
+    goal: str | None = Query(
+        None,
+        description=(
+            "学习目标，留空则用该 run 的分析问题"
+        ),
+    ),
+    session: AsyncSession = Depends(get_db),
+) -> LearningPathResponse:
+    """
+    生成项目的学习路线（Phase 14.1）。
+
+    基于该 run 已有的分析结果，
+    不重新联网、不重新分析。
+
+    产物：学习顺序 / 需要掌握的技术 /
+    核心源码 / 推荐阅读路径 / 改造建议。
+
+    该接口只读不写，不修改原报告。
+    """
+
+    return await analysis_service.learning_path(
+        session,
+        run_id,
+        goal,
+    )
+
+
 @router.post(
     "/{run_id}/deep-dive",
     response_model=AnalysisDeepDiveResponse,
@@ -816,6 +884,45 @@ class AnalysisDeepDiveResponse(BaseModel):
 
     # 展开了多少项实现明细。
     details: int = 0
+
+class AnalysisJsonReportResponse(BaseModel):
+    """
+    结构化报告（Phase 14.2）。
+
+    markdown 是给人读的排版结果；
+    这一份是同一份数据的结构化形态，
+    字段含义与 schema_version 见
+    ReportService.build_document()。
+    """
+
+    run_id: str
+
+    status: str
+
+    document: dict | None = None
+
+
+class LearningPathResponse(BaseModel):
+    """
+    项目的学习路线（Phase 14.1）。
+
+    基于已有分析结果生成，
+    不重新采集数据。
+    """
+
+    run_id: str
+
+    available: bool = False
+
+    reason: str | None = None
+
+    # 五个小节：学习顺序 / 需要掌握的技术 /
+    # 核心源码 / 推荐阅读路径 / 改造建议
+    sections: dict = {}
+
+    report: dict | None = None
+
+    content: str = ""
 ```
 
 ### 📄 `app/schemas/error.py`
@@ -1137,8 +1244,10 @@ from app.repositories.repository_basic import (
 from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisDeepDiveResponse,
+    AnalysisJsonReportResponse,
     AnalysisReportResponse,
     AnalysisResponse,
+    LearningPathResponse,
 )
 from app.services.analysis_workflow import (
     AnalysisWorkflowRunner,
@@ -1506,6 +1615,98 @@ class AnalysisService:
         return await self._to_response(
             session,
             run,
+        )
+
+    async def learning_path(
+        self,
+        session: AsyncSession,
+        run_id: str,
+        goal: str | None = None,
+    ) -> LearningPathResponse:
+        """
+        生成项目的学习路线（Phase 14.1）。
+
+        只读不写：不修改原 run，
+        产物是独立的一份 markdown。
+        """
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(run_id)
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        result = await runner.learning_path(
+            run_id,
+            goal or run.question,
+        )
+
+        return LearningPathResponse(
+            run_id=run_id,
+            available=bool(
+                result.get("available")
+            ),
+            reason=result.get("reason"),
+            sections=result.get("sections") or {},
+            report=result.get("report"),
+            content=result.get("content") or "",
+        )
+
+    async def get_report_json(
+        self,
+        session: AsyncSession,
+        run_id: str,
+    ) -> AnalysisJsonReportResponse:
+        """
+        获取结构化报告（Phase 14.2）。
+
+        两条路：
+
+        1. 读 Finalizer 落盘的 .json（正常路径）
+        2. 文件不在了就用 ReportService
+           从 checkpoint 现场重建
+
+        第 2 条不只是兜底：
+        早期 run 没产出过 JSON，
+        现场重建让它们也能拿到结构化报告。
+        """
+
+        run_repo = AnalysisRunRepository(
+            session
+        )
+
+        run = await run_repo.get_by_id(run_id)
+
+        if run is None:
+            raise ValidationError(
+                f"Analysis run not found: {run_id}"
+            )
+
+        runner = (
+            self.workflow_runner_factory(
+                session
+            )
+        )
+
+        document = await runner.get_json_report(
+            run_id
+        )
+
+        return AnalysisJsonReportResponse(
+            run_id=run_id,
+            status=run.status,
+            document=document,
         )
 
     async def get_report(
@@ -2411,6 +2612,7 @@ AnalysisRun
 真正连接起来。
 """
 
+import json
 from pathlib import Path
 
 from app.agents.agent_registry import (
@@ -2858,6 +3060,168 @@ class AnalysisWorkflowRunner:
             report,
         )
 
+    async def learning_path(
+        self,
+        run_id: str,
+        goal: str | None = None,
+    ):
+        """
+        基于已有分析结果生成学习路线（Phase 14.1）。
+
+        不重新联网、不重新分析 ——
+        只用该 run 已经采集到的数据。
+        产物是独立的一份 markdown，
+        不修改原报告。
+        """
+
+        state = await self.checkpoint.load(run_id)
+
+        if state is None:
+            raise ValueError(
+                f"Checkpoint not found: {run_id}"
+            )
+
+        data = state.data or {}
+
+        context = self.build_context(
+            repository_id=data.get(
+                "repository_id"
+            )
+        )
+
+        skill = context.skills.get(
+            "learning_path"
+        )
+
+        if skill is None:
+            raise ValueError(
+                "Learning path skill is not "
+                "registered."
+            )
+
+        return await skill.execute(
+            context,
+            {
+                **data,
+                "run_id": run_id,
+                "goal": goal or data.get("question"),
+            },
+        )
+
+    async def get_json_report(
+        self,
+        run_id: str,
+    ):
+        """
+        获取结构化报告（Phase 14.2）。
+
+        优先读 Finalizer 落盘的 .json；
+        读不到就用 ReportService 从
+        checkpoint 的 state 现场重建。
+
+        现场重建让早期 run（没产出过 JSON）
+        也能拿到结构化报告。
+        """
+
+        state = None
+
+        try:
+
+            state = await self.checkpoint.load(
+                run_id
+            )
+
+        except Exception as error:
+
+            logger.warning(
+                "checkpoint load failed for json "
+                "report | run_id=%s | %s: %s",
+                run_id,
+                type(error).__name__,
+                error,
+            )
+
+        data = (
+            state.data
+            if state is not None
+            else {}
+        )
+
+        # 1. 落盘的 JSON
+        path = self._json_report_path(
+            run_id,
+            data,
+        )
+
+        if path is not None:
+
+            try:
+
+                return json.loads(
+                    Path(path).read_text(
+                        encoding="utf-8"
+                    )
+                )
+
+            except (OSError, ValueError):
+
+                # 文件损坏时继续走重建，
+                # 不把「读到坏文件」变成 500。
+                pass
+
+        # 2. 现场重建
+        if not data:
+
+            return None
+
+        from app.services.report_service import (
+            ReportService,
+        )
+
+        return ReportService.build_document(
+            data,
+            run_id=run_id,
+        )
+
+    @staticmethod
+    def _json_report_path(
+        run_id: str,
+        data: dict,
+    ):
+        """找出 JSON 报告文件路径。"""
+
+        final_report = (
+            data.get("final_report")
+            if isinstance(data, dict)
+            else None
+        )
+
+        if isinstance(final_report, dict):
+
+            json_report = final_report.get(
+                "json_report"
+            )
+
+            if isinstance(json_report, dict):
+
+                candidate = json_report.get("path")
+
+                if candidate and Path(candidate).is_file():
+
+                    return candidate
+
+        # 早期 run 没记录路径，
+        # 按命名约定猜一下。
+        fallback = (
+            Path("reports")
+            / f"{run_id}_analysis.json"
+        )
+
+        if fallback.is_file():
+            return str(fallback)
+
+        return None
+
     @staticmethod
     def _report_from_disk(
         run_id: str,
@@ -3038,6 +3402,466 @@ class AnalysisWorkflowRunner:
         await self.session.commit()
 
         return state
+```
+
+### 📄 `app/services/report_service.py`
+
+**层级**：业务服务层 · **职责**：Report Service（Phase 14.2）。
+
+```python
+"""
+Report Service（Phase 14.2）。
+
+职责
+====
+
+把分析结果投影成一份**结构化的报告文档**，
+再按格式输出：
+
+    Analysis 结果（state.data）
+        ↓
+    ReportService.build_document()
+        ↓
+    结构化 Report Document（可 JSON 序列化）
+        ↓
+    ├── to_markdown()  → 给人读的 markdown
+    └── to_json()      → 给程序消费的 JSON
+
+为什么要有这一层
+================
+
+文档 17.2 的要求是「不要让 Agent 自己负责文件生成」，
+并明确 Report Service 应该接收 Structured Report Data。
+
+在此之前，报告数据只有一种形态：
+`ReportGenerationSkill._build_report()` 直接把
+state.data 渲染成 markdown 字符串。
+想拿 JSON 只能去解析 markdown，既脆又丢信息。
+
+本模块补上中间那一层：一份**稳定、有版本号、
+字段含义明确**的文档结构。
+markdown 与 JSON 都从它派生，
+两者描述的是同一份数据，不会漂移。
+
+与 markdown 的分工
+==================
+
+markdown 渲染仍然由 ReportGenerationSkill 负责 ——
+它包含表格排版、要点归纳、focus 展开/压缩等
+大量呈现逻辑，不适合塞进这里。
+本模块只负责**结构化投影**，不碰排版。
+
+schema_version
+==============
+
+字段增删会破坏消费方，
+因此文档带 schema_version。
+当前为 1。
+"""
+
+import json
+from datetime import datetime, timezone
+
+
+class ReportService:
+    """结构化报告文档的构建与序列化。"""
+
+    SCHEMA_VERSION = 1
+
+    # JSON 里最多保留多少条 evidence。
+    #
+    # 报告正文的 Evidence 章是全量的，
+    # 但 JSON 常常被程序读进内存，
+    # 需要有个上限。
+    MAX_EVIDENCE = 200
+
+    @classmethod
+    def build_document(
+        cls,
+        data: dict,
+        *,
+        run_id=None,
+        title=None,
+    ) -> dict:
+        """
+        把分析结果投影成结构化报告文档。
+
+        只做字段挑选与归一化，
+        不渲染、不归纳、不改写内容 ——
+        数值与文本原样透传。
+        """
+
+        if not isinstance(data, dict):
+            data = {}
+
+        from app.project_analysis.analysis_focus import (
+            AnalysisFocus,
+        )
+
+        focus = AnalysisFocus.from_plan(
+            data.get("research_plan")
+        )
+
+        return {
+            "schema_version": cls.SCHEMA_VERSION,
+            "generated_at": datetime.now(
+                timezone.utc
+            ).isoformat(),
+            "run_id": run_id or data.get("run_id"),
+            "title": title or (
+                "GitHub Project Intelligence Report"
+            ),
+            "question": data.get("question"),
+            "focus": focus.to_dict(),
+            "project": cls._project(data),
+            "technology_stack": cls._as_dict(
+                data.get("technology_stack")
+            ),
+            "directory": cls._directory(data),
+            "modules": cls._modules(data),
+            "dimensions": cls._dimensions(data),
+            "evidence": cls._evidence(data),
+            "synthesis": cls._synthesis(data),
+            "report": cls._report_file(data),
+        }
+
+    # ------------------------------------------------------------------
+    # 各区块
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _as_dict(value) -> dict:
+        """只接受 dict。"""
+
+        return value if isinstance(value, dict) else {}
+
+    @classmethod
+    def _project(cls, data: dict) -> dict:
+        """项目概览：GitHub API 的真实元数据。"""
+
+        repository = cls._as_dict(
+            data.get("repository")
+        )
+
+        if not repository:
+            return {
+                "available": False,
+                "reason": "未获取到仓库信息。",
+            }
+
+        license_info = repository.get("license")
+
+        return {
+            "available": True,
+            "name": repository.get("name"),
+            "full_name": repository.get(
+                "full_name"
+            ),
+            "description": repository.get(
+                "description"
+            ),
+            "language": repository.get("language"),
+            "topics": repository.get("topics")
+            or [],
+            "stars": repository.get(
+                "stargazers_count"
+            ),
+            "forks": repository.get(
+                "forks_count"
+            ),
+            "open_issues": repository.get(
+                "open_issues_count"
+            ),
+            "license": (
+                license_info.get("name")
+                if isinstance(license_info, dict)
+                else None
+            ),
+            "default_branch": repository.get(
+                "default_branch"
+            ),
+            "size_kb": repository.get("size"),
+            "created_at": repository.get(
+                "created_at"
+            ),
+            "pushed_at": repository.get(
+                "pushed_at"
+            ),
+            "url": repository.get("html_url"),
+        }
+
+    @classmethod
+    def _directory(cls, data: dict) -> dict:
+        """
+        目录结构。
+
+        PlanExecutorNode 会把它拍平到顶层，
+        同时也留在 architecture_analysis_agent 里，
+        两个位置都看。
+        """
+
+        directory = data.get("directory_structure")
+
+        if not isinstance(directory, dict):
+
+            architecture = cls._as_dict(
+                data.get(
+                    "architecture_analysis_agent"
+                )
+            )
+
+            directory = architecture.get(
+                "directory_structure"
+            )
+
+        if not isinstance(directory, dict):
+            return {
+                "available": False,
+                "reason": "未获取到仓库文件树。",
+            }
+
+        return directory
+
+    @classmethod
+    def _modules(cls, data: dict) -> list:
+        """
+        采集到的源码文件清单。
+
+        刻意**不带正文**：
+        正文每个文件最多 1200 字符，
+        20 个文件就是 20 多 KB，
+        而 JSON 常被程序读进内存。
+        需要正文时按 file_path 自己去取。
+        """
+
+        modules = data.get("modules")
+
+        if not isinstance(modules, list):
+            return []
+
+        return [
+            {
+                "file_path": module.get(
+                    "file_path"
+                ),
+                "start_line": module.get(
+                    "start_line",
+                    1,
+                ),
+                "truncated": bool(
+                    module.get("truncated")
+                ),
+            }
+            for module in modules
+            if isinstance(module, dict)
+            and module.get("file_path")
+        ]
+
+    @classmethod
+    def _dimensions(cls, data: dict) -> dict:
+        """
+        六个维度（agents / workflow / ...）。
+
+        字段与 project_structure.dimensions 一致，
+        额外的 details 只保留结构化部分，
+        去掉 source 源码片段（体积大且
+        默认报告不渲染）。
+        """
+
+        structure = cls._as_dict(
+            data.get("project_structure")
+        )
+
+        if not structure.get("available"):
+
+            return {
+                "_available": False,
+                "_reason": structure.get("reason")
+                or "未产出项目结构。",
+            }
+
+        dimensions = cls._as_dict(
+            structure.get("dimensions")
+        )
+
+        result = {}
+
+        for name, entry in dimensions.items():
+
+            if not isinstance(entry, dict):
+                continue
+
+            result[name] = {
+                "declared": bool(
+                    entry.get("declared")
+                ),
+                "declared_by": entry.get(
+                    "declared_by"
+                ),
+                "items": entry.get("items") or [],
+                "topics": entry.get("topics") or [],
+                "evidence": entry.get("evidence")
+                or [],
+                "code_evidence": entry.get(
+                    "code_evidence"
+                )
+                or [],
+                "reason": entry.get("reason"),
+                "details": [
+                    {
+                        "kind": item.get("kind"),
+                        "name": item.get("name"),
+                        "signature": item.get(
+                            "signature"
+                        ),
+                        "file_path": item.get(
+                            "file_path"
+                        ),
+                        "line": item.get("line"),
+                        "methods": item.get(
+                            "methods"
+                        )
+                        or [],
+                        "calls": item.get("calls")
+                        or [],
+                        "literals": item.get(
+                            "literals"
+                        )
+                        or [],
+                    }
+                    for item in (
+                        entry.get("details") or []
+                    )
+                    if isinstance(item, dict)
+                ],
+            }
+
+        return result
+
+    @classmethod
+    def _evidence(cls, data: dict) -> list:
+        """证据清单。"""
+
+        evidence = data.get("evidence")
+
+        if not isinstance(evidence, list):
+            return []
+
+        items = []
+
+        for item in evidence[: cls.MAX_EVIDENCE]:
+
+            if not isinstance(item, dict):
+                continue
+
+            items.append(
+                {
+                    "file_path": item.get(
+                        "file_path"
+                    ),
+                    "line_start": item.get(
+                        "line_start"
+                    ),
+                    "line_end": item.get(
+                        "line_end"
+                    ),
+                    "source_type": item.get(
+                        "source_type"
+                    ),
+                    "source_url": item.get(
+                        "source_url"
+                    ),
+                    "verification_status": item.get(
+                        "verification_status"
+                    ),
+                    "content": item.get("content"),
+                }
+            )
+
+        return items
+
+    @classmethod
+    def _synthesis(cls, data: dict) -> dict:
+        """LLM 综合判断。"""
+
+        synthesis = cls._as_dict(
+            data.get("synthesis")
+        )
+
+        if not synthesis:
+            return {
+                "available": False,
+                "reason": "未产出综合分析。",
+            }
+
+        return {
+            "available": bool(
+                synthesis.get("available")
+            ),
+            "reason": synthesis.get("reason"),
+            "summary": synthesis.get(
+                "summary"
+            )
+            or {},
+            "dimensions": synthesis.get(
+                "dimensions"
+            )
+            or {},
+        }
+
+    @classmethod
+    def _report_file(cls, data: dict) -> dict:
+        """已落盘的报告文件信息。"""
+
+        final_report = cls._as_dict(
+            data.get("final_report")
+        )
+
+        inner = final_report.get("report")
+
+        if isinstance(inner, dict):
+            return inner
+
+        return {}
+
+    # ------------------------------------------------------------------
+    # 输出
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def to_json(
+        cls,
+        document: dict,
+    ) -> str:
+        """序列化成 JSON 文本。"""
+
+        return json.dumps(
+            document,
+            ensure_ascii=False,
+            indent=2,
+            default=str,
+        )
+
+    @classmethod
+    def to_markdown(
+        cls,
+        data: dict,
+    ) -> str:
+        """
+        渲染成 markdown。
+
+        委托给 ReportGenerationSkill ——
+        表格排版、要点归纳、focus 展开/压缩
+        都在那里，本模块不重复实现。
+        """
+
+        from app.skills.report_generation_skill import (
+            ReportGenerationSkill,
+        )
+
+        return ReportGenerationSkill._build_report(
+            data
+        )
 ```
 
 ## 六、数据访问层（Repositories）
@@ -6644,6 +7468,18 @@ class FinalizerNode(BaseNode):
         report_input.setdefault(
             "filename",
             f"{state.run_id}_analysis.md",
+        )
+
+        # Phase 14.2：同时产出 markdown 与结构化 JSON。
+        #
+        # markdown 是给人读的主产物；
+        # JSON 是同一份数据的结构化形态，
+        # 供程序消费（导出、二次加工、比对）。
+        # 两者由 ReportService 从同一份文档派生，
+        # 不会各写各的导致漂移。
+        report_input.setdefault(
+            "format",
+            "both",
         )
 
         result = await self.skill.execute(
@@ -10798,6 +11634,14 @@ class ReportGenerationSkill(
         ("use_cases", "适用场景"),
     )
 
+    # 支持的输出格式。
+    #
+    #   markdown  只出 markdown（旧行为）
+    #   both      再加一份结构化 JSON
+    #
+    # 默认仍是 markdown，避免改变既有调用方的行为。
+    SUPPORTED_FORMATS = ("markdown", "both")
+
     async def execute(
         self,
         context,
@@ -10817,6 +11661,11 @@ class ReportGenerationSkill(
             "repository_analysis.md",
         )
 
+        fmt = input_data.get("format", "markdown")
+
+        if fmt not in self.SUPPORTED_FORMATS:
+            fmt = "markdown"
+
         content = self._build_report(
             input_data
         )
@@ -10829,16 +11678,88 @@ class ReportGenerationSkill(
                 }
             }
 
+        # markdown 始终产出 ——
+        # 它是给人读的主产物，
+        # JSON 只是额外的一份结构化导出。
         report = await exporter.execute(
             title=title,
             content=content,
             filename=filename,
         )
 
-        return {
+        result = {
             "report": report,
             "content": content,
         }
+
+        if fmt == "both":
+
+            result["json_report"] = (
+                await self._export_json(
+                    exporter,
+                    input_data,
+                    title,
+                    filename,
+                )
+            )
+
+        return result
+
+    @staticmethod
+    async def _export_json(
+        exporter,
+        input_data: dict,
+        title: str,
+        filename: str,
+    ):
+        """
+        额外导出一份结构化报告（Phase 14.2）。
+
+        document 只放文件路径与格式，不放正文 ——
+        正文进 state 会把 checkpoint 撑大，
+        那是之前修过的坑。
+        """
+
+        from app.services.report_service import (
+            ReportService,
+        )
+
+        export_json = getattr(
+            exporter,
+            "export_json",
+            None,
+        )
+
+        if not callable(export_json):
+
+            return {
+                "available": False,
+                "reason": (
+                    "当前 report_export 工具"
+                    "不支持 JSON 导出。"
+                ),
+            }
+
+        document = ReportService.build_document(
+            input_data,
+            run_id=input_data.get("run_id"),
+            title=title,
+        )
+
+        json_filename = (
+            filename.rsplit(".", 1)[0] + ".json"
+            if "." in filename
+            else filename + ".json"
+        )
+
+        exported = await export_json(
+            document,
+            json_filename,
+        )
+
+        exported["available"] = True
+
+        return exported
 
     @classmethod
     def _build_report(
@@ -12855,6 +13776,11 @@ from app.skills.module_deep_dive_skill import (
 )
 
 
+from app.skills.learning_path_skill import (
+    LearningPathSkill
+)
+
+
 
 
 class SkillRegistry:
@@ -12965,6 +13891,13 @@ def create_skill_registry():
 
     registry.register(
         ModuleDeepDiveSkill()
+    )
+
+
+    # 注册学习路线Skill（Phase 14.1）
+
+    registry.register(
+        LearningPathSkill()
     )
 
 
@@ -13173,6 +14106,619 @@ def trim_to_last_comma(text: str) -> str:
 
     return text[:index]
 ````
+
+### 📄 `app/skills/learning_path_skill.py`
+
+**层级**：Skill 层 · **职责**：Learning Path Skill（Phase 14.1）。
+
+```python
+"""
+Learning Path Skill（Phase 14.1）。
+
+职责
+====
+
+输入：一个已经分析完的项目 + 用户目标
+输出：
+
+    学习顺序          先看什么、再看什么
+    需要掌握的技术     读懂这个项目要会哪些东西
+    核心源码          该精读哪几个文件
+    推荐阅读路径      从入口到细节的走法
+    改造建议          想动手改的话从哪下手
+
+为什么它必须和分析结果绑定
+==========================
+
+学习路线很容易写成那种「先学 Python，
+再学 FastAPI，再学 LangGraph」的通用清单 ——
+放之四海而皆准，但对这个项目毫无用处。
+
+因此本 Skill 的硬性约束与分析报告一致：
+
+1. LLM 只能使用 <facts> 里提供的**这个项目的真实事实**
+   （目录结构、各维度代码证据、关键文件、技术栈）
+2. 事实不足时必须写「数据不足：<缺什么>」，
+   不要给通用建议
+3. prompt 里明确禁止「先学某语言/框架」这类
+   与项目无关的通用路径
+
+推荐的核心源码必须来自真实读到的文件清单，
+不能是模型凭印象编的文件名。
+
+产物形态
+========
+
+与分析报告、深挖报告一样，
+是一份**独立的 markdown**，
+不修改已有产物。
+"""
+
+import json
+
+from app.project_analysis.code_structure_extractor import (
+    CodeStructureExtractor,
+)
+from app.skills.base import BaseSkill
+from app.skills.json_output import (
+    parse_json_object,
+)
+
+
+class LearningPathSkill(
+    BaseSkill
+):
+    """生成项目的学习路线。"""
+
+    name = "learning_path"
+
+    description = (
+        "Generate a learning path for an "
+        "analyzed repository."
+    )
+
+    # 送进 prompt 的 README 上限。
+    MAX_README_CHARS = 3000
+
+    # 最多列出多少个核心源码文件。
+    MAX_CORE_FILES = 8
+
+    # 单条建议最多多少字符，防止模型写成段落。
+    MAX_ITEM_CHARS = 200
+
+    # 各小节的展示名，顺序即渲染顺序。
+    SECTIONS = (
+        ("learning_order", "学习顺序"),
+        ("prerequisites", "需要掌握的技术"),
+        ("core_source", "核心源码"),
+        ("reading_path", "推荐阅读路径"),
+        ("improvements", "改造建议"),
+    )
+
+    async def execute(
+        self,
+        context,
+        input_data: dict,
+    ):
+        tool = context.tools.get("llm_chat")
+
+        if tool is None:
+
+            return self._unavailable(
+                "Tool not found: llm_chat，"
+                "无法生成学习路线。"
+            )
+
+        facts = self._build_facts(input_data)
+
+        if not facts.get("has_project_data"):
+
+            return self._unavailable(
+                "该 run 没有可用于生成学习路线的"
+                "分析数据（缺少仓库信息与分析结果）。"
+            )
+
+        result = await tool.execute(
+            messages=[
+                {
+                    "role": "system",
+                    "content": self._system_prompt(),
+                },
+                {
+                    "role": "user",
+                    "content": self._build_prompt(
+                        facts,
+                        goal=input_data.get("goal")
+                        or input_data.get("question"),
+                    ),
+                },
+            ]
+        )
+
+        if not result.get("available"):
+
+            return self._unavailable(
+                result.get("reason")
+                or "LLM 未返回内容。"
+            )
+
+        parsed = parse_json_object(
+            result.get("content") or ""
+        )
+
+        if parsed is None:
+
+            return self._unavailable(
+                "LLM 返回的内容不是合法 JSON，"
+                "无法解析为学习路线。"
+            )
+
+        sections = {
+            key: self._as_text_list(
+                parsed.get(key)
+            )
+            for key, _ in self.SECTIONS
+        }
+
+        if not any(sections.values()):
+
+            return self._unavailable(
+                "LLM 返回的 JSON 里没有任何可用内容。"
+            )
+
+        content = self._render(facts, sections)
+
+        report = await self._export(
+            context,
+            content=content,
+            run_id=input_data.get("run_id"),
+            repo=facts.get("repo"),
+        )
+
+        return {
+            "available": True,
+            "reason": None,
+            "sections": sections,
+            "report": report,
+            "content": content,
+        }
+
+    @staticmethod
+    def _unavailable(reason: str) -> dict:
+        """统一的「学习路线不可用」表示。"""
+
+        return {
+            "available": False,
+            "reason": reason,
+            "sections": {},
+            "report": {},
+            "content": "",
+        }
+
+    # ------------------------------------------------------------------
+    # 事实
+    # ------------------------------------------------------------------
+
+    def _build_facts(
+        self,
+        data: dict,
+    ) -> dict:
+        """
+        构建送进 prompt 的事实。
+
+        与分析报告共用同一批数据，
+        不重新联网、不重新分析。
+        """
+
+        if not isinstance(data, dict):
+            data = {}
+
+        repository = data.get("repository")
+
+        if not isinstance(repository, dict):
+            repository = {}
+
+        structure = data.get("project_structure")
+
+        if not isinstance(structure, dict):
+            structure = {}
+
+        return {
+            "has_project_data": bool(
+                repository or structure.get("available")
+            ),
+            "repo": repository.get("name"),
+            "full_name": repository.get(
+                "full_name"
+            ),
+            "description": repository.get(
+                "description"
+            ),
+            "language": repository.get("language"),
+            "topics": repository.get("topics")
+            or [],
+            "technology_stack": (
+                data.get("technology_stack") or {}
+            ),
+            "directory": self._directory(data),
+            "readme": self._readme(data),
+            "dimensions": self._dimensions(data),
+            "core_files": self._core_files(data),
+        }
+
+    @staticmethod
+    def _directory(data: dict) -> dict:
+        """目录结构摘要。"""
+
+        directory = data.get("directory_structure")
+
+        if not isinstance(directory, dict):
+
+            architecture = data.get(
+                "architecture_analysis_agent"
+            )
+
+            if isinstance(architecture, dict):
+                directory = architecture.get(
+                    "directory_structure"
+                )
+
+        if not isinstance(directory, dict):
+            return {"available": False}
+
+        return {
+            "available": True,
+            "total_files": directory.get(
+                "total_files"
+            ),
+            "top_level_dirs": (
+                directory.get("top_level_dirs")
+                or []
+            ),
+            "by_extension": (
+                directory.get("by_extension") or {}
+            ),
+            "key_files": (
+                directory.get("key_files") or []
+            ),
+        }
+
+    def _readme(self, data: dict) -> dict:
+        """README 摘要。"""
+
+        readme = data.get("readme")
+
+        if not isinstance(
+            readme,
+            str,
+        ) or not readme.strip():
+
+            return {
+                "available": False,
+                "reason": "未读取到 README。",
+            }
+
+        return {
+            "available": True,
+            "content": readme[
+                : self.MAX_README_CHARS
+            ],
+        }
+
+    @staticmethod
+    def _dimensions(data: dict) -> dict:
+        """
+        六个维度的要点与代码证据。
+
+        只给条目名与 文件:行号 ——
+        学习路线要的是「去看哪里」，
+        不需要把实现明细也塞进来。
+        """
+
+        structure = data.get("project_structure")
+
+        if not isinstance(
+            structure,
+            dict,
+        ) or not structure.get("available"):
+            return {}
+
+        dimensions = structure.get("dimensions")
+
+        if not isinstance(dimensions, dict):
+            return {}
+
+        result = {}
+
+        for name in CodeStructureExtractor.DIMENSIONS:
+
+            entry = dimensions.get(name)
+
+            if not isinstance(entry, dict):
+                continue
+
+            result[name] = {
+                "declared": bool(
+                    entry.get("declared")
+                ),
+                "declared_by": entry.get(
+                    "declared_by"
+                ),
+                "items": (
+                    entry.get("items") or []
+                )[:8],
+                "reason": entry.get("reason"),
+                "code_evidence": [
+                    {
+                        "file": item.get("file_path"),
+                        "line": item.get("line_start"),
+                        "text": item.get("text"),
+                    }
+                    for item in (
+                        entry.get("code_evidence")
+                        or []
+                    )[:4]
+                    if isinstance(item, dict)
+                ],
+            }
+
+        return result
+
+    def _core_files(self, data: dict) -> list:
+        """
+        本次真实读到的源码文件。
+
+        推荐核心源码必须从这里挑 ——
+        模型不能凭空写出一个仓库里不存在的文件名。
+        """
+
+        modules = data.get("modules")
+
+        if not isinstance(modules, list):
+            return []
+
+        files = []
+
+        for module in modules[: self.MAX_CORE_FILES]:
+
+            if not isinstance(module, dict):
+                continue
+
+            path = module.get("file_path")
+
+            if path:
+                files.append(path)
+
+        return files
+
+    # ------------------------------------------------------------------
+    # prompt
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _system_prompt() -> str:
+        """系统提示词。"""
+
+        return (
+            "你是一名资深工程师，"
+            "正在为一位想读懂某个开源项目的开发者"
+            "规划学习路线。\n"
+            "\n"
+            "你必须严格遵守以下规则：\n"
+            "\n"
+            "1. 只能使用用户消息中 <facts> 标签内"
+            "提供的**这个项目的事实**。\n"
+            "   禁止使用你自己的外部知识补充。\n"
+            "2. **禁止给通用学习路线**。\n"
+            "   「先学 Python，再学 FastAPI」这类建议"
+            "对任何项目都成立，因此毫无价值。\n"
+            "   每一条都必须指向这个项目的"
+            "具体文件、具体类、具体模块。\n"
+            "3. 推荐的核心源码必须从 facts.core_files "
+            "里挑，\n"
+            "   不允许写出清单之外的文件名 —— "
+            "那会是编造的。\n"
+            "4. 事实不足以支撑某个小节时，"
+            "直接写「数据不足：<缺什么>」，"
+            "不要用通用建议填充。\n"
+            "5. 只输出 JSON，不要 markdown 包裹，"
+            "不要解释文字。\n"
+        )
+
+    def _build_prompt(
+        self,
+        facts: dict,
+        goal=None,
+    ) -> str:
+        """构建用户消息。"""
+
+        parts = []
+
+        if isinstance(
+            goal,
+            str,
+        ) and goal.strip():
+
+            parts.append(
+                "学习者的目标：\n"
+                f"{goal.strip()}\n"
+            )
+
+        parts.append(
+            "<facts>\n"
+            + json.dumps(
+                facts,
+                ensure_ascii=False,
+                indent=2,
+                default=str,
+            )
+            + "\n</facts>\n"
+        )
+
+        parts.append(self._output_instruction())
+
+        return "\n".join(parts)
+
+    @staticmethod
+    def _output_instruction() -> str:
+        """输出格式说明。"""
+
+        return (
+            "请严格按下面的 JSON 结构输出：\n"
+            "\n"
+            "{\n"
+            '  "learning_order": '
+            '["第 1 步读什么、为什么", "第 2 步…"],\n'
+            '  "prerequisites": '
+            '["读懂这个项目需要掌握的技术，'
+            '要说明它在项目里用在哪"],\n'
+            '  "core_source": '
+            '["`文件路径` — 这个文件为什么值得精读"],\n'
+            '  "reading_path": '
+            '["从一个具体入口出发的阅读顺序"],\n'
+            '  "improvements": '
+            '["想动手改造的话，建议从哪下手"]\n'
+            "}\n"
+            "\n"
+            "每个数组最多 6 条，每条一句话。\n"
+            "core_source 里的文件必须来自 facts.core_files。\n"
+            "没有依据的小节写「数据不足：<缺什么>」。"
+        )
+
+    # ------------------------------------------------------------------
+    # 渲染与导出
+    # ------------------------------------------------------------------
+
+    def _render(
+        self,
+        facts: dict,
+        sections: dict,
+    ) -> str:
+        """渲染学习路线 markdown。"""
+
+        title = (
+            facts.get("full_name")
+            or facts.get("repo")
+            or "项目"
+        )
+
+        blocks = [
+            (
+                f"# {title} · 学习路线\n\n"
+                "> 基于已有分析结果生成，"
+                "不重新采集。\n"
+                "> 所有建议都指向这个项目的"
+                "真实文件与模块。"
+            )
+        ]
+
+        for key, label in self.SECTIONS:
+
+            values = sections.get(key)
+
+            if not values:
+                continue
+
+            blocks.append(
+                f"## {label}\n\n"
+                + "\n".join(
+                    f"- {item}" for item in values
+                )
+            )
+
+        core = facts.get("core_files")
+
+        if core:
+
+            blocks.append(
+                "## 本次可用于精读的文件\n\n"
+                "以下文件是分析时真实读取过的，"
+                "上面的建议从其中挑选：\n\n"
+                + "\n".join(
+                    f"- `{path}`" for path in core
+                )
+            )
+
+        return "\n\n".join(blocks)
+
+    async def _export(
+        self,
+        context,
+        *,
+        content: str,
+        run_id,
+        repo,
+    ):
+        """写出学习路线文件。"""
+
+        exporter = context.tools.get(
+            "report_export"
+        )
+
+        if exporter is None:
+
+            return {
+                "format": "markdown",
+                "content": content,
+            }
+
+        if run_id:
+
+            filename = f"{run_id}_learning_path.md"
+
+        else:
+
+            filename = (
+                f"{repo or 'project'}_learning_path.md"
+            )
+
+        return await exporter.execute(
+            title=(
+                f"{repo or '项目'} · 学习路线"
+            ),
+            content=content,
+            filename=filename,
+        )
+
+    def _as_text_list(
+        self,
+        value,
+    ) -> list:
+        """规整成限长的字符串列表。"""
+
+        if value is None:
+            return []
+
+        if isinstance(value, str):
+
+            text = value.strip()
+
+            return [text] if text else []
+
+        if not isinstance(
+            value,
+            (list, tuple),
+        ):
+            return [str(value)]
+
+        items = []
+
+        for item in value:
+
+            text = str(item).strip()
+
+            if not text:
+                continue
+
+            items.append(
+                text[: self.MAX_ITEM_CHARS]
+            )
+
+            if len(items) >= 6:
+                break
+
+        return items
+```
 
 ### 📄 `app/skills/module_deep_dive_skill.py`
 
@@ -16480,12 +18026,14 @@ Report Export Tool。
 
 负责:
     - 导出分析报告
-    - 支持 Markdown 文件
+    - 支持 Markdown / JSON 文件
 """
 
+import json
 from pathlib import Path
 
 from app.tools.base import BaseTool
+
 
 class ReportExportTool(BaseTool):
 
@@ -16549,6 +18097,78 @@ class ReportExportTool(BaseTool):
             "markdown"
 
         }
+
+    async def export_json(
+        self,
+        document: dict,
+        filename: str = "report.json",
+    ):
+        """
+        导出结构化报告（JSON）。
+
+        与 markdown 的差别不只是格式：
+        markdown 是给人读的排版结果，
+        JSON 是给程序消费的结构化数据
+        （见 ReportService 的 schema）。
+
+        ensure_ascii=False：
+        报告里有大量中文，
+        转义成 \\uXXXX 会让文件膨胀一倍且不可读。
+        """
+
+        file_path = (
+            self.output_dir
+            /
+            filename
+        )
+
+        file_path.write_text(
+            json.dumps(
+                document,
+                ensure_ascii=False,
+                indent=2,
+                default=str,
+            ),
+            encoding="utf-8",
+        )
+
+        return {
+            "path": str(file_path),
+            "format": "json",
+        }
+
+    async def export(
+        self,
+        *,
+        title: str,
+        content: str,
+        filename: str,
+        document: dict | None = None,
+        fmt: str = "markdown",
+    ):
+        """
+        按格式导出。
+
+        fmt=json 时必须提供 document。
+        """
+
+        if fmt == "json":
+
+            if not isinstance(document, dict):
+                raise ValueError(
+                    "JSON export requires a document."
+                )
+
+            return await self.export_json(
+                document,
+                filename,
+            )
+
+        return await self.export_markdown(
+            title,
+            content,
+            filename,
+        )
 ```
 
 ### 📄 `app/tools/github/github_repository_tool.py`
@@ -27700,6 +29320,616 @@ def test_outputs_stores_marker_not_payload():
     assert "x" * 100 not in str(marker)
 ````
 
+### 📄 `tests/test_phase14.py`
+
+**层级**：测试层 · **职责**：Phase 14 测试：Report Service（结构化报告 / JSON 导出）
+
+```python
+"""
+Phase 14 测试：Report Service（结构化报告 / JSON 导出）
+与 Learning Path（学习路线）。
+
+Phase 14 的两个新能力：
+
+    14.1 Learning Path  项目 + 目标 → 学习路线
+    14.2 Report Service  结构化报告数据 → Markdown / JSON
+
+报告章节结构刻意未改（仍是 00 + 01-11），
+文档 17.3 里那套 21 章会加回
+已被移除的「核心源码分析」与被否掉的「项目比较」。
+"""
+
+import json
+
+import pytest
+
+from app.services.report_service import (
+    ReportService,
+)
+from app.skills.learning_path_skill import (
+    LearningPathSkill,
+)
+from app.tools.report_export_tool import (
+    ReportExportTool,
+)
+
+
+def build_state():
+    """一份接近真实的 state.data。"""
+
+    return {
+        "run_id": "run-1",
+        "question": "分析项目的 agent",
+        "research_plan": {
+            "focus": {
+                "dimensions": ["agents"],
+                "notes": "关心协作",
+                "source": "llm",
+            }
+        },
+        "repository": {
+            "name": "finance-agent",
+            "full_name": "o/finance-agent",
+            "description": "发票 Agent",
+            "language": "Python",
+            "topics": ["langgraph"],
+            "stargazers_count": 5,
+            "forks_count": 1,
+            "open_issues_count": 0,
+            "license": {"name": "MIT License"},
+            "default_branch": "main",
+            "size": 64,
+            "created_at": "c",
+            "pushed_at": "p",
+            "html_url": "https://github.com/o/finance-agent",
+        },
+        "technology_stack": {
+            "frameworks": ["FastAPI", "LangGraph"],
+            "llm": ["OpenAI"],
+            "database": ["PostgreSQL"],
+            "embedding": [],
+            "deployment": [],
+        },
+        "directory_structure": {
+            "available": True,
+            "total_files": 107,
+            "top_level_dirs": [
+                {"name": "src", "file_count": 77}
+            ],
+            "by_extension": {".py": 88},
+            "key_files": ["pyproject.toml"],
+        },
+        "modules": [
+            {
+                "file_path": "src/app/services/workflow_service.py",
+                "start_line": 37,
+                "truncated": True,
+                "content": "SECRET" * 300,
+            },
+            {
+                "file_path": "src/app/main.py",
+                "content": "print('x')",
+            },
+        ],
+        "project_structure": {
+            "available": True,
+            "basis": "code+readme+topics",
+            "dimensions": {
+                "agents": {
+                    "declared": True,
+                    "declared_by": "code",
+                    "items": ["class InvoiceAgent"],
+                    "topics": [],
+                    "evidence": [],
+                    "code_evidence": [
+                        {
+                            "file_path": (
+                                "src/app/agents/"
+                                "invoice_agent.py"
+                            ),
+                            "line_start": 12,
+                            "text": "class InvoiceAgent",
+                        }
+                    ],
+                    "reason": None,
+                    "details": [
+                        {
+                            "kind": "class",
+                            "name": "InvoiceAgent",
+                            "signature": "class InvoiceAgent",
+                            "file_path": "a.py",
+                            "line": 12,
+                            "methods": ["execute"],
+                            "calls": [],
+                            "literals": [],
+                            # 源码片段体积大且默认报告不渲染，
+                            # 结构化文档里不该带上。
+                            "source": "SOURCESNIPPET" * 200,
+                        }
+                    ],
+                },
+            },
+        },
+        "evidence": [
+            {
+                "file_path": "README.md",
+                "line_start": 1,
+                "line_end": 5,
+                "content": "# hi",
+                "source_type": "github",
+                "source_url": "u",
+                "verification_status": "UNVERIFIED",
+            }
+        ],
+        "synthesis": {
+            "available": True,
+            "reason": None,
+            "summary": {"one_line": "一句话。"},
+            "dimensions": {"agents": "单 Agent。"},
+        },
+        "final_report": {
+            "report": {
+                "path": "reports/run-1_analysis.md",
+                "format": "markdown",
+            }
+        },
+    }
+
+
+# ----------------------------------------------------------------
+# Report Service
+# ----------------------------------------------------------------
+
+
+def test_document_has_stable_top_level_fields():
+    """文档结构是消费方的契约，字段必须稳定。"""
+
+    doc = ReportService.build_document(
+        build_state()
+    )
+
+    assert doc["schema_version"] == (
+        ReportService.SCHEMA_VERSION
+    )
+
+    for key in (
+        "schema_version",
+        "generated_at",
+        "run_id",
+        "title",
+        "question",
+        "focus",
+        "project",
+        "technology_stack",
+        "directory",
+        "modules",
+        "dimensions",
+        "evidence",
+        "synthesis",
+        "report",
+    ):
+
+        assert key in doc, key
+
+
+def test_document_carries_focus():
+
+    doc = ReportService.build_document(
+        build_state()
+    )
+
+    assert doc["focus"]["dimensions"] == ["agents"]
+
+    assert doc["focus"]["source"] == "llm"
+
+
+def test_document_omits_module_content():
+    """
+    文档不带源码正文。
+
+    20 个文件 × 1200 字符就是 20 多 KB，
+    而 JSON 常被程序读进内存。
+    要正文按 file_path 自己去取。
+    """
+
+    doc = ReportService.build_document(
+        build_state()
+    )
+
+    assert doc["modules"] == [
+        {
+            "file_path": (
+                "src/app/services/workflow_service.py"
+            ),
+            "start_line": 37,
+            "truncated": True,
+        },
+        {
+            "file_path": "src/app/main.py",
+            "start_line": 1,
+            "truncated": False,
+        },
+    ]
+
+    assert "SECRET" not in json.dumps(
+        doc, ensure_ascii=False
+    )
+
+
+def test_document_omits_detail_source():
+    """明细不带 source 源码片段。"""
+
+    doc = ReportService.build_document(
+        build_state()
+    )
+
+    detail = doc["dimensions"]["agents"][
+        "details"
+    ][0]
+
+    assert "source" not in detail
+
+    assert "SOURCESNIPPET" not in json.dumps(
+        doc, ensure_ascii=False
+    )
+
+    # 结构化部分要保留。
+    assert detail["name"] == "InvoiceAgent"
+
+    assert detail["methods"] == ["execute"]
+
+
+def test_document_handles_empty_state():
+    """没有数据时不能崩，要如实标注。"""
+
+    doc = ReportService.build_document({})
+
+    assert doc["project"]["available"] is False
+
+    assert doc["directory"]["available"] is False
+
+    assert doc["synthesis"]["available"] is False
+
+    assert doc["modules"] == []
+
+    assert doc["evidence"] == []
+
+
+def test_document_handles_broken_state():
+
+    doc = ReportService.build_document("x")
+
+    assert doc["schema_version"] == 1
+
+    assert doc["project"]["available"] is False
+
+
+def test_json_output_keeps_chinese_readable():
+    """
+    JSON 不转义中文。
+
+    转义成 \\uXXXX 会让文件膨胀一倍且不可读。
+    """
+
+    text = ReportService.to_json(
+        ReportService.build_document(
+            build_state()
+        )
+    )
+
+    assert "发票 Agent" in text
+
+    assert "\\u" not in text
+
+
+def test_markdown_delegates_to_report_skill():
+    """markdown 仍由 ReportGenerationSkill 渲染。"""
+
+    content = ReportService.to_markdown(
+        build_state()
+    )
+
+    assert "## 00 结论摘要" in content
+
+    assert "## 04 Agent 架构" in content
+
+
+@pytest.mark.asyncio
+async def test_tool_exports_json(tmp_path):
+
+    tool = ReportExportTool(str(tmp_path))
+
+    result = await tool.export_json(
+        {"a": "中文"},
+        "r.json",
+    )
+
+    assert result["format"] == "json"
+
+    written = json.loads(
+        (tmp_path / "r.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert written == {"a": "中文"}
+
+
+@pytest.mark.asyncio
+async def test_tool_export_dispatch(tmp_path):
+
+    tool = ReportExportTool(str(tmp_path))
+
+    md = await tool.export(
+        title="T",
+        content="正文",
+        filename="r.md",
+    )
+
+    assert md["format"] == "markdown"
+
+    js = await tool.export(
+        title="T",
+        content="",
+        filename="r.json",
+        document={"x": 1},
+        fmt="json",
+    )
+
+    assert js["format"] == "json"
+
+
+@pytest.mark.asyncio
+async def test_tool_export_json_requires_document(
+    tmp_path,
+):
+
+    tool = ReportExportTool(str(tmp_path))
+
+    with pytest.raises(ValueError):
+
+        await tool.export(
+            title="T",
+            content="",
+            filename="r.json",
+            fmt="json",
+        )
+
+
+# ----------------------------------------------------------------
+# Learning Path
+# ----------------------------------------------------------------
+
+
+VALID_REPLY = json.dumps(
+    {
+        "learning_order": [
+            "先读 workflow_service.py 的状态图装配"
+        ],
+        "prerequisites": [
+            "LangGraph StateGraph：项目用它编排节点"
+        ],
+        "core_source": [
+            (
+                "`src/app/services/workflow_service.py`"
+                " — 工作流主体"
+            )
+        ],
+        "reading_path": ["从 main.py 入口进"],
+        "improvements": ["新增节点参考 _node_* 写法"],
+    },
+    ensure_ascii=False,
+)
+
+
+class FakeLLM:
+
+    def __init__(
+        self,
+        content=VALID_REPLY,
+        available=True,
+        reason=None,
+    ):
+        self.content = content
+        self.available = available
+        self.reason = reason
+        self.calls = []
+
+    async def execute(self, messages, **kwargs):
+
+        self.calls.append(messages)
+
+        if not self.available:
+            return {
+                "available": False,
+                "reason": self.reason,
+            }
+
+        return {
+            "available": True,
+            "content": self.content,
+        }
+
+
+class FakeExporter:
+
+    def __init__(self):
+        self.calls = []
+
+    async def execute(self, **kwargs):
+
+        self.calls.append(kwargs)
+
+        return {
+            "path": f"reports/{kwargs['filename']}",
+            "format": "markdown",
+        }
+
+
+class FakeContext:
+
+    def __init__(self, llm=None, exporter=None):
+
+        self.tools = {}
+
+        if llm is not None:
+            self.tools["llm_chat"] = llm
+
+        self.tools["report_export"] = (
+            exporter or FakeExporter()
+        )
+
+
+def run_path(data=None, llm=None, exporter=None):
+    import asyncio
+
+    return asyncio.run(
+        LearningPathSkill().execute(
+            FakeContext(llm, exporter),
+            build_state() if data is None else data,
+        )
+    )
+
+
+def test_learning_path_returns_all_sections():
+
+    result = run_path(llm=FakeLLM())
+
+    assert result["available"] is True
+
+    for key in (
+        "learning_order",
+        "prerequisites",
+        "core_source",
+        "reading_path",
+        "improvements",
+    ):
+
+        assert result["sections"][key], key
+
+
+def test_learning_path_exports_own_file():
+    """产物必须是独立文件，不覆盖分析报告。"""
+
+    exporter = FakeExporter()
+
+    result = run_path(
+        llm=FakeLLM(),
+        exporter=exporter,
+    )
+
+    assert exporter.calls[0]["filename"] == (
+        "run-1_learning_path.md"
+    )
+
+    assert result["report"]["format"] == (
+        "markdown"
+    )
+
+
+def test_learning_path_prompt_forbids_generic_advice():
+    """
+    prompt 必须禁止给通用学习路线。
+
+    「先学 Python 再学 FastAPI」对任何项目都成立，
+    因此毫无价值 —— 这是学习路线最容易退化的方向。
+    """
+
+    llm = FakeLLM()
+
+    run_path(llm=llm)
+
+    system = llm.calls[0][0]["content"]
+
+    assert "禁止给通用学习路线" in system
+
+    assert "数据不足" in system
+
+    # 核心源码必须来自真实文件清单。
+    assert "core_files" in system
+
+
+def test_learning_path_facts_include_real_files():
+    """
+    事实里必须带上真实读到的文件清单 ——
+    模型据此挑核心源码，不能凭空编文件名。
+    """
+
+    llm = FakeLLM()
+
+    run_path(llm=llm)
+
+    user = llm.calls[0][1]["content"]
+
+    facts = json.loads(
+        user[
+            user.index("<facts>")
+            + len("<facts>"):
+            user.index("</facts>")
+        ]
+    )
+
+    assert facts["core_files"] == [
+        "src/app/services/workflow_service.py",
+        "src/app/main.py",
+    ]
+
+    # 事实里也不该出现源码正文。
+    assert "SECRET" not in user
+
+
+def test_learning_path_degrades_without_llm():
+
+    result = run_path()
+
+    assert result["available"] is False
+
+    assert "llm_chat" in result["reason"]
+
+
+def test_learning_path_degrades_without_project_data():
+    """没有分析数据时如实拒绝，不编通用路线。"""
+
+    result = run_path(
+        data={"run_id": "run-x"},
+        llm=FakeLLM(),
+    )
+
+    assert result["available"] is False
+
+    assert "没有可用于生成学习路线" in (
+        result["reason"]
+    )
+
+
+def test_learning_path_degrades_on_invalid_json():
+
+    result = run_path(
+        llm=FakeLLM(content="不是 JSON")
+    )
+
+    assert result["available"] is False
+
+    assert "JSON" in result["reason"]
+
+
+def test_learning_path_renders_core_files():
+    """渲染时列出可用于精读的真实文件。"""
+
+    content = run_path(llm=FakeLLM())["content"]
+
+    assert "## 学习顺序" in content
+
+    assert "## 核心源码" in content
+
+    assert "## 本次可用于精读的文件" in content
+
+    assert (
+        "`src/app/services/workflow_service.py`"
+        in content
+    )
+```
+
 ### 📄 `tests/test_pre_phase12_integration.py`
 
 **层级**：测试层 · **职责**：Phase 12 前置集成测试。
@@ -34399,4 +36629,4 @@ class RunMemory:
 
 ---
 
-*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **169 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*
+*本文档由 `generate_project_code.py` 扫描工作区 `.py` 文件自动生成：共收录 **172 段代码**（非空文件），另有 15 个 0 字节空文件，见上方「空文件清单」。*

@@ -188,6 +188,16 @@ class AnalysisWorkflowRunner:
             )
         )
 
+        # 刻意不传 retriever。
+        #
+        # 本项目的 RAG 通路是独立且已可用的：
+        # EvidenceAnalysisSkill → RagRetrievalTool → evidence
+        # （由 RAG_ENABLED / enable_rag 按次开关）。
+        # 若在这里再接 QdrantContextRetriever，就会对同一份语料
+        # 做第二次检索 —— 重复且多付一次 Ollama 嵌入 + Qdrant 往返。
+        #
+        # ContextManager 的职责是「跨 run 历史记忆」，
+        # 不是「语义召回」。
         context_manager = (
             ContextManager(
                 memory_manager

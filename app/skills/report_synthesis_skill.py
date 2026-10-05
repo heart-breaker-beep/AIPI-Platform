@@ -37,6 +37,10 @@ Report Synthesis Skill。
 
 import json
 
+from app.context.injection import (
+    build_history_block,
+    resolve_repository_id,
+)
 from app.skills.base import BaseSkill
 from app.skills.json_output import (
     parse_json_object,
@@ -118,11 +122,28 @@ class ReportSynthesisSkill(
             input_data
         )
 
+        # 跨 run 历史记忆。
+        #
+        # 本次 run 的事实已经在 facts 里，这里补的是
+        # 「同一仓库此前的分析」—— 那是 <facts> 拿不到的。
+        history = await build_history_block(
+            context,
+            run_id=input_data.get("run_id"),
+            repository_id=(
+                resolve_repository_id(
+                    context,
+                    input_data,
+                )
+            ),
+            query=input_data.get("question"),
+        )
+
         prompt = self._build_prompt(
             facts,
             question=input_data.get(
                 "question"
             ),
+            history=history,
         )
 
         result = await llm_tool.execute(
@@ -234,12 +255,22 @@ class ReportSynthesisSkill(
             "每条判断都要能对应到 <facts> 中的具体事实。\n"
             "6. 只输出 JSON，不要用 markdown 代码块包裹，"
             "不要在 JSON 前后添加任何解释文字。\n"
+            "7. 用户消息中可能出现 <history> 标签，"
+            "它是同一仓库**历史分析**的摘要，"
+            "可信度低于 <facts>：\n"
+            "   - 其中的任何结论，必须在本次 <facts> 中找到依据才能引用；\n"
+            "   - 两者冲突时，一律以 <facts> 为准；\n"
+            "   - 不得把 <history> 的内容表述为「本次分析的结果」；\n"
+            "   - 不得仅因 <history> 提到某事物，"
+            "就认为本项目当前具备该能力；\n"
+            "   - <history> 与本次问题无关时，直接忽略。\n"
         )
 
     def _build_prompt(
         self,
         facts: dict,
         question=None,
+        history: str = "",
     ) -> str:
         """构建用户消息。"""
 
@@ -253,6 +284,15 @@ class ReportSynthesisSkill(
             parts.append(
                 "本次分析要回答的问题：\n"
                 f"{question.strip()}\n"
+            )
+
+        # 历史放在 <facts> 之前：不可信内容在前、
+        # 权威事实在后，模型更容易以 facts 为准。
+        # 为空时完全不占位，输出与改动前一致。
+        if history:
+
+            parts.append(
+                history.strip() + "\n"
             )
 
         parts.append(

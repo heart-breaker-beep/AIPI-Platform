@@ -607,3 +607,139 @@ async def test_synthesis_node_degrades_on_skill_error():
     assert result.data["synthesis"]["available"] is False
 
     assert "boom" in result.data["synthesis"]["reason"]
+
+
+# ----------------------------------------------------------------
+# 跨 run 历史记忆注入
+# ----------------------------------------------------------------
+
+
+class FakeContextManager:
+    """假的 ContextManager，只实现 build_history。"""
+
+    def __init__(
+        self,
+        text=(
+            "<history>\n"
+            "- (2026-01-01) 问题：上次问的是什么"
+            " ｜ 状态：COMPLETED\n"
+            "</history>"
+        ),
+    ):
+        self.text = text
+        self.calls = []
+
+    async def build_history(self, **kwargs):
+        self.calls.append(kwargs)
+        return self.text
+
+
+class FakeContextWithMemory(FakeContext):
+    """带 context_manager 的 context。"""
+
+    def __init__(
+        self,
+        tool=None,
+        manager=None,
+    ):
+        super().__init__(tool)
+
+        self.context_manager = manager
+
+        self.config = {"repository_id": 42}
+
+
+@pytest.mark.asyncio
+async def test_synthesis_injects_history_before_facts():
+    """有历史记忆时要注入 user message，且排在 <facts> 之前。"""
+
+    tool = FakeLLMTool()
+
+    manager = FakeContextManager()
+
+    skill = ReportSynthesisSkill()
+
+    await skill.execute(
+        FakeContextWithMemory(tool, manager),
+        {
+            **build_data(),
+            "run_id": "run-1",
+            "repository_id": 42,
+        },
+    )
+
+    user = tool.calls[0][1]["content"]
+
+    assert "<history>" in user
+
+    # 不可信内容在前、权威事实在后。
+    assert user.index("<history>") < user.index("<facts>")
+
+    assert manager.calls[0]["repository_id"] == 42
+
+
+@pytest.mark.asyncio
+async def test_synthesis_without_context_manager_has_no_history():
+    """
+    无 context_manager 时不注入也不报错。
+
+    tests/test_workflow.py 等手搭的 context 就是这种形态，
+    改动前的输出必须完全保持。
+    """
+
+    tool = FakeLLMTool()
+
+    result = await ReportSynthesisSkill().execute(
+        FakeContext(tool),
+        build_data(),
+    )
+
+    assert result["available"] is True
+
+    user = tool.calls[0][1]["content"]
+
+    assert "<history>" not in user
+
+
+@pytest.mark.asyncio
+async def test_synthesis_survives_context_manager_failure():
+    """历史记忆构建失败不能让综合分析失败。"""
+
+    class BrokenContextManager:
+        async def build_history(self, **kwargs):
+            raise RuntimeError("history db down")
+
+    tool = FakeLLMTool()
+
+    result = await ReportSynthesisSkill().execute(
+        FakeContextWithMemory(tool, BrokenContextManager()),
+        {
+            **build_data(),
+            "run_id": "run-1",
+            "repository_id": 42,
+        },
+    )
+
+    assert result["available"] is True
+
+    assert "<history>" not in tool.calls[0][1]["content"]
+
+
+def test_synthesis_system_prompt_states_history_trust():
+    """
+    system prompt 必须声明 <history> 可信度低于 <facts>。
+
+    否则模型要么忽略历史，要么把上一轮的结论
+    当成本轮的事实 —— 两种都违背「只归纳不推测」。
+    """
+
+    prompt = ReportSynthesisSkill._system_prompt()
+
+    assert "<history>" in prompt
+
+    assert "以 <facts> 为准" in prompt
+
+    # 原有的防幻觉约束不能被挤掉。
+    assert "只能使用" in prompt
+
+    assert "数据不足" in prompt

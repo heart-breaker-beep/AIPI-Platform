@@ -48,6 +48,10 @@ LLM 拿到的仍然是真实源码与真实事实，
 import json
 import re
 
+from app.context.injection import (
+    build_history_block,
+    resolve_repository_id,
+)
 from app.project_analysis.code_structure_extractor import (
     CodeStructureExtractor,
 )
@@ -194,6 +198,22 @@ class ModuleDeepDiveSkill(
             "details": [],
         }
 
+        # 跨 run 历史记忆。
+        #
+        # 深挖的调用方只传固定字段，不带 repository_id，
+        # 因此由 resolve_repository_id 回落到 context.config。
+        history = await build_history_block(
+            context,
+            run_id=input_data.get("run_id"),
+            repository_id=(
+                resolve_repository_id(
+                    context,
+                    input_data,
+                )
+            ),
+            query=f"{owner}/{repo} {module}",
+        )
+
         analysis = await self._analyze(
             context,
             module=module,
@@ -201,6 +221,7 @@ class ModuleDeepDiveSkill(
             repo=repo,
             entry=entry,
             readme=input_data.get("readme"),
+            history=history,
             parsed_files=code_structure.get(
                 "parsed_files",
                 0,
@@ -519,6 +540,7 @@ class ModuleDeepDiveSkill(
         repo,
         entry,
         readme,
+        history="",
         parsed_files,
         unparsed,
     ):
@@ -560,7 +582,14 @@ class ModuleDeepDiveSkill(
                 {
                     "role": "user",
                     "content": (
-                        "<facts>\n"
+                        # 历史放在 <facts> 之前：不可信内容在前、
+                        # 权威事实在后。为空时不占位。
+                        (
+                            history.strip() + "\n\n"
+                            if history
+                            else ""
+                        )
+                        + "<facts>\n"
                         + json.dumps(
                             facts,
                             ensure_ascii=False,
@@ -731,6 +760,15 @@ class ModuleDeepDiveSkill(
             "不得对该模块的代码结构下任何结论。\n"
             "5. 只输出 JSON，不要用 markdown 代码块包裹，"
             "不要在 JSON 前后添加解释文字。\n"
+            "6. 用户消息中可能出现 <history> 标签，"
+            "它是同一仓库**历史分析**的摘要，"
+            "可信度低于 <facts>：\n"
+            "   - 其中的任何结论，必须在本次 <facts> 中找到依据才能引用；\n"
+            "   - 两者冲突时，一律以 <facts> 为准；\n"
+            "   - 不得把 <history> 的内容表述为「本次分析的结果」；\n"
+            "   - 不得仅因 <history> 提到某事物，"
+            "就认为本项目当前具备该能力；\n"
+            "   - <history> 与本次模块无关时，直接忽略。\n"
         )
 
     def _output_instruction(self) -> str:

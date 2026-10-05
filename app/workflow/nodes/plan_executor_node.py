@@ -89,33 +89,15 @@ class PlanExecutorNode(BaseNode):
                 state.data
             )
 
-            # Phase 11 Context Manager 接入。
-            if (
-                context.context_manager is not None
-                and state.data.get(
-                    "repository_id"
-                ) is not None
-            ):
-                query = (
-                    state.data.get("question")
-                    or "GitHub project analysis"
-                )
-
-                agent_context = (
-                    await context.context_manager.build(
-                        run_id=state.run_id,
-                        repository_id=state.data[
-                            "repository_id"
-                        ],
-                        query=query,
-                        workflow_state=state.data,
-                        user_instruction=query,
-                    )
-                )
-
-                agent_input["_context"] = (
-                    agent_context
-                )
+            # 本节点刻意不构建 Context。
+            #
+            # 这里跑的是确定性分析 Agent（无 LLM、无 prompt），
+            # 构建出的 Context 没有消费方 —— 原实现把它写进
+            # agent_input["_context"] 后全项目无人读取，却要为
+            # 5 个 Agent 各付一次 Memory 查询。
+            #
+            # 跨 run 历史记忆改为在真正调 LLM 的地方按需构建，
+            # 见 app/context/injection.py。
 
             result = await agent.execute(
                 context,

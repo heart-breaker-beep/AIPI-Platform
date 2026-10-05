@@ -52,6 +52,45 @@ class Settings(BaseSettings):
     # GitHub
     GITHUB_TOKEN: str = ""
 
+    # RAG（语义检索）
+    #
+    # 默认关闭。
+    #
+    # 打开后，证据环节会先把仓库源码索引进 Qdrant，
+    # 再按六个维度分别做语义检索，把命中的代码片段
+    # 叠加进证据清单（而不是替换掉结构分析产出的证据）。
+    #
+    # 为什么默认关：
+    #
+    # 1. 索引要额外读 GitHub 文件、调 Ollama 嵌入，
+    #    每次分析会多等一分钟左右；
+    # 2. 它的增益是否为正，取决于仓库规模与提问方式，
+    #    需要实测对照才能判断 —— 默认开会让所有分析
+    #    都承担这个未经检验的成本。
+    #
+    # 打开方式：.env 里设 RAG_ENABLED=true
+    RAG_ENABLED: bool = False
+
+    # 单次索引最多收录多少个 .py 文件。
+    #
+    # 已读文件（约 20 个，正文已在内存里）不额外花钱，
+    # 其余按剩余名额去 GitHub 补读 —— 补读是串行的，
+    # 每个约 0.9 秒，所以这个值直接决定额外耗时。
+    # 80 ≈ 已读 20 + 补读 60 ≈ 多等 70 秒。
+    RAG_INDEX_MAX_FILES: int = 80
+
+    # 每个维度取前几条检索结果。
+    #
+    # 六个维度 × 3 条 = 最多 18 条候选，
+    # 再去重、按相似度截断到 RAG_MAX_EVIDENCE。
+    RAG_LIMIT_PER_DIMENSION: int = 3
+
+    # 检索证据并入证据清单后的总上限。
+    #
+    # 与 ReportSynthesisSkill.MAX_EVIDENCE 一致：
+    # 超出部分进不了综合分析，等于白检索。
+    RAG_MAX_EVIDENCE: int = 12
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

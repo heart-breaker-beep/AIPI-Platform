@@ -1,0 +1,54 @@
+# ============================================================
+# 构建上下文排除清单
+# ------------------------------------------------------------
+# 目的是让 `docker build` 的上下文尽量小、且不把密钥带进镜像。
+# ============================================================
+
+# --- 密钥：绝不能进镜像 ---
+# 容器里改为由 compose 以环境变量注入。
+.env
+.env.*
+!.env.docker.example
+
+# --- 版本控制 ---
+.git
+.gitignore
+.gitattributes
+
+# --- Python 缓存 / 虚拟环境 ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# --- 运行产物（每跑一次分析就新增，且体积大）---
+reports/
+test_reports/
+
+# --- 编辑器 / 系统 ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# --- 日志 ---
+*.log
+
+# --- 仓库里的散装脚本与文档，镜像不需要 ---
+a.py
+agent loop.py
+generate_project_code.py
+*.md
+
+# --- Docker 自身 ---
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml

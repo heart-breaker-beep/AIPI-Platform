@@ -4,8 +4,8 @@ EvidenceAnalysisAgent 测试。
 
 import pytest
 
-from app.agents.evidence_analysis_agent import (
-    EvidenceAnalysisAgent,
+from app.agents.generic_skill_agent import (
+    GenericSkillAgent,
 )
 
 
@@ -51,8 +51,10 @@ class FakeContext:
 @pytest.mark.asyncio
 async def test_evidence_analysis_agent():
 
-    agent = EvidenceAnalysisAgent(
-        FakeSkillRegistry()
+    agent = GenericSkillAgent(
+        FakeSkillRegistry(),
+        "evidence_analysis_agent",
+        "evidence_analysis",
     )
 
     result = await agent.execute(

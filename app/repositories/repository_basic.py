@@ -10,13 +10,16 @@ Repository 层只负责：
 事务提交由上层 Service 控制。
 """
 
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.repository import Repository
+from app.repositories.base import BaseRepository
 
 
-class RepositoryRepository:
+class RepositoryRepository(BaseRepository[Repository]):
     """
     repositories 表的数据访问对象。
 
@@ -31,16 +34,12 @@ class RepositoryRepository:
     Repository 本身不负责 commit。
     """
 
-    def __init__(
-        self,
-        session: AsyncSession,
-    ) -> None:
-        self.session = session
+    model = Repository
 
     async def get_by_url(
         self,
         url: str,
-    ) -> Repository | None:
+    ) -> Optional[Repository]:
         """
         根据 GitHub URL 查询 Repository。
         """
@@ -56,18 +55,11 @@ class RepositoryRepository:
     async def get_by_id(
         self,
         repository_id: int,
-    ) -> Repository | None:
+    ) -> Optional[Repository]:
         """
         根据 Repository ID 查询 Repository。
         """
-
-        result = await self.session.execute(
-            select(Repository).where(
-                Repository.id == repository_id
-            )
-        )
-
-        return result.scalar_one_or_none()
+        return await super().get_by_id(repository_id)
 
     async def create(
         self,
@@ -91,7 +83,7 @@ class RepositoryRepository:
         最终事务由 Service 统一提交。
         """
 
-        repository = Repository(
+        return await super().create(
             url=url,
             owner=owner,
             name=name,
@@ -101,11 +93,3 @@ class RepositoryRepository:
             stars=stars,
             forks=forks,
         )
-
-        self.session.add(
-            repository
-        )
-
-        await self.session.flush()
-
-        return repository

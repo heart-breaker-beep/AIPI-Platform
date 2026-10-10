@@ -2,22 +2,21 @@
 Citation 数据访问层。
 """
 
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.citation import Citation
+from app.repositories.base import BaseRepository
 
 
-class CitationRepository:
+class CitationRepository(BaseRepository[Citation]):
     """
     Citation 表的数据访问对象。
     """
 
-    def __init__(
-        self,
-        session: AsyncSession,
-    ) -> None:
-        self.session = session
+    model = Citation
 
     async def create(
         self,
@@ -27,30 +26,17 @@ class CitationRepository:
         evidence_id: str,
     ) -> Citation:
 
-        citation = Citation(
+        return await super().create(
             id=citation_id,
             claim_id=claim_id,
             evidence_id=evidence_id,
         )
 
-        self.session.add(citation)
-
-        await self.session.flush()
-
-        return citation
-
     async def get_by_id(
         self,
         citation_id: str,
-    ) -> Citation | None:
-
-        result = await self.session.execute(
-            select(Citation).where(
-                Citation.id == citation_id
-            )
-        )
-
-        return result.scalar_one_or_none()
+    ) -> Optional[Citation]:
+        return await super().get_by_id(citation_id)
 
     async def get_by_claim(
         self,

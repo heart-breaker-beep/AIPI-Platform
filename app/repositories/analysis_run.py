@@ -2,21 +2,19 @@
 Analysis Run 数据访问层。
 """
 
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.analysis_run import AnalysisRun
+from app.repositories.base import BaseRepository
 
 
-class AnalysisRunRepository:
+class AnalysisRunRepository(BaseRepository[AnalysisRun]):
     """负责 analysis_runs 表的数据访问。"""
 
-    def __init__(
-        self,
-        session: AsyncSession,
-    ) -> None:
-
-        self.session = session
+    model = AnalysisRun
 
     async def create(
         self,
@@ -27,32 +25,19 @@ class AnalysisRunRepository:
     ) -> AnalysisRun:
         """创建一次 Analysis Run。"""
 
-        run = AnalysisRun(
+        return await super().create(
             id=run_id,
             repository_id=repository_id,
             question=question,
             status="pending",
         )
 
-        self.session.add(run)
-
-        await self.session.flush()
-
-        return run
-
     async def get_by_id(
         self,
         run_id: str,
-    ) -> AnalysisRun | None:
+    ) -> Optional[AnalysisRun]:
         """根据 run_id 查询分析任务。"""
-
-        result = await self.session.execute(
-            select(AnalysisRun).where(
-                AnalysisRun.id == run_id
-            )
-        )
-
-        return result.scalar_one_or_none()
+        return await super().get_by_id(run_id)
 
     async def list_recent(
         self,

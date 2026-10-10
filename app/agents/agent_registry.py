@@ -4,23 +4,14 @@ Agent Registry。
 统一管理系统中的 Agent。
 """
 
-from app.agents.architecture_analysis_agent import (
-    ArchitectureAnalysisAgent,
-)
 from app.agents.critic_agent import (
     CriticAgent,
 )
-from app.agents.evidence_analysis_agent import (
-    EvidenceAnalysisAgent,
+from app.agents.generic_skill_agent import (
+    GenericSkillAgent,
 )
 from app.agents.planner_agent import (
     PlannerAgent,
-)
-from app.agents.repository_analysis_agent import (
-    RepositoryAnalysisAgent,
-)
-from app.agents.technology_analysis_agent import (
-    TechnologyAnalysisAgent,
 )
 
 
@@ -66,17 +57,29 @@ def create_agent_registry(
         PlannerAgent(
             skill_registry
         ),
-        RepositoryAnalysisAgent(
-            skill_registry
+        GenericSkillAgent(
+            skill_registry,
+            "repository_analysis_agent",
+            "repository_analysis",
+            "Analyze repository information",
         ),
-        ArchitectureAnalysisAgent(
-            skill_registry
+        GenericSkillAgent(
+            skill_registry,
+            "architecture_analysis_agent",
+            "architecture_analysis",
+            "Analyze repository architecture",
         ),
-        TechnologyAnalysisAgent(
-            skill_registry
+        GenericSkillAgent(
+            skill_registry,
+            "technology_analysis_agent",
+            "technology_analysis",
+            "Analyze GitHub project technology stack",
         ),
-        EvidenceAnalysisAgent(
-            skill_registry
+        GenericSkillAgent(
+            skill_registry,
+            "evidence_analysis_agent",
+            "evidence_analysis",
+            "Extract traceable evidence from repository analysis results",
         ),
         CriticAgent(
             skill_registry

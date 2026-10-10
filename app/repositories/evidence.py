@@ -2,22 +2,21 @@
 Evidence 数据访问层。
 """
 
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.evidence import Evidence
+from app.repositories.base import BaseRepository
 
 
-class EvidenceRepository:
+class EvidenceRepository(BaseRepository[Evidence]):
     """
     Evidence 表的数据访问对象。
     """
 
-    def __init__(
-        self,
-        session: AsyncSession,
-    ) -> None:
-        self.session = session
+    model = Evidence
 
     async def create(
         self,
@@ -33,7 +32,7 @@ class EvidenceRepository:
         verification_status: str = "UNVERIFIED",
     ) -> Evidence:
 
-        evidence = Evidence(
+        return await super().create(
             id=evidence_id,
             repository_id=repository_id,
             source_type=source_type,
@@ -45,24 +44,11 @@ class EvidenceRepository:
             verification_status=verification_status,
         )
 
-        self.session.add(evidence)
-
-        await self.session.flush()
-
-        return evidence
-
     async def get_by_id(
         self,
         evidence_id: str,
-    ) -> Evidence | None:
-
-        result = await self.session.execute(
-            select(Evidence).where(
-                Evidence.id == evidence_id
-            )
-        )
-
-        return result.scalar_one_or_none()
+    ) -> Optional[Evidence]:
+        return await super().get_by_id(evidence_id)
 
     async def list_by_repository(
         self,

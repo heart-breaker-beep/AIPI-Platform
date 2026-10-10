@@ -2,22 +2,21 @@
 Claim 数据访问层。
 """
 
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.claim import Claim
+from app.repositories.base import BaseRepository
 
 
-class ClaimRepository:
+class ClaimRepository(BaseRepository[Claim]):
     """
     Claim 表的数据访问对象。
     """
 
-    def __init__(
-        self,
-        session: AsyncSession,
-    ) -> None:
-        self.session = session
+    model = Claim
 
     async def create(
         self,
@@ -28,31 +27,18 @@ class ClaimRepository:
         verification_status: str = "UNVERIFIED",
     ) -> Claim:
 
-        claim = Claim(
+        return await super().create(
             id=claim_id,
             run_id=run_id,
             claim_text=claim_text,
             verification_status=verification_status,
         )
 
-        self.session.add(claim)
-
-        await self.session.flush()
-
-        return claim
-
     async def get_by_id(
         self,
         claim_id: str,
-    ) -> Claim | None:
-
-        result = await self.session.execute(
-            select(Claim).where(
-                Claim.id == claim_id
-            )
-        )
-
-        return result.scalar_one_or_none()
+    ) -> Optional[Claim]:
+        return await super().get_by_id(claim_id)
 
     async def list_by_run(
         self,

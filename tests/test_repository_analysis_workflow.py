@@ -10,7 +10,7 @@ from app.infrastructure.workflow.state import WorkflowState
 from app.infrastructure.workflow.context import WorkflowContext
 
 
-from app.infrastructure.workflow.nodes.skill_node import SkillNode
+from app.infrastructure.workflow.nodes.agent_node import AgentNode
 
 
 from app.infrastructure.skills.repository_analysis_skill import (
@@ -82,6 +82,34 @@ class StartNode(BaseNode):
         return state
 
 
+class RepositoryAnalysisAgent:
+    """
+    把 Skill 包成 Agent。
+
+    SkillNode 已删除（它只在测试里有调用方），
+    这里改用生产链路上真正在跑的 AgentNode ——
+    它按 Agent.execute(context, input_data) 契约取结果。
+    """
+
+    def __init__(
+        self,
+        skill,
+    ):
+
+        self.skill = skill
+
+    async def execute(
+        self,
+        context,
+        input_data,
+    ):
+
+        return await self.skill.execute(
+            context,
+            input_data,
+        )
+
+
 class EndNode(BaseNode):
 
     name = "end"
@@ -110,9 +138,11 @@ def build_workflow():
     )
 
     workflow.add_node(
-        SkillNode(
+        AgentNode(
             name="repository_analysis",
-            skill=RepositoryAnalysisSkill()
+            agent=RepositoryAnalysisAgent(
+                RepositoryAnalysisSkill()
+            ),
         )
     )
 

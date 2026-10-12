@@ -2,10 +2,8 @@
 Citation 数据访问层。
 """
 
-from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.persistence.models.citation import Citation
 from app.infrastructure.persistence.repositories.base import BaseRepository
@@ -31,12 +29,6 @@ class CitationRepository(BaseRepository[Citation]):
             claim_id=claim_id,
             evidence_id=evidence_id,
         )
-
-    async def get_by_id(
-        self,
-        citation_id: str,
-    ) -> Optional[Citation]:
-        return await super().get_by_id(citation_id)
 
     async def get_by_claim(
         self,

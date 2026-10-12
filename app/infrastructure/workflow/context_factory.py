@@ -17,8 +17,6 @@ from app.infrastructure.tools.file_reader_tool import FileReaderTool
 from app.infrastructure.tools.github.github_code_search_tool import GitHubCodeSearchTool
 from app.infrastructure.tools.github.github_repository_tool import GitHubRepositoryTool
 from app.infrastructure.tools.llm_chat_tool import LLMChatTool
-from app.infrastructure.tools.mysql_query_tool import MySQLQueryTool
-from app.infrastructure.tools.qdrant_search_tool import QdrantSearchTool
 from app.infrastructure.tools.rag_retrieval_tool import RagRetrievalTool
 from app.infrastructure.tools.report_export_tool import ReportExportTool
 from app.infrastructure.workflow.context import WorkflowContext
@@ -96,8 +94,6 @@ class WorkflowContextFactory:
             "github_code_search": GitHubCodeSearchTool(),
             "file_reader": FileReaderTool(),
             "dependency_analyzer": DependencyAnalyzerTool(),
-            "qdrant_search": QdrantSearchTool(),
-            "mysql_query": MySQLQueryTool(self.session),
             "report_export": ReportExportTool(),
             "llm_chat": LLMChatTool(),
         }

@@ -9,83 +9,15 @@ from app.infrastructure.skills.evidence_analysis_skill import (
 )
 
 
-class FakeQdrantTool:
-
-    async def execute(
-        self,
-        **kwargs,
-    ):
-
-        return [
-            {
-                "text": (
-                    "class BaseAgent:"
-                ),
-                "document_id": (
-                    "agent-base"
-                ),
-                "chunk_index": 0,
-                "file_path": (
-                    "app/agents/base.py"
-                ),
-            }
-        ]
-
-
 class FakeContext:
+    """
+    只需要 tools 的最小 Context。
 
-    tools = {
-        "qdrant_search":
-            FakeQdrantTool()
-    }
+    RAG 通路（rag_retrieval 工具）在没开 RAG 时不参与，
+    这些用例只覆盖结构证据与落库行为。
+    """
 
-
-@pytest.mark.asyncio
-async def test_evidence_analysis_skill():
-
-    skill = EvidenceAnalysisSkill()
-
-    result = await skill.execute(
-        FakeContext(),
-        {
-            "query_vector": [
-                0.1,
-                0.2,
-            ],
-            "limit": 5,
-        },
-    )
-
-    assert (
-        result["count"]
-        == 1
-    )
-
-    evidence = (
-        result["evidence"][0]
-    )
-
-    assert (
-        evidence["content"]
-        == "class BaseAgent:"
-    )
-
-    assert (
-        evidence["file_path"]
-        == "app/agents/base.py"
-    )
-
-    # 当前索引器没有可靠行号，
-    # 所以不能伪造。
-    assert (
-        evidence["line_start"]
-        is None
-    )
-
-    assert (
-        evidence["line_end"]
-        is None
-    )
+    tools = {}
 
 @pytest.mark.asyncio
 async def test_evidence_from_architecture_agent_output():

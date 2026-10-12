@@ -39,7 +39,7 @@ class Workflow:
         #
         # {
         #     "start": StartNode(),
-        #     "analysis": AnalysisNode(),
+        #     "planner_agent": AgentNode(name="planner_agent", ...),
         # }
         self.nodes: dict[str, BaseNode] = {}
 
@@ -78,12 +78,3 @@ class Workflow:
             transition
         )
 
-    def get_node(
-        self,
-        name: str,
-    ) -> BaseNode | None:
-        """
-        根据名称获取 Node。
-        """
-
-        return self.nodes.get(name)

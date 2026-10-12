@@ -2,10 +2,8 @@
 Claim 数据访问层。
 """
 
-from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.persistence.models.claim import Claim
 from app.infrastructure.persistence.repositories.base import BaseRepository
@@ -33,12 +31,6 @@ class ClaimRepository(BaseRepository[Claim]):
             claim_text=claim_text,
             verification_status=verification_status,
         )
-
-    async def get_by_id(
-        self,
-        claim_id: str,
-    ) -> Optional[Claim]:
-        return await super().get_by_id(claim_id)
 
     async def list_by_run(
         self,

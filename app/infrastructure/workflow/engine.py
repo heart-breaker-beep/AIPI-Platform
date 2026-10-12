@@ -11,10 +11,7 @@ Phase 12：
 """
 
 
-from app.core.exceptions import (
-    NonRetryableError,
-    RetryableError,
-)
+from app.core.exceptions import RetryableError
 from app.core.logging import get_logger
 from app.infrastructure.workflow.retry import RetryPolicy
 from app.infrastructure.workflow.state import WorkflowStatus
@@ -218,12 +215,12 @@ class WorkflowEngine:
                     context,
                 )
 
-            except NonRetryableError:
-
-                raise
-
             except RetryableError as error:
 
+                # NonRetryableError 不是 RetryableError 的子类，
+                # 会自然冒泡出去；
+                # 是重试与否统一由 RetryPolicy 判断，
+                # 引擎里不再单独列一条分支。
                 if not self.retry_policy.should_retry(
                     error,
                     state.retry_count,

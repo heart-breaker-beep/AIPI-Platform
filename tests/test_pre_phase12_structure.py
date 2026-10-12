@@ -22,7 +22,6 @@ from app.infrastructure.workflow.nodes.base import (
 from app.infrastructure.workflow.transition import Transition
 from app.infrastructure.workflow.workflow import Workflow
 from app.infrastructure.workflow.exceptions import (
-    NodeExecutionError,
     WorkflowError as WorkflowErrorFromWorkflow,
 )
 
@@ -63,11 +62,6 @@ def test_workflow_can_register_node():
     node = DemoNode()
 
     workflow.add_node(node)
-
-    assert (
-        workflow.get_node("demo")
-        is node
-    )
 
     assert (
         workflow.nodes["demo"]
@@ -167,10 +161,6 @@ def test_workflow_error_is_unified():
         is WorkflowError
     )
 
-    assert issubclass(
-        NodeExecutionError,
-        WorkflowError,
-    )
 
 
 def test_fastapi_application_imports():

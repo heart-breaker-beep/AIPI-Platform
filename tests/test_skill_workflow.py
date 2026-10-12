@@ -10,7 +10,7 @@ from app.infrastructure.workflow.state import WorkflowState
 from app.infrastructure.workflow.context import WorkflowContext
 
 
-from app.infrastructure.workflow.nodes.skill_node import SkillNode
+from app.infrastructure.workflow.nodes.agent_node import AgentNode
 
 
 from app.infrastructure.workflow.nodes.base import BaseNode
@@ -77,7 +77,32 @@ class GithubTool:
         }
 
 
+class RepositoryAnalysisAgent:
 
+    """
+    把 Skill 包成 Agent。
+
+    SkillNode 已删除（它只在测试里有调用方），
+    这里改用生产链路上的 AgentNode。
+    """
+
+    def __init__(
+        self,
+        skill,
+    ):
+
+        self.skill = skill
+
+    async def execute(
+        self,
+        context,
+        input_data,
+    ):
+
+        return await self.skill.execute(
+            context,
+            input_data,
+        )
 
 
 class FileTool:
@@ -127,11 +152,13 @@ def create_workflow():
 
     workflow.add_node(
 
-        SkillNode(
+        AgentNode(
 
             "repository_analysis",
 
-            RepositoryAnalysisSkill()
+            RepositoryAnalysisAgent(
+                RepositoryAnalysisSkill()
+            )
 
         )
 

@@ -58,30 +58,7 @@ class EvidenceAnalysisSkill(
             )
         )
 
-        # 2. 调用方直接给了向量时的单次检索。
-        #
-        # 这是引入按维度检索之前的旧协议，现在没有生产方使用
-        # （没有任何代码往 state.data 里写 query_vector），
-        # 但它仍是一条合法的证据来源，因此保持可用 ——
-        # 关键同样是**叠加**：给了向量不再意味着跳过结构证据。
-        query_vector = input_data.get(
-            "query_vector"
-        )
-
-        if query_vector is not None:
-
-            evidence.extend(
-                await self._from_qdrant(
-                    context,
-                    query_vector,
-                    input_data.get(
-                        "limit",
-                        5,
-                    ),
-                )
-            )
-
-        # 3. 结构分析产出的证据 —— 始终执行
+        # 2. 结构分析产出的证据 —— 始终执行
         evidence.extend(
             self._from_analysis_results(
                 input_data
@@ -383,60 +360,6 @@ class EvidenceAnalysisSkill(
             or [],
             max_files=settings.RAG_INDEX_MAX_FILES,
         )
-
-    async def _from_qdrant(
-        self,
-        context,
-        query_vector,
-        limit,
-    ):
-        qdrant_tool = context.tools.get(
-            "qdrant_search"
-        )
-
-        if qdrant_tool is None:
-            raise RuntimeError(
-                "Tool not found: qdrant_search"
-            )
-
-        results = await qdrant_tool.execute(
-            query_vector=query_vector,
-            limit=limit,
-        )
-
-        evidence = []
-
-        for item in results:
-
-            evidence.append(
-                {
-                    "source_type": item.get(
-                        "source_type",
-                        "repository",
-                    ),
-                    "source_url": item.get(
-                        "source_url"
-                    ),
-                    "file_path": item.get(
-                        "file_path"
-                    ) or item.get(
-                        "source"
-                    ),
-                    "line_start": item.get(
-                        "line_start"
-                    ),
-                    "line_end": item.get(
-                        "line_end"
-                    ),
-                    "content": item.get(
-                        "text",
-                        "",
-                    ),
-                    "metadata": item,
-                }
-            )
-
-        return evidence
 
     @staticmethod
     def _from_analysis_results(

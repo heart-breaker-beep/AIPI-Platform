@@ -11,18 +11,16 @@ State Manager - WorkflowState 瘦身策略管理。
 - CheckpointRepository：数据访问，只负责存储和读取
 
 从 CheckpointRepository 中抽取的逻辑：
-- _fit_state_data() -> prepare_for_persistence()
-- _trim() -> _trim_field()
-- _size() -> _estimate_size()
-- TRIM_ORDER, MAX_STATE_BYTES 等常量
+- prepare_for_persistence()：写入前瘦身 state.data
+- _trim_field() / _trim_list()：逐字段瘦身规则
+- _estimate_size()：估算序列化后的字节数
+- prepare_outputs()：state.outputs 的兜底瘦身
+- TRIM_ORDER / MAX_STATE_BYTES 等策略常量
 """
 
-import copy
+# 别名：prepare_for_persistence 的 copy 参数会遮住模块名。
+import copy as copy_module
 import json
-
-# 导出常量供测试使用
-MAX_STATE_BYTES = 180_000
-
 
 class StateManager:
     """WorkflowState 管理器 - 负责瘦身策略。"""
@@ -89,6 +87,7 @@ class StateManager:
         cls,
         data: dict,
         max_bytes: int | None = None,
+        copy: bool = True,
     ) -> tuple[dict, dict]:
         """
         瘦身 state.data 以适应数据库限制。
@@ -96,6 +95,9 @@ class StateManager:
         Args:
             data: 原始 state.data
             max_bytes: 最大字节数限制（默认 180KB）
+            copy: 是否先深拷贝一份再瘦身。
+                调用方（CheckpointManager）已经拷贝过时传 False，
+                避免对同一份数据拷两次。
 
         Returns:
             (瘦身后的 data, 瘦身记录)
@@ -114,8 +116,9 @@ class StateManager:
         if max_bytes is None:
             max_bytes = cls.MAX_STATE_BYTES
 
-        # 深拷贝，避免修改原始数据
-        data = copy.deepcopy(data)
+        # 默认深拷贝，避免修改调用方手上的原始数据。
+        if copy:
+            data = copy_module.deepcopy(data)
 
         size = cls._estimate_size(data)
 
@@ -263,15 +266,6 @@ class StateManager:
                 ("content",),
             )
 
-            # evidence_analysis_agent 里是同一份数据
-            cls._trim_list(
-                data,
-                "evidence_analysis_agent",
-                cls.MAX_EVIDENCE,
-                ("content",),
-                nested="evidence",
-            )
-
             return
 
         if path == "modules":
@@ -337,29 +331,3 @@ class StateManager:
 
         return data
 
-    # 测试兼容别名
-    @classmethod
-    def fit_state_data(cls, data: dict) -> tuple[dict, dict]:
-        """
-        测试兼容别名，调用 prepare_for_persistence。
-
-        Args:
-            data: state.data 字典
-
-        Returns:
-            (瘦身后的 data, 瘦身记录)
-        """
-        return cls.prepare_for_persistence(data)
-
-    @staticmethod
-    def _size(data) -> int:
-        """
-        测试兼容别名，调用 _estimate_size。
-
-        Args:
-            data: 要估算的数据
-
-        Returns:
-            序列化后的字节数
-        """
-        return StateManager._estimate_size(data)

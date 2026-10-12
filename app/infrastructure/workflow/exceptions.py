@@ -11,19 +11,6 @@ Workflow 层异常定义。
 from app.core.exceptions import WorkflowError
 
 
-class NodeExecutionError(WorkflowError):
-    """
-    Workflow Node 执行异常。
-
-    继承统一的 WorkflowError，
-    因此可以被 WorkflowError / ApplicationError
-    统一捕获。
-    """
-
-    pass
-
-
 __all__ = [
     "WorkflowError",
-    "NodeExecutionError",
 ]

@@ -10,8 +10,8 @@
     索引（本模块）  →  Qdrant  →  检索  →  Evidence
 
 在此之前，链路只有后半截：
-`QdrantSearchTool` / `_from_qdrant` 都在，
-测试也齐，但**没有任何生产代码往 Qdrant 里写**，
+检索端（`RagRetrievalTool`）在，测试也齐，
+但**没有任何生产代码往 Qdrant 里写**，
 所以集合始终是空的，检索必然无结果。
 
 本模块补的就是写入这一环。
@@ -26,13 +26,13 @@
   再索引一遍不会带来任何新信息，只会挤占检索名额；
 - 源码才是结构分析覆盖不足、需要语义检索补位的地方。
 
-与 DocumentIndexer 的分工
-=========================
+为什么不是「通用文档索引」
+==========================
 
-`DocumentIndexer`（project_indexer.py）是早期原型：
-用 MarkdownChunker 切分、payload 里只有 document_id / chunk_index / text。
-它没有行号、没有文件路径，检索结果无法还原成可追溯的 evidence
-（这也是它至今没被接进主链路的原因之一）。
+早期原型 DocumentIndexer 用 MarkdownChunker 切分，
+payload 里只有 document_id / chunk_index / text ——
+没有行号、没有文件路径，检索结果无法还原成可追溯的 evidence。
+它始终没被接进主链路，已删除。
 
 本模块是面向源码的正式实现：
 按 AST 边界切分、payload 带全锚点字段。

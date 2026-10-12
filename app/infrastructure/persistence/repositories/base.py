@@ -75,55 +75,6 @@ class BaseRepository(Generic[T]):
         )
         return result.scalar_one_or_none()
 
-    async def get_all(
-        self,
-        limit: Optional[int] = None,
-        offset: int = 0,
-    ) -> list[T]:
-        """获取所有记录（分页）。
-
-        Args:
-            limit: 返回的最大记录数，None 表示不限制
-            offset: 跳过的记录数
-
-        Returns:
-            记录列表
-
-        Example:
-            runs = await repo.get_all(limit=10, offset=0)
-        """
-        query = select(self.model).offset(offset)
-        if limit is not None:
-            query = query.limit(limit)
-        result = await self.session.execute(query)
-        return result.scalars().all()
-
-    async def update(self, id: any, **kwargs) -> Optional[T]:
-        """更新指定 ID 的记录。
-
-        Args:
-            id: 主键值
-            **kwargs: 要更新的字段
-
-        Returns:
-            更新后的实体对象，不存在返回 None
-
-        Example:
-            run = await repo.update(
-                "run_123",
-                status="completed",
-            )
-        """
-        instance = await self.get_by_id(id)
-        if instance is None:
-            return None
-
-        for key, value in kwargs.items():
-            setattr(instance, key, value)
-
-        await self.session.flush()
-        return instance
-
     async def delete(self, id: any) -> Optional[T]:
         """删除指定 ID 的记录。
 

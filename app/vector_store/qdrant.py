@@ -1,8 +1,6 @@
 """Qdrant 向量存储层。"""
 
 from typing import Any
-import uuid
-
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -187,24 +185,3 @@ class QdrantVectorStore:
             ),
         )
 
-    def insert(
-        self,
-        vector,
-        payload,
-    ):
-
-        point = PointStruct(
-            id=str(uuid.uuid4()),
-            vector=vector,
-            payload=payload,
-        )
-
-
-        self.client.upsert(
-            collection_name=
-            self.collection_name,
-
-            points=[
-                point
-            ],
-        )

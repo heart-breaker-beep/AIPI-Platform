@@ -13,7 +13,6 @@ Repository 层只负责：
 from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.persistence.models.repository import Repository
 from app.infrastructure.persistence.repositories.base import BaseRepository
@@ -51,15 +50,6 @@ class RepositoryRepository(BaseRepository[Repository]):
         )
 
         return result.scalar_one_or_none()
-
-    async def get_by_id(
-        self,
-        repository_id: int,
-    ) -> Optional[Repository]:
-        """
-        根据 Repository ID 查询 Repository。
-        """
-        return await super().get_by_id(repository_id)
 
     async def create(
         self,

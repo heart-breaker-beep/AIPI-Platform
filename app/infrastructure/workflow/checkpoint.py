@@ -44,7 +44,13 @@ class CheckpointManager:
 
         # 瘦身 state.data
         if snapshot.data:
-            trimmed_data, trims = StateManager.prepare_for_persistence(snapshot.data)
+            # copy=False：snapshot 本身已经是 deepcopy 出来的副本，
+            # prepare_for_persistence 不必再拷一份
+            # （报告级 state 有几十 KB，多拷一次是白花的）。
+            trimmed_data, trims = StateManager.prepare_for_persistence(
+                snapshot.data,
+                copy=False,
+            )
             snapshot.data = StateManager.add_trim_metadata(trimmed_data, trims)
 
         # 瘦身 state.outputs（兜底，正常路径下节点只写精简标记）

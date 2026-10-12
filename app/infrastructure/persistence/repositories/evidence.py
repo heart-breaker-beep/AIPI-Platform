@@ -2,10 +2,8 @@
 Evidence 数据访问层。
 """
 
-from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.persistence.models.evidence import Evidence
 from app.infrastructure.persistence.repositories.base import BaseRepository
@@ -43,12 +41,6 @@ class EvidenceRepository(BaseRepository[Evidence]):
             content=content,
             verification_status=verification_status,
         )
-
-    async def get_by_id(
-        self,
-        evidence_id: str,
-    ) -> Optional[Evidence]:
-        return await super().get_by_id(evidence_id)
 
     async def list_by_repository(
         self,

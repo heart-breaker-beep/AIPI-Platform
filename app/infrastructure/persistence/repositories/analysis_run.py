@@ -2,10 +2,8 @@
 Analysis Run 数据访问层。
 """
 
-from typing import Optional
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.persistence.models.analysis_run import AnalysisRun
 from app.infrastructure.persistence.repositories.base import BaseRepository
@@ -32,13 +30,6 @@ class AnalysisRunRepository(BaseRepository[AnalysisRun]):
             status="pending",
         )
 
-    async def get_by_id(
-        self,
-        run_id: str,
-    ) -> Optional[AnalysisRun]:
-        """根据 run_id 查询分析任务。"""
-        return await super().get_by_id(run_id)
-
     async def list_recent(
         self,
         limit: int = 20,
@@ -63,19 +54,6 @@ class AnalysisRunRepository(BaseRepository[AnalysisRun]):
         )
 
         return list(result.scalars().all())
-
-    async def update_status(
-        self,
-        run: AnalysisRun,
-        status: str,
-    ) -> AnalysisRun:
-        """更新分析任务状态。"""
-
-        run.status = status
-
-        await self.session.flush()
-
-        return run
 
     # 用于把 error_message 显式清空的哨兵值。
     #

@@ -27,7 +27,7 @@ checkpoint 的 state_data 涨到 263,743 字节，
 import json
 from pathlib import Path
 
-from app.infrastructure.workflow.state_manager import MAX_STATE_BYTES, StateManager
+from app.infrastructure.workflow.state_manager import StateManager
 from app.domain.analysis.workflow import AnalysisWorkflowOrchestrator
 
 
@@ -71,17 +71,17 @@ def test_oversized_state_is_trimmed_under_limit():
     state = build_oversized_state()
 
     assert (
-        StateManager._size(state)
-        > MAX_STATE_BYTES
+        StateManager._estimate_size(state)
+        > StateManager.MAX_STATE_BYTES
     )
 
-    data, trims = StateManager.fit_state_data(
+    data, trims = StateManager.prepare_for_persistence(
         state
     )
 
     assert (
-        StateManager._size(data)
-        <= MAX_STATE_BYTES
+        StateManager._estimate_size(data)
+        <= StateManager.MAX_STATE_BYTES
     )
 
     assert trims
@@ -102,7 +102,7 @@ def test_trim_drops_the_most_redundant_first():
 
     state = build_oversized_state()
 
-    data, trims = StateManager.fit_state_data(
+    data, trims = StateManager.prepare_for_persistence(
         state
     )
 
@@ -128,7 +128,7 @@ def test_trim_preserves_business_fields():
 
     state = build_oversized_state()
 
-    data, _ = StateManager.fit_state_data(
+    data, _ = StateManager.prepare_for_persistence(
         state
     )
 
@@ -157,17 +157,17 @@ def test_trim_falls_through_to_evidence_and_modules():
     }
 
     assert (
-        StateManager._size(state)
-        > MAX_STATE_BYTES
+        StateManager._estimate_size(state)
+        > StateManager.MAX_STATE_BYTES
     )
 
-    data, trims = StateManager.fit_state_data(
+    data, trims = StateManager.prepare_for_persistence(
         state
     )
 
     assert (
-        StateManager._size(data)
-        <= MAX_STATE_BYTES
+        StateManager._estimate_size(data)
+        <= StateManager.MAX_STATE_BYTES
     )
 
     dropped = trims["dropped_bytes"]
@@ -179,7 +179,7 @@ def test_small_state_is_untouched():
 
     state = {"a": 1, "readme": "short"}
 
-    data, trims = StateManager.fit_state_data(
+    data, trims = StateManager.prepare_for_persistence(
         state
     )
 
@@ -190,7 +190,7 @@ def test_small_state_is_untouched():
 
 def test_non_dict_state_does_not_crash():
 
-    data, trims = StateManager.fit_state_data(
+    data, trims = StateManager.prepare_for_persistence(
         "not-a-dict"
     )
 
@@ -317,7 +317,7 @@ def test_trimmed_marker_is_underscore_prefixed():
 
     state = build_oversized_state()
 
-    _, trims = StateManager.fit_state_data(
+    _, trims = StateManager.prepare_for_persistence(
         state
     )
 

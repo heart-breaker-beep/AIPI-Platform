@@ -12,7 +12,7 @@ CodeStructureExtractor 测试。
 全部只做静态解析，不联网。
 """
 
-from app.project_analysis.code_structure_extractor import (
+from app.infrastructure.tools.project.code_structure_extractor import (
     CodeStructureExtractor,
 )
 
@@ -758,7 +758,7 @@ def test_meaningful_start_skips_import_block():
     而 Python 文件开头必然是 import 块。
     """
 
-    from app.project_analysis.code_structure_extractor import (
+    from app.infrastructure.tools.project.code_structure_extractor import (
         CodeStructureExtractor,
     )
 
@@ -785,7 +785,7 @@ def test_meaningful_start_skips_import_block():
 
 def test_meaningful_start_handles_multiline_docstring():
 
-    from app.project_analysis.code_structure_extractor import (
+    from app.infrastructure.tools.project.code_structure_extractor import (
         CodeStructureExtractor,
     )
 
@@ -814,7 +814,7 @@ def test_meaningful_start_falls_back_for_import_only_file():
     不能返回 len(source)，那样摘录会是空串。
     """
 
-    from app.project_analysis.code_structure_extractor import (
+    from app.infrastructure.tools.project.code_structure_extractor import (
         CodeStructureExtractor,
     )
 
@@ -835,7 +835,7 @@ def test_module_entry_records_start_line():
     但内容其实是第 30 行开始的。
     """
 
-    from app.skills.architecture_analysis_skill import (
+    from app.infrastructure.skills.architecture_analysis_skill import (
         ArchitectureAnalysisSkill,
     )
 
@@ -860,7 +860,7 @@ def test_module_entry_records_start_line():
 
 def test_module_entry_without_imports_has_no_start_line():
 
-    from app.skills.architecture_analysis_skill import (
+    from app.infrastructure.skills.architecture_analysis_skill import (
         ArchitectureAnalysisSkill,
     )
 
@@ -890,7 +890,7 @@ def test_meaningful_start_handles_multiline_import():
     摘录依然是一串 import 名单。
     """
 
-    from app.project_analysis.code_structure_extractor import (
+    from app.infrastructure.tools.project.code_structure_extractor import (
         CodeStructureExtractor,
     )
 
@@ -916,7 +916,7 @@ def test_meaningful_start_handles_multiline_import():
 
 def test_meaningful_start_handles_backslash_continuation():
 
-    from app.project_analysis.code_structure_extractor import (
+    from app.infrastructure.tools.project.code_structure_extractor import (
         CodeStructureExtractor,
     )
 

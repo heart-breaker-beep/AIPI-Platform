@@ -14,30 +14,30 @@ import pytest
 from app.core.exceptions import (
     NonRetryableError,
 )
-from app.workflow.checkpoint import (
+from app.infrastructure.workflow.checkpoint import (
     CheckpointManager,
 )
-from app.workflow.context import (
+from app.infrastructure.workflow.context import (
     WorkflowContext,
 )
-from app.workflow.engine import (
+from app.infrastructure.workflow.engine import (
     WorkflowEngine,
 )
-from app.workflow.node import BaseNode
-from app.workflow.nodes.end_node import (
+from app.infrastructure.workflow.node import BaseNode
+from app.infrastructure.workflow.nodes.end_node import (
     EndNode,
 )
-from app.workflow.nodes.start_node import (
+from app.infrastructure.workflow.nodes.start_node import (
     StartNode,
 )
-from app.workflow.state import (
+from app.infrastructure.workflow.state import (
     WorkflowState,
     WorkflowStatus,
 )
-from app.workflow.transition import (
+from app.infrastructure.workflow.transition import (
     Transition,
 )
-from app.workflow.workflow import (
+from app.infrastructure.workflow.workflow import (
     Workflow,
 )
 

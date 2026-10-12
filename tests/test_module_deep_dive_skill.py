@@ -20,7 +20,7 @@ import json
 import pytest
 
 from app.core.exceptions import ToolError
-from app.skills.module_deep_dive_skill import (
+from app.infrastructure.skills.module_deep_dive_skill import (
     ModuleDeepDiveSkill,
 )
 

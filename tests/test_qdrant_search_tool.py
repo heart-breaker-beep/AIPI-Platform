@@ -1,7 +1,7 @@
 import pytest
 
 
-from app.tools.qdrant_search_tool import (
+from app.infrastructure.tools.qdrant_search_tool import (
     QdrantSearchTool
 )
 

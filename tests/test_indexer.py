@@ -1,6 +1,6 @@
 """DocumentIndexer 集成测试。"""
 
-from app.project_analysis.project_indexer import DocumentIndexer
+from app.infrastructure.tools.project.project_indexer import DocumentIndexer
 
 
 def test_document_indexer():

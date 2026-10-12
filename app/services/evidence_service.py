@@ -21,11 +21,11 @@ from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ValidationError
-from app.evidence.store import EvidenceStore
-from app.evidence.traceability import (
+from app.infrastructure.enrichment.evidence.store import EvidenceStore
+from app.infrastructure.enrichment.evidence.traceability import (
     TraceabilityService,
 )
-from app.evidence.verifier import EvidenceVerifier
+from app.infrastructure.enrichment.evidence.verifier import EvidenceVerifier
 
 
 class EvidenceService:

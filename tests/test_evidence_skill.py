@@ -4,7 +4,7 @@ EvidenceAnalysisSkill 测试。
 
 import pytest
 
-from app.skills.evidence_analysis_skill import (
+from app.infrastructure.skills.evidence_analysis_skill import (
     EvidenceAnalysisSkill,
 )
 

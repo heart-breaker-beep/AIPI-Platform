@@ -8,27 +8,20 @@ Phase 12 前置结构修复回归测试。
 3. WorkflowContext 保持旧字段兼容
 4. WorkflowContext 支持 Phase 11 Memory / Context
 5. WorkflowError 已统一
-6. RepositoryRepository 已统一
-7. FastAPI main 可以正常导入
+6. FastAPI main 可以正常导入
 """
 
 from app.core.exceptions import WorkflowError
-from app.repositories.repository import (
-    RepositoryRepository as RepositoryRepositoryFromMain,
-)
-from app.repositories.repository_basic import (
-    RepositoryRepository as RepositoryRepositoryFromBasic,
-)
-from app.workflow.context import WorkflowContext
-from app.workflow.node import (
+from app.infrastructure.workflow.context import WorkflowContext
+from app.infrastructure.workflow.node import (
     BaseNode as BaseNodeFromWorkflow,
 )
-from app.workflow.nodes.base import (
+from app.infrastructure.workflow.nodes.base import (
     BaseNode as BaseNodeFromNodes,
 )
-from app.workflow.transition import Transition
-from app.workflow.workflow import Workflow
-from app.workflow.exceptions import (
+from app.infrastructure.workflow.transition import Transition
+from app.infrastructure.workflow.workflow import Workflow
+from app.infrastructure.workflow.exceptions import (
     NodeExecutionError,
     WorkflowError as WorkflowErrorFromWorkflow,
 )
@@ -161,18 +154,6 @@ def test_workflow_context_supports_phase11_components():
     assert (
         context.context_manager
         is context_manager
-    )
-
-
-def test_repository_repository_is_unified():
-    """
-    两个历史 Repository import 路径
-    必须指向同一个实现。
-    """
-
-    assert (
-        RepositoryRepositoryFromMain
-        is RepositoryRepositoryFromBasic
     )
 
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.tools.github.github_repository_tool import GitHubRepositoryTool
+from app.infrastructure.tools.github.github_repository_tool import GitHubRepositoryTool
 
 
 @pytest.mark.asyncio

@@ -1,27 +1,14 @@
 """Phase 11 Memory 测试。"""
 
 from types import SimpleNamespace
+
 from unittest.mock import AsyncMock
 
 import pytest
 
-from app.memory.run_memory import (
-    RunMemory,
-)
-
-from app.memory.project_memory import (
+from app.infrastructure.enrichment.memory.project_memory import (
     ProjectMemory,
 )
-
-
-class FakeScalarResult:
-    """模拟 SQLAlchemy scalar 查询结果。"""
-
-    def __init__(self, value):
-        self.value = value
-
-    def scalar_one_or_none(self):
-        return self.value
 
 
 class FakeScalarsResult:
@@ -35,126 +22,6 @@ class FakeScalarsResult:
 
     def all(self):
         return self.values
-
-
-@pytest.mark.asyncio
-async def test_run_memory_loads_run_and_checkpoint():
-    """Run Memory 应能够组合 Run / Task / Checkpoint / Evidence。"""
-
-    session = AsyncMock()
-
-    run = SimpleNamespace(
-        id="run-1",
-        repository_id=10,
-        question="Workflow怎么实现？",
-        status="ANALYZING",
-        current_node="workflow",
-    )
-
-    repository = SimpleNamespace(
-        id=10,
-        url="https://github.com/demo/repo",
-        owner="demo",
-        name="repo",
-        description="demo",
-        language="Python",
-    )
-
-    task = SimpleNamespace(
-        id=1,
-        task_type="architecture",
-        status="completed",
-        input={},
-        output={
-            "result": "workflow"
-        },
-        error=None,
-        retry_count=0,
-        created_at=None,
-    )
-
-    evidence = SimpleNamespace(
-        id="ev-1",
-        source_type="code",
-        file_path="app/workflow.py",
-        line_start=10,
-        line_end=20,
-        content="class WorkflowEngine",
-        verification_status="VERIFIED",
-    )
-
-    checkpoint = SimpleNamespace(
-        data={
-            "research_plan": {
-                "tasks": [
-                    "architecture"
-                ]
-            }
-        },
-        outputs=[
-            {
-                "agent": "architecture"
-            }
-        ],
-        status="ANALYZING",
-        current_node="workflow",
-        errors=[],
-        retry_count=0,
-        pause_reason=None,
-        human_approved=True,
-        checkpoint_version=2,
-    )
-
-    session.execute.side_effect = [
-        FakeScalarResult(run),
-        FakeScalarsResult([task]),
-    ]
-
-    session.get.return_value = repository
-
-    memory = RunMemory(
-        session
-    )
-
-    memory.checkpoint_repository.get_latest = (
-        AsyncMock(
-            return_value=checkpoint
-        )
-    )
-
-    memory.evidence_repository.list_by_repository = (
-        AsyncMock(
-            return_value=[evidence]
-        )
-    )
-
-    result = await memory.load(
-        "run-1"
-    )
-
-    assert (
-        result["question"]
-        == "Workflow怎么实现？"
-    )
-
-    assert (
-        result["research_plan"]["tasks"]
-        == ["architecture"]
-    )
-
-    assert (
-        result["agent_outputs"]
-        == [
-            {
-                "agent": "architecture"
-            }
-        ]
-    )
-
-    assert (
-        result["evidences"][0]["file_path"]
-        == "app/workflow.py"
-    )
 
 
 @pytest.mark.asyncio

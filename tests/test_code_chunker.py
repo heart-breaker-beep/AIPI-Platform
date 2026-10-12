@@ -10,7 +10,7 @@ RAG 检索回来的片段要写进报告当证据，
 比没有出处更糟，因为看起来是可信的。
 """
 
-from app.project_analysis.code_chunker import (
+from app.infrastructure.tools.project.code_chunker import (
     PythonCodeChunker,
 )
 

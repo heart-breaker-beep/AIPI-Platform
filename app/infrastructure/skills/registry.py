@@ -1,0 +1,181 @@
+"""
+Skill 注册中心。
+
+作用:
+
+统一管理系统中的 Skill。
+
+Workflow / Agent 不需要关心 Skill 如何创建。
+
+只需要:
+
+registry.get("repository_analysis")
+
+即可获取。
+
+
+"""
+
+
+from app.infrastructure.skills.repository_analysis_skill import (
+    RepositoryAnalysisSkill
+)
+
+
+from app.infrastructure.skills.architecture_analysis_skill import (
+    ArchitectureAnalysisSkill
+)
+
+
+from app.infrastructure.skills.technology_analysis_skill import (
+    TechnologyAnalysisSkill
+)
+
+
+from app.infrastructure.skills.evidence_analysis_skill import (
+    EvidenceAnalysisSkill
+)
+
+
+from app.infrastructure.skills.report_generation_skill import (
+    ReportGenerationSkill
+)
+
+
+from app.infrastructure.skills.report_synthesis_skill import (
+    ReportSynthesisSkill
+)
+
+
+from app.infrastructure.skills.module_deep_dive_skill import (
+    ModuleDeepDiveSkill
+)
+
+
+from app.infrastructure.skills.learning_path_skill import (
+    LearningPathSkill
+)
+
+
+
+
+class SkillRegistry:
+    """
+    Skill管理器。
+    """
+
+
+    def __init__(self):
+
+        # 保存所有Skill实例
+        #
+        # {
+        #    "repository_analysis":
+        #          RepositoryAnalysisSkill()
+        # }
+
+        self.skills = {}
+
+
+
+    def register(
+        self,
+        skill
+    ):
+        """
+        注册Skill。
+        """
+
+
+        self.skills[
+            skill.name
+        ] = skill
+
+
+
+    def get(
+        self,
+        name:str
+    ):
+        """
+        根据名称获取Skill。
+        """
+
+        return self.skills.get(
+            name
+        )
+
+
+
+
+def create_skill_registry():
+    """
+    创建默认Skill集合。
+
+    项目启动时调用。
+
+    """
+
+
+    registry = SkillRegistry()
+
+
+
+    # 注册仓库分析Skill
+
+    registry.register(
+        RepositoryAnalysisSkill()
+    )
+
+
+    # 注册架构分析Skill
+
+    registry.register(
+        ArchitectureAnalysisSkill()
+    )
+
+
+    # 注册技术栈分析Skill
+
+    registry.register(
+        TechnologyAnalysisSkill()
+    )
+
+
+    # 注册证据分析Skill
+
+    registry.register(
+        EvidenceAnalysisSkill()
+    )
+
+
+    # 注册报告生成Skill
+
+    registry.register(
+        ReportGenerationSkill()
+    )
+
+
+    # 注册报告综合分析Skill
+
+    registry.register(
+        ReportSynthesisSkill()
+    )
+
+
+    # 注册单模块深挖Skill
+
+    registry.register(
+        ModuleDeepDiveSkill()
+    )
+
+
+    # 注册学习路线Skill（Phase 14.1）
+
+    registry.register(
+        LearningPathSkill()
+    )
+
+
+
+    return registry

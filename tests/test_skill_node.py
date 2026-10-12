@@ -1,12 +1,12 @@
 import pytest
 
-from app.workflow.nodes.skill_node import (
+from app.infrastructure.workflow.nodes.skill_node import (
     SkillNode
 )
 
-from app.workflow.state import WorkflowState
+from app.infrastructure.workflow.state import WorkflowState
 
-from app.workflow.context import WorkflowContext
+from app.infrastructure.workflow.context import WorkflowContext
 
 
 class FakeSkill:

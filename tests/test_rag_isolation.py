@@ -77,7 +77,7 @@ class PaymentGateway:
 
 def _fixtures():
     from app.embeddings.ollama import OllamaEmbedding
-    from app.project_analysis.code_chunker import (
+    from app.infrastructure.tools.project.code_chunker import (
         PythonCodeChunker,
     )
 
@@ -178,7 +178,7 @@ def test_retrieval_tool_refuses_without_repository_id(store):
 
     import asyncio
 
-    from app.tools.rag_retrieval_tool import (
+    from app.infrastructure.tools.rag_retrieval_tool import (
         RagRetrievalTool,
     )
 

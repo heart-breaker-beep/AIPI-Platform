@@ -83,7 +83,7 @@ class ReportService:
         if not isinstance(data, dict):
             data = {}
 
-        from app.project_analysis.analysis_focus import (
+        from app.infrastructure.tools.project.analysis_focus import (
             AnalysisFocus,
         )
 
@@ -444,7 +444,7 @@ class ReportService:
         都在那里，本模块不重复实现。
         """
 
-        from app.skills.report_generation_skill import (
+        from app.infrastructure.skills.report_generation_skill import (
             ReportGenerationSkill,
         )
 

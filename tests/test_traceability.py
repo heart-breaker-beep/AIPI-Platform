@@ -4,7 +4,7 @@ Claim → Citation → Evidence 可追溯测试。
 
 import pytest
 
-from app.evidence.traceability import (
+from app.infrastructure.enrichment.evidence.traceability import (
     TraceabilityService,
 )
 

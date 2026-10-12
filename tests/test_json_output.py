@@ -10,7 +10,7 @@ LLM JSON 输出解析测试。
 
 import json
 
-from app.skills.json_output import (
+from app.infrastructure.skills.json_output import (
     parse_json_object,
     strip_code_fence,
 )

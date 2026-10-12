@@ -11,29 +11,29 @@ Phase 12 前置集成测试。
 
 import pytest
 
-from app.agents.critic_agent import CriticAgent
-from app.agents.planner_agent import PlannerAgent
-from app.workflow.context import WorkflowContext
-from app.workflow.engine import WorkflowEngine
-from app.workflow.nodes.agent_node import AgentNode
-from app.workflow.nodes.base import BaseNode
-from app.workflow.nodes.plan_executor_node import (
+from app.infrastructure.agents.critic_agent import CriticAgent
+from app.infrastructure.agents.planner_agent import PlannerAgent
+from app.infrastructure.workflow.context import WorkflowContext
+from app.infrastructure.workflow.engine import WorkflowEngine
+from app.infrastructure.workflow.nodes.agent_node import AgentNode
+from app.infrastructure.workflow.nodes.base import BaseNode
+from app.infrastructure.workflow.nodes.plan_executor_node import (
     PlanExecutorNode,
 )
-from app.workflow.state import WorkflowState
-from app.workflow.transition import Transition
-from app.workflow.workflow import Workflow
+from app.infrastructure.workflow.state import WorkflowState
+from app.infrastructure.workflow.transition import Transition
+from app.infrastructure.workflow.workflow import Workflow
 
-from app.skills.repository_analysis_skill import (
+from app.infrastructure.skills.repository_analysis_skill import (
     RepositoryAnalysisSkill,
 )
-from app.skills.architecture_analysis_skill import (
+from app.infrastructure.skills.architecture_analysis_skill import (
     ArchitectureAnalysisSkill,
 )
-from app.skills.technology_analysis_skill import (
+from app.infrastructure.skills.technology_analysis_skill import (
     TechnologyAnalysisSkill,
 )
-from app.skills.report_generation_skill import (
+from app.infrastructure.skills.report_generation_skill import (
     ReportGenerationSkill,
 )
 

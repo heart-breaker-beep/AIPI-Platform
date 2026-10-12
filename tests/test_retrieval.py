@@ -1,7 +1,7 @@
 """向量检索测试。"""
 
 from app.embeddings.ollama import OllamaEmbedding
-from app.project_analysis.project_indexer import DocumentIndexer
+from app.infrastructure.tools.project.project_indexer import DocumentIndexer
 from app.vector_store.qdrant import QdrantVectorStore
 
 

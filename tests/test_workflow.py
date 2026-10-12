@@ -6,16 +6,16 @@ from app.core.exceptions import (
     NonRetryableError,
     RetryableError,
 )
-from app.workflow.checkpoint import CheckpointManager
-from app.workflow.context import WorkflowContext
-from app.workflow.engine import WorkflowEngine
-from app.workflow.node import BaseNode
-from app.workflow.nodes.end_node import EndNode
-from app.workflow.nodes.start_node import StartNode
-from app.workflow.retry import RetryPolicy
-from app.workflow.state import WorkflowState
-from app.workflow.transition import Transition
-from app.workflow.workflow import Workflow
+from app.infrastructure.workflow.checkpoint import CheckpointManager
+from app.infrastructure.workflow.context import WorkflowContext
+from app.infrastructure.workflow.engine import WorkflowEngine
+from app.infrastructure.workflow.node import BaseNode
+from app.infrastructure.workflow.nodes.end_node import EndNode
+from app.infrastructure.workflow.nodes.start_node import StartNode
+from app.infrastructure.workflow.retry import RetryPolicy
+from app.infrastructure.workflow.state import WorkflowState
+from app.infrastructure.workflow.transition import Transition
+from app.infrastructure.workflow.workflow import Workflow
 
 
 class TouchNode(BaseNode):

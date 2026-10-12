@@ -1,7 +1,7 @@
 import pytest
 
 
-from app.skills.repository_analysis_skill import (
+from app.infrastructure.skills.repository_analysis_skill import (
     RepositoryAnalysisSkill
 )
 

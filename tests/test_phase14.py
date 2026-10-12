@@ -19,10 +19,10 @@ import pytest
 from app.services.report_service import (
     ReportService,
 )
-from app.skills.learning_path_skill import (
+from app.infrastructure.skills.learning_path_skill import (
     LearningPathSkill,
 )
-from app.tools.report_export_tool import (
+from app.infrastructure.tools.report_export_tool import (
     ReportExportTool,
 )
 

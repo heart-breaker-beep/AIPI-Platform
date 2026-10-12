@@ -5,7 +5,7 @@ Evidence Verification 测试。
 import pytest
 
 from app.core.exceptions import ValidationError
-from app.evidence.verifier import (
+from app.infrastructure.enrichment.evidence.verifier import (
     EvidenceVerifier,
 )
 

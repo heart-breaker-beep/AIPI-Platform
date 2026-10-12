@@ -1,6 +1,6 @@
 import pytest
 
-from app.tools.mysql_query_tool import (
+from app.infrastructure.tools.mysql_query_tool import (
     MySQLQueryTool
 )
 

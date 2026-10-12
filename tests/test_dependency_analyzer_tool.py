@@ -1,6 +1,6 @@
 import pytest
 
-from app.tools.dependency_analyzer_tool import (
+from app.infrastructure.tools.dependency_analyzer_tool import (
     DependencyAnalyzerTool
 )
 

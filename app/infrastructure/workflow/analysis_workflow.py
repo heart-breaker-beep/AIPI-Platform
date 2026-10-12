@@ -1,0 +1,170 @@
+"""
+AIPI 单项目分析 Workflow。
+
+完整链路：
+
+Start
+    ↓
+Planner
+    ↓
+Design Gate
+    ↓
+Plan Executor
+    ↓
+Human Review
+    ↓
+Synthesis
+    ↓
+Finalizer
+    ↓
+End
+"""
+
+from app.infrastructure.workflow.nodes.agent_node import AgentNode
+from app.infrastructure.workflow.nodes.design_gate_node import (
+    DesignGateNode,
+)
+from app.infrastructure.workflow.nodes.end_node import EndNode
+from app.infrastructure.workflow.nodes.finalizer_node import (
+    FinalizerNode,
+)
+from app.infrastructure.workflow.nodes.human_node import HumanNode
+from app.infrastructure.workflow.nodes.plan_executor_node import (
+    PlanExecutorNode,
+)
+from app.infrastructure.workflow.nodes.start_node import StartNode
+from app.infrastructure.workflow.nodes.synthesis_node import (
+    SynthesisNode,
+)
+from app.infrastructure.workflow.transition import Transition
+from app.infrastructure.workflow.workflow import Workflow
+
+
+def build_analysis_workflow(
+    context,
+) -> Workflow:
+    """
+    创建单项目完整分析 Workflow。
+
+    Agent 的具体实例来自 WorkflowContext，
+    Workflow 本身不负责创建 Agent。
+    """
+
+    workflow = Workflow()
+
+    planner = context.agents.get(
+        "planner_agent"
+    )
+
+    if planner is None:
+        raise ValueError(
+            "Planner Agent is not registered."
+        )
+
+    report_skill = context.skills.get(
+        "report_generation"
+    )
+
+    if report_skill is None:
+        raise ValueError(
+            "Report generation skill is not registered."
+        )
+
+    synthesis_skill = context.skills.get(
+        "report_synthesis"
+    )
+
+    if synthesis_skill is None:
+        raise ValueError(
+            "Report synthesis skill is not registered."
+        )
+
+    workflow.add_node(
+        StartNode()
+    )
+
+    workflow.add_node(
+        AgentNode(
+            name="planner_agent",
+            agent=planner,
+        )
+    )
+
+    workflow.add_node(
+        DesignGateNode()
+    )
+
+    workflow.add_node(
+        PlanExecutorNode()
+    )
+
+    workflow.add_node(
+        HumanNode()
+    )
+
+    workflow.add_node(
+        SynthesisNode(
+            skill=synthesis_skill,
+        )
+    )
+
+    workflow.add_node(
+        FinalizerNode(
+            skill=report_skill,
+        )
+    )
+
+    workflow.add_node(
+        EndNode()
+    )
+
+    workflow.add_transition(
+        Transition(
+            "start",
+            "planner_agent",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "planner_agent",
+            "design_gate",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "design_gate",
+            "plan_executor",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "plan_executor",
+            "human_review",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "human_review",
+            "synthesis",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "synthesis",
+            "finalizer",
+        )
+    )
+
+    workflow.add_transition(
+        Transition(
+            "finalizer",
+            "end",
+        )
+    )
+
+    return workflow

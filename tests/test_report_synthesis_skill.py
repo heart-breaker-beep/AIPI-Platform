@@ -16,14 +16,14 @@ import json
 
 import pytest
 
-from app.skills.report_synthesis_skill import (
+from app.infrastructure.skills.report_synthesis_skill import (
     ReportSynthesisSkill,
 )
-from app.tools.llm_chat_tool import LLMChatTool
-from app.workflow.nodes.synthesis_node import (
+from app.infrastructure.tools.llm_chat_tool import LLMChatTool
+from app.infrastructure.workflow.nodes.synthesis_node import (
     SynthesisNode,
 )
-from app.workflow.state import WorkflowState
+from app.infrastructure.workflow.state import WorkflowState
 
 VALID_REPLY = json.dumps(
     {
@@ -423,7 +423,7 @@ async def test_llm_chat_tool_without_api_key(monkeypatch):
     而不是抛异常让整个 Workflow 失败。
     """
 
-    import app.tools.llm_chat_tool as module
+    import app.infrastructure.tools.llm_chat_tool as module
 
     class FakeSettings:
         LLM_API_KEY = ""

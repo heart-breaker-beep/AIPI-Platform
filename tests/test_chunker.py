@@ -1,6 +1,6 @@
 """Markdown Chunker 测试。"""
 
-from app.project_analysis.code_chunker import MarkdownChunker
+from app.infrastructure.tools.project.code_chunker import MarkdownChunker
 
 
 def test_markdown_chunker():

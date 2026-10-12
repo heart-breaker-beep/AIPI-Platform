@@ -2,8 +2,8 @@
 
 import pytest
 
-from app.tools.github import github_code_search_tool as module
-from app.tools.github.github_code_search_tool import (
+from app.infrastructure.tools.github import github_code_search_tool as module
+from app.infrastructure.tools.github.github_code_search_tool import (
     GitHubCodeSearchTool
 )
 

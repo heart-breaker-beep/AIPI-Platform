@@ -2,19 +2,19 @@
 
 import pytest
 
-from app.workflow.analysis_workflow import (
+from app.infrastructure.workflow.analysis_workflow import (
     build_analysis_workflow,
 )
-from app.workflow.checkpoint import (
+from app.infrastructure.workflow.checkpoint import (
     CheckpointManager,
 )
-from app.workflow.context import (
+from app.infrastructure.workflow.context import (
     WorkflowContext,
 )
-from app.workflow.engine import (
+from app.infrastructure.workflow.engine import (
     WorkflowEngine,
 )
-from app.workflow.state import (
+from app.infrastructure.workflow.state import (
     WorkflowState,
     WorkflowStatus,
 )
@@ -491,7 +491,7 @@ async def test_directory_structure_comes_from_git_tree():
     而不是留空。
     """
 
-    from app.skills.architecture_analysis_skill import (
+    from app.infrastructure.skills.architecture_analysis_skill import (
         ArchitectureAnalysisSkill,
     )
 
@@ -529,7 +529,7 @@ async def test_module_read_failure_does_not_break_analysis():
     """
 
     from app.core.exceptions import ToolError
-    from app.skills.architecture_analysis_skill import (
+    from app.infrastructure.skills.architecture_analysis_skill import (
         ArchitectureAnalysisSkill,
     )
 
@@ -579,7 +579,7 @@ def test_report_contains_documented_sections():
     对理解项目没有帮助。
     """
 
-    from app.skills.report_generation_skill import (
+    from app.infrastructure.skills.report_generation_skill import (
         ReportGenerationSkill,
     )
 
@@ -614,7 +614,7 @@ def test_report_has_no_hardcoded_content():
     让报告看起来完整但内容是假的。
     """
 
-    from app.skills.report_generation_skill import (
+    from app.infrastructure.skills.report_generation_skill import (
         ReportGenerationSkill,
     )
 
@@ -633,7 +633,7 @@ def test_report_has_no_hardcoded_content():
 def test_report_uses_project_structure():
     """04/05/06/07/09 必须来自被分析项目的自述结构。"""
 
-    from app.skills.report_generation_skill import (
+    from app.infrastructure.skills.report_generation_skill import (
         ReportGenerationSkill,
     )
 
@@ -691,7 +691,7 @@ def test_report_is_rendered_as_markdown_not_json_dump():
     不能再把中间数据结构直接 dump 成 JSON 代码块。
     """
 
-    from app.skills.report_generation_skill import (
+    from app.infrastructure.skills.report_generation_skill import (
         ReportGenerationSkill,
     )
 
@@ -779,7 +779,7 @@ def test_report_rag_chapter_renders_declared_dimension():
     导致 RAG 章永远走「不可用」分支。
     """
 
-    from app.skills.report_generation_skill import (
+    from app.infrastructure.skills.report_generation_skill import (
         ReportGenerationSkill,
     )
 
@@ -829,7 +829,7 @@ def test_report_renders_synthesis_summary_and_judgments():
     报告必须渲染 00 章与各章末尾的综合判断。
     """
 
-    from app.skills.report_generation_skill import (
+    from app.infrastructure.skills.report_generation_skill import (
         ReportGenerationSkill,
     )
 
@@ -887,7 +887,7 @@ def test_report_states_when_synthesis_unavailable():
     且后续原始数据章节必须完整保留。
     """
 
-    from app.skills.report_generation_skill import (
+    from app.infrastructure.skills.report_generation_skill import (
         ReportGenerationSkill,
     )
 
@@ -928,7 +928,7 @@ def test_plan_executor_does_not_duplicate_agent_results():
     Lost connection to MySQL server。
     """
 
-    from app.workflow.nodes.plan_executor_node import (
+    from app.infrastructure.workflow.nodes.plan_executor_node import (
         PlanExecutorNode,
     )
 
@@ -978,7 +978,7 @@ def test_plan_executor_does_not_duplicate_agent_results():
 def test_outputs_stores_marker_not_payload():
     """outputs 只留运行痕迹，不复制正文。"""
 
-    from app.workflow.nodes.plan_executor_node import (
+    from app.infrastructure.workflow.nodes.plan_executor_node import (
         PlanExecutorNode,
     )
 

@@ -27,13 +27,8 @@ checkpoint 的 state_data 涨到 263,743 字节，
 import json
 from pathlib import Path
 
-from app.repositories.checkpoint import (
-    MAX_STATE_BYTES,
-    CheckpointRepository,
-)
-from app.services.analysis_workflow import (
-    AnalysisWorkflowRunner,
-)
+from app.infrastructure.workflow.state_manager import MAX_STATE_BYTES, StateManager
+from app.domain.analysis.workflow import AnalysisWorkflowOrchestrator
 
 
 def build_oversized_state():
@@ -76,16 +71,16 @@ def test_oversized_state_is_trimmed_under_limit():
     state = build_oversized_state()
 
     assert (
-        CheckpointRepository._size(state)
+        StateManager._size(state)
         > MAX_STATE_BYTES
     )
 
-    data, trims = CheckpointRepository._fit_state_data(
+    data, trims = StateManager.fit_state_data(
         state
     )
 
     assert (
-        CheckpointRepository._size(data)
+        StateManager._size(data)
         <= MAX_STATE_BYTES
     )
 
@@ -107,7 +102,7 @@ def test_trim_drops_the_most_redundant_first():
 
     state = build_oversized_state()
 
-    data, trims = CheckpointRepository._fit_state_data(
+    data, trims = StateManager.fit_state_data(
         state
     )
 
@@ -133,7 +128,7 @@ def test_trim_preserves_business_fields():
 
     state = build_oversized_state()
 
-    data, _ = CheckpointRepository._fit_state_data(
+    data, _ = StateManager.fit_state_data(
         state
     )
 
@@ -162,16 +157,16 @@ def test_trim_falls_through_to_evidence_and_modules():
     }
 
     assert (
-        CheckpointRepository._size(state)
+        StateManager._size(state)
         > MAX_STATE_BYTES
     )
 
-    data, trims = CheckpointRepository._fit_state_data(
+    data, trims = StateManager.fit_state_data(
         state
     )
 
     assert (
-        CheckpointRepository._size(data)
+        StateManager._size(data)
         <= MAX_STATE_BYTES
     )
 
@@ -184,7 +179,7 @@ def test_small_state_is_untouched():
 
     state = {"a": 1, "readme": "short"}
 
-    data, trims = CheckpointRepository._fit_state_data(
+    data, trims = StateManager.fit_state_data(
         state
     )
 
@@ -195,7 +190,7 @@ def test_small_state_is_untouched():
 
 def test_non_dict_state_does_not_crash():
 
-    data, trims = CheckpointRepository._fit_state_data(
+    data, trims = StateManager.fit_state_data(
         "not-a-dict"
     )
 
@@ -228,7 +223,7 @@ def test_report_falls_back_to_disk(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    result = AnalysisWorkflowRunner._report_from_disk(
+    result = AnalysisWorkflowOrchestrator.get_report_from_disk(
         "run-1",
         None,
     )
@@ -261,7 +256,7 @@ def test_report_fills_missing_content_from_disk(
         encoding="utf-8",
     )
 
-    result = AnalysisWorkflowRunner._report_from_disk(
+    result = AnalysisWorkflowOrchestrator.get_report_from_disk(
         "run-2",
         {
             "report": {
@@ -287,7 +282,7 @@ def test_report_keeps_inline_content_when_present():
         "content": "# 来自 state 的正文",
     }
 
-    result = AnalysisWorkflowRunner._report_from_disk(
+    result = AnalysisWorkflowOrchestrator.get_report_from_disk(
         "run-3",
         report,
     )
@@ -304,7 +299,7 @@ def test_report_returns_none_when_nothing_available(
     monkeypatch.chdir(tmp_path)
 
     assert (
-        AnalysisWorkflowRunner._report_from_disk(
+        AnalysisWorkflowOrchestrator.get_report_from_disk(
             "missing-run",
             None,
         )
@@ -322,7 +317,7 @@ def test_trimmed_marker_is_underscore_prefixed():
 
     state = build_oversized_state()
 
-    _, trims = CheckpointRepository._fit_state_data(
+    _, trims = StateManager.fit_state_data(
         state
     )
 

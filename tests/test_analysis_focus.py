@@ -16,14 +16,14 @@ question 驱动分析计划的测试。
 
 import json
 
-from app.agents.planner_agent import PlannerAgent
-from app.project_analysis.analysis_focus import (
+from app.infrastructure.agents.planner_agent import PlannerAgent
+from app.infrastructure.tools.project.analysis_focus import (
     AnalysisFocus,
 )
-from app.skills.architecture_analysis_skill import (
+from app.infrastructure.skills.architecture_analysis_skill import (
     ArchitectureAnalysisSkill,
 )
-from app.skills.report_generation_skill import (
+from app.infrastructure.skills.report_generation_skill import (
     ReportGenerationSkill,
 )
 

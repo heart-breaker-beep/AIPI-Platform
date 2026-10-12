@@ -1,25 +1,25 @@
 import pytest
 
 
-from app.workflow.engine import WorkflowEngine
+from app.infrastructure.workflow.engine import WorkflowEngine
 
-from app.workflow.workflow import Workflow
+from app.infrastructure.workflow.workflow import Workflow
 
-from app.workflow.state import WorkflowState
+from app.infrastructure.workflow.state import WorkflowState
 
-from app.workflow.context import WorkflowContext
-
-
-from app.workflow.nodes.skill_node import SkillNode
+from app.infrastructure.workflow.context import WorkflowContext
 
 
-from app.workflow.nodes.base import BaseNode
-
-from app.workflow.transition import Transition
+from app.infrastructure.workflow.nodes.skill_node import SkillNode
 
 
+from app.infrastructure.workflow.nodes.base import BaseNode
 
-from app.skills.repository_analysis_skill import (
+from app.infrastructure.workflow.transition import Transition
+
+
+
+from app.infrastructure.skills.repository_analysis_skill import (
     RepositoryAnalysisSkill
 )
 

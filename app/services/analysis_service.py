@@ -25,7 +25,9 @@ from app.core.logging import (
     get_logger,
     log_with_run_id,
 )
-from app.domain.analysis import create_analysis_service
+from app.services.analysis_factory import (
+    create_analysis_service,
+)
 from app.infrastructure.persistence.models.repository import Repository
 from app.infrastructure.persistence.repositories.analysis_run import (
     AnalysisRunRepository,
@@ -707,7 +709,7 @@ class AnalysisService:
 
         # 2. 从 checkpoint 现场重建
         if data:
-            from app.services.report_service import ReportService
+            from app.infrastructure.reporting.report_document import ReportService
 
             document = ReportService.build_document(
                 data,

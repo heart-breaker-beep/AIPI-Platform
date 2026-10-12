@@ -189,7 +189,7 @@ class ReportGenerationSkill(
         那是之前修过的坑。
         """
 
-        from app.services.report_service import (
+        from app.infrastructure.reporting.report_document import (
             ReportService,
         )
 

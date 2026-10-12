@@ -8,13 +8,15 @@ Evidence Analysis Skill。
 3. Evidence MySQL 持久化
 """
 
+from uuid import uuid4
+
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.infrastructure.enrichment.evidence.store import (
+    EvidenceStore,
+)
 from app.infrastructure.tools.project.analysis_focus import AnalysisFocus
 from app.infrastructure.tools.project.rag_indexer import RagIndexer
-from app.services.evidence_service import (
-    EvidenceService,
-)
 from app.infrastructure.skills.base import BaseSkill
 
 
@@ -109,7 +111,10 @@ class EvidenceAnalysisSkill(
             session is not None
             and repository_id is not None
         ):
-            service = EvidenceService(
+            # 直接用 Store，不再经由 app.services 的 EvidenceService：
+            # infrastructure 反向 import services 会破坏依赖方向，
+            # 而 EvidenceService 对 store 只是透传 + 补一个 uuid。
+            store = EvidenceStore(
                 session
             )
 
@@ -131,7 +136,10 @@ class EvidenceAnalysisSkill(
                     async with session.begin_nested():
 
                         record = (
-                            await service.create_evidence(
+                            await store.create_evidence(
+                                evidence_id=str(
+                                    uuid4()
+                                ),
                                 repository_id=repository_id,
                                 source_type=item[
                                     "source_type"

@@ -19,7 +19,7 @@ import pytest
 from skill_snapshots import (
     assert_snapshot,
 )
-from app.services.report_service import (
+from app.infrastructure.reporting.report_document import (
     ReportService,
 )
 from app.infrastructure.skills.learning_path_skill import (

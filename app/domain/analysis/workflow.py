@@ -15,7 +15,6 @@ Analysis Workflow Orchestrator - 分析任务编排（领域层）。
 from pathlib import Path
 
 from app.core.logging import get_logger
-from app.infrastructure.workflow.state import WorkflowState
 
 logger = get_logger(__name__)
 
@@ -70,7 +69,11 @@ class AnalysisWorkflowOrchestrator:
         context = self.context_factory.create(repository_id)
 
         # 2. 创建初始状态
-        state = WorkflowState(run_id=run_id)
+        #
+        # 状态类型由引擎提供（engine.new_state），
+        # 本层不 import infrastructure 的实现类 ——
+        # 否则 domain 会反向依赖 infrastructure。
+        state = self.engine.new_state(run_id)
         state.data = initial_data
 
         # 3. 构建 Workflow 定义

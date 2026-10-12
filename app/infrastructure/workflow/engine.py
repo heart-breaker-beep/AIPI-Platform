@@ -14,7 +14,10 @@ Phase 12：
 from app.core.exceptions import RetryableError
 from app.core.logging import get_logger
 from app.infrastructure.workflow.retry import RetryPolicy
-from app.infrastructure.workflow.state import WorkflowStatus
+from app.infrastructure.workflow.state import (
+    WorkflowState,
+    WorkflowStatus,
+)
 
 
 logger = get_logger(__name__)
@@ -45,6 +48,21 @@ class WorkflowEngine:
             retry_policy
             or RetryPolicy()
         )
+
+    @staticmethod
+    def new_state(
+        run_id: str,
+    ):
+        """
+        创建一份新的 WorkflowState。
+
+        为什么放在引擎上：编排器（domain 层）需要创建初始状态，
+        但 WorkflowState 属于 infrastructure ——
+        domain 直接 import 它就破坏了依赖方向。
+        状态由引擎这个「执行者」提供，domain 只拿返回值。
+        """
+
+        return WorkflowState(run_id=run_id)
 
     async def run(
         self,

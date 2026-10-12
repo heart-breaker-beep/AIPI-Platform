@@ -1,9 +1,16 @@
 """
-Domain Service 工厂 - 负责创建 Domain Service 实例。
+分析服务的组合根（composition root）。
 
-职责：
-- 组装 Domain Service 的依赖
-- 依赖注入
+为什么在 services 层而不是 domain 层：
+本模块要 new 出一整串基础设施实现
+（Repository / CheckpointManager / WorkflowEngine / ContextFactory），
+而 domain 层的规则是**只依赖自己定义的接口**。
+把组合根留在 app/domain/analysis/factory.py 里，
+等于让 domain 目录反向 import infrastructure，
+分层守卫测试会当场失败。
+
+依赖方向：api → services → domain → infrastructure
+组合根天然要同时认识 domain 与 infrastructure，因此它属于 services。
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession

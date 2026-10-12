@@ -73,6 +73,17 @@ class StateManager:
     MAX_EVIDENCE = 20
     MAX_MODULES = 4
 
+    # state.outputs 的安全上限（字节）。
+    #
+    # outputs 在业务上没有读取方（只在 checkpoint 里存取），
+    # 节点写入时应该只 append 精简标记
+    # （见 nodes/base.py 的 output_marker）。
+    # 这里是兜底：任何一个节点把大对象写进来，
+    # 都不该让整行 checkpoint 越过读取上限。
+    #
+    # 2 万字节足够装几十条标记。
+    MAX_OUTPUTS_BYTES = 20_000
+
     @classmethod
     def prepare_for_persistence(
         cls,
@@ -132,6 +143,63 @@ class StateManager:
             "limit_bytes": max_bytes,
             "dropped_bytes": dropped,
         }
+
+    @classmethod
+    def prepare_outputs(
+        cls,
+        outputs: list,
+        max_bytes: int | None = None,
+    ) -> list:
+        """
+        瘦身 state.outputs。
+
+        与 data 的逐字段瘦身不同：outputs 里的条目没有读取方，
+        超限时整体降级为标记即可，不需要排优先级。
+
+        Args:
+            outputs: 原始 state.outputs
+            max_bytes: 最大字节数限制（默认 20KB）
+
+        Returns:
+            瘦身后的 outputs（未超限时原样返回）
+        """
+
+        if not isinstance(outputs, list) or not outputs:
+            return outputs
+
+        if max_bytes is None:
+            max_bytes = cls.MAX_OUTPUTS_BYTES
+
+        if cls._estimate_size(outputs) <= max_bytes:
+            return outputs
+
+        return [
+            cls._outputs_marker(item)
+            for item in outputs
+        ]
+
+    @classmethod
+    def _outputs_marker(cls, item):
+        """把一条 outputs 降级为标记。"""
+
+        if not isinstance(item, dict):
+            return {"type": type(item).__name__}
+
+        marker = {
+            "type": "dict",
+            "keys": sorted(
+                str(key) for key in item
+            ),
+        }
+
+        # 已经是 output_marker 产出的标记时保留 agent 名，
+        # 否则排查时看不出这条是谁写的。
+        agent = item.get("agent")
+
+        if isinstance(agent, str):
+            marker["agent"] = agent
+
+        return marker
 
     @staticmethod
     def _estimate_size(value) -> int:

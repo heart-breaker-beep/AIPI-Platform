@@ -386,15 +386,30 @@ class LearningPathSkill(
 
         files = []
 
-        for module in modules[: self.MAX_CORE_FILES]:
+        for module in modules:
 
             if not isinstance(module, dict):
                 continue
 
+            # 读取失败的模块不能进清单：
+            # 它的 content 是空字符串，
+            # 推荐它等于让用户去精读一个我们根本没读到的文件。
+            # 与 report_synthesis_skill 的过滤保持一致。
+            if module.get("error"):
+                continue
+
             path = module.get("file_path")
 
-            if path:
-                files.append(path)
+            if not path:
+                continue
+
+            files.append(path)
+
+            # 名额只被真正可用的文件占用 ——
+            # 先切片再过滤的话，
+            # 前面的失败条目会把后面的真实源码挤出去。
+            if len(files) >= self.MAX_CORE_FILES:
+                break
 
         return files
 

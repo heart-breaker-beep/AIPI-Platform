@@ -66,6 +66,12 @@ class AnalysisResponse(BaseModel):
     # 前端据此回显开关状态。
     rag_enabled: bool | None = None
 
+    # 失败原因。只在 status=FAILED 时有值。
+    #
+    # 以前失败信息只落在 checkpoint 的 errors 列里，
+    # 接口不返回任何原因，用户只看到一个 FAILED。
+    error_message: str | None = None
+
     created_at: datetime
 
     @field_validator(

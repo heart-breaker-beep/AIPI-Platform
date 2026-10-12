@@ -718,3 +718,128 @@ def test_report_renders_path_signal_without_line():
         "目录/文件名命中架构关键词："
         "`src/app/agents/`"
     ) in agents
+
+
+# ----------------------------------------------------------------
+# 源码名额
+# ----------------------------------------------------------------
+
+
+def test_failed_reads_do_not_consume_module_quota():
+    """
+    读取失败的文件不能占用源码名额。
+
+    回归点：旧实现用 len(modules) 判断上限，
+    失败条目也会 append 进 modules，
+    于是前 8 个文件都读失败时，
+    一份真实源码都存不下来 ——
+    报告第 11 章只剩一串「读取失败」。
+    """
+
+    import asyncio
+
+    tree = [
+        "src/app/main.py",
+        *[
+            f"src/app/agents/a{i}.py"
+            for i in range(10)
+        ],
+        *[
+            f"src/app/graph/g{i}.py"
+            for i in range(8)
+        ],
+        *[
+            f"src/app/tools/t{i}.py"
+            for i in range(3)
+        ],
+        "src/app/rag/r1.py",
+        "src/app/rag/r2.py",
+        "src/app/memory/m1.py",
+        *[
+            f"src/app/services/o{i}.py"
+            for i in range(8)
+        ],
+    ]
+
+    class FailingReader:
+        """前 8 次读取失败，之后正常返回源码。"""
+
+        def __init__(self):
+
+            self.calls = 0
+
+        async def execute(
+            self,
+            owner,
+            name,
+            file_path,
+            branch,
+        ):
+
+            self.calls += 1
+
+            if self.calls <= 8:
+
+                raise ToolError(
+                    "HTTP 504: timeout"
+                )
+
+            return "class Demo:\n    pass\n"
+
+    class TreeTool:
+
+        async def get_tree(self, **kwargs):
+
+            return [
+                {"path": path, "type": "blob"}
+                for path in tree
+            ]
+
+    class ReadingContext:
+
+        def __init__(self, reader):
+
+            self.tools = {
+                "github_code_search": FakeCodeSearch(),
+                "github_repository": TreeTool(),
+                "file_reader": reader,
+            }
+
+    reader = FailingReader()
+
+    result = asyncio.run(
+        ArchitectureAnalysisSkill().execute(
+            ReadingContext(reader),
+            {
+                "owner": "demo",
+                "repo": "demo",
+                "branch": "main",
+            },
+        )
+    )
+
+    modules = result["modules"]
+
+    failed = [
+        module
+        for module in modules
+        if module.get("error")
+    ]
+
+    stored = [
+        module
+        for module in modules
+        if not module.get("error")
+    ]
+
+    assert len(failed) == 8
+
+    # 把失败次数刨掉之后，读到的源码都该存下来（受名额上限约束）。
+    expected = min(
+        reader.calls - 8,
+        ArchitectureAnalysisSkill.MAX_STORED_MODULES,
+    )
+
+    assert len(stored) == expected
+
+    assert len(stored) > 0

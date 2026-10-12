@@ -10,7 +10,7 @@ Planner 计划执行节点。
 5. 将 Agent 输出合并回 WorkflowState.data
 """
 
-from .base import BaseNode
+from .base import BaseNode, output_marker
 
 
 class PlanExecutorNode(BaseNode):
@@ -148,7 +148,7 @@ class PlanExecutorNode(BaseNode):
             # 因此不再原样复制大对象，
             # 只留一个可读的运行痕迹。
             state.outputs.append(
-                self._output_marker(
+                output_marker(
                     agent_name,
                     result,
                 )
@@ -231,29 +231,3 @@ class PlanExecutorNode(BaseNode):
             for key in fields
             if key in result
         }
-
-    @staticmethod
-    def _output_marker(
-        agent_name,
-        result,
-    ) -> dict:
-        """
-        生成 outputs 里的一条运行痕迹。
-
-        保留 Agent 名与产出规模，
-        便于排查「这一步到底有没有产出」，
-        但不复制正文 —— 正文在 state.data 里。
-        """
-
-        marker = {
-            "agent": agent_name,
-            "type": type(result).__name__,
-        }
-
-        if isinstance(result, dict):
-
-            marker["fields"] = sorted(
-                result.keys()
-            )
-
-        return marker

@@ -58,3 +58,23 @@ class NonRetryableError(ApplicationError):
     """不应该继续重试的异常。"""
     status_code = 500
     error_code = "NON_RETRYABLE_ERROR"
+
+
+class RetryableToolError(ToolError, RetryableError):
+    """
+    瞬时故障导致的工具失败（超时 / 429 / 5xx）。
+
+    为什么同时继承两个：
+
+    - ToolError：调用方现有的一堆 `except ToolError`
+      （工具不可用就降级、返回空结果的契约）必须照旧生效
+    - RetryableError：Workflow 引擎的重试策略要能识别它可重试，
+      否则节点一撞上网络抖动就直接 FAILED 整个 run
+
+    这两个诉求在原来的异常体系里是互斥的 ——
+    工具层只抛 ToolError，而引擎只认 RetryableError，
+    所以工具的超时从来不会触发重试。
+    """
+
+    status_code = 503
+    error_code = "RETRYABLE_TOOL_ERROR"

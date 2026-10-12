@@ -374,7 +374,15 @@ class RagIndexer:
 
             points = []
 
-            for item, vector in zip(batch, vectors):
+            # strict=False 是刻意的：
+            # 万一 embedding 返回的向量数少于文本数，
+            # 这里保持「按较短的一边配对」的旧行为，
+            # 不因为一个 provider 的小毛病让整次索引失败。
+            for item, vector in zip(
+                batch,
+                vectors,
+                strict=False,
+            ):
 
                 points.append(
                     {

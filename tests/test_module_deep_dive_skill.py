@@ -183,9 +183,13 @@ class FakeContext:
         reader=None,
         llm=None,
         exporter=None,
+        repository=None,
     ):
         self.tools = {
-            "github_repository": FakeRepositoryTool(),
+            "github_repository": (
+                repository
+                or FakeRepositoryTool()
+            ),
             "file_reader": reader or FakeFileReader(),
         }
 
@@ -201,6 +205,7 @@ def run_deep_dive(
     reader=None,
     llm=None,
     exporter=None,
+    repository=None,
     **extra,
 ):
     import asyncio
@@ -216,7 +221,12 @@ def run_deep_dive(
 
     return asyncio.run(
         ModuleDeepDiveSkill().execute(
-            FakeContext(reader, llm, exporter),
+            FakeContext(
+                reader,
+                llm,
+                exporter,
+                repository,
+            ),
             input_data,
         )
     )
@@ -316,6 +326,43 @@ def test_unreadable_files_are_reported():
     assert (
         "src/app/rag/retriever.py"
         in result["content"]
+    )
+
+
+def test_tree_failure_degrades_instead_of_raising():
+    """
+    文件树取不到时按「没有目录结构」继续。
+
+    回归点：_load_tree 的 docstring 写着拿不到返回空列表，
+    但旧实现没有捕获 ToolError ——
+    一次超时就让整个深挖失败，
+    行为也与 architecture_analysis_skill 的同名方法不一致。
+    """
+
+    class FailingTreeTool:
+        """get_tree 直接抛瞬时故障。"""
+
+        async def get_tree(self, **kwargs):
+
+            raise ToolError(
+                "Tree timeout: "
+                "https://api.github.com/repos/demo/demo"
+            )
+
+    result = run_deep_dive(
+        module="workflow",
+        repository=FailingTreeTool(),
+        llm=FakeLLMTool(),
+    )
+
+    assert result["module"] == "workflow"
+
+    # 没读到文件，但产物仍然成立（降级而不是崩）。
+    assert result["files_read"] == []
+
+    assert isinstance(
+        result["content"],
+        str,
     )
 
 

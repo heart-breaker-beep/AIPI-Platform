@@ -77,6 +77,13 @@ class AnalysisRunRepository(BaseRepository[AnalysisRun]):
 
         return run
 
+    # 用于把 error_message 显式清空的哨兵值。
+    #
+    # 不能用 None 表达「清空」：None 已经表示「这个字段不更新」，
+    # 而重试成功后必须把上一轮的失败原因擦掉，
+    # 否则前端会在一个 COMPLETED 的 run 上继续显示错误。
+    CLEAR = object()
+
     async def update_runtime_state(
         self,
         run: AnalysisRun,
@@ -84,6 +91,7 @@ class AnalysisRunRepository(BaseRepository[AnalysisRun]):
         status: str | None = None,
         current_node: str | None = None,
         retry_count: int | None = None,
+        error_message=None,
     ) -> AnalysisRun:
         """
         更新 Workflow 运行状态。
@@ -93,6 +101,8 @@ class AnalysisRunRepository(BaseRepository[AnalysisRun]):
         - Resume
         - Retry
         - Checkpoint
+
+        error_message 传 `AnalysisRunRepository.CLEAR` 表示清空。
         """
 
         if status is not None:
@@ -103,6 +113,12 @@ class AnalysisRunRepository(BaseRepository[AnalysisRun]):
 
         if retry_count is not None:
             run.retry_count = retry_count
+
+        if error_message is self.CLEAR:
+            run.error_message = None
+
+        elif error_message is not None:
+            run.error_message = error_message
 
         await self.session.flush()
 

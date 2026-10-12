@@ -213,7 +213,7 @@ class WorkflowEngine:
 
             try:
 
-                return await node.execute(
+                result = await node.execute(
                     state,
                     context,
                 )
@@ -238,6 +238,24 @@ class WorkflowEngine:
                 state.status = (
                     WorkflowStatus.ANALYZING
                 )
+
+                # 退避后再试：
+                # 限流/抖动类故障往往隔几秒就好，
+                # 无间隔连打等于把重试预算浪费在恢复窗口里。
+                await self.retry_policy.wait_before_retry(
+                    state.retry_count
+                )
+
+                continue
+
+            # 本节点跑通了，把重试预算还给下一个节点。
+            #
+            # 不重置的话 retry_count 是整个 run 共用的累加值：
+            # 前面节点抖过一次，后面节点就少一次重试机会，
+            # 而且这个计数会跟着 checkpoint 一路带下去。
+            state.reset_retry()
+
+            return result
 
     async def pause(
         self,
@@ -313,6 +331,10 @@ class WorkflowEngine:
         )
 
         state.errors = []
+
+        # 人工重试等于重新给预算：
+        # 上一轮用掉的次数不该继续占用这一轮的名额。
+        state.retry_count = 0
 
         await self._save(state)
 

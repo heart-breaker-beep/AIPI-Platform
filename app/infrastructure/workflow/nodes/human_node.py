@@ -15,6 +15,7 @@ Checkpoint
 """
 
 from .base import BaseNode
+from app.infrastructure.workflow.state import WorkflowStatus
 
 
 class HumanNode(BaseNode):
@@ -35,7 +36,7 @@ class HumanNode(BaseNode):
         """
 
         state.status = (
-            "WAITING_HUMAN"
+            WorkflowStatus.WAITING_HUMAN
         )
 
         state.pause_reason = (

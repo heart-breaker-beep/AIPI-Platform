@@ -1547,6 +1547,7 @@ class CodeStructureExtractor:
         for argument, default in zip(
             positional,
             defaults,
+            strict=True,
         ):
 
             parts.append(
@@ -1568,6 +1569,7 @@ class CodeStructureExtractor:
         for argument, default in zip(
             arguments.kwonlyargs,
             arguments.kw_defaults,
+            strict=True,
         ):
 
             parts.append(

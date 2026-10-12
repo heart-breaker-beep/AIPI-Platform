@@ -542,7 +542,13 @@
         ? `<span class="step-tag">第 ${step} 步 / 共 ${TOTAL_CONFIRMS} 步</span>`
         : "") + esc(meta.head);
 
-    $("calloutBody").textContent = meta.body;
+    /* 失败时把后端记录的原因直接显示出来。
+       以前只提示「去看服务端 traceback」，
+       而原因接口其实已经返回了。 */
+    $("calloutBody").textContent =
+      run.status === "FAILED" && run.error_message
+        ? meta.body + "\n\n失败原因：" + run.error_message
+        : meta.body;
 
     const btn = document.createElement("button");
     btn.className = "btn";

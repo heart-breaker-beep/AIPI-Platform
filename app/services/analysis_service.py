@@ -42,6 +42,9 @@ from app.infrastructure.skills.module_deep_dive_skill import (
 from app.infrastructure.tools.github.parser import (
     parse_github_url,
 )
+from app.infrastructure.workflow.state import (
+    WorkflowStatus,
+)
 from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisDeepDiveResponse,
@@ -208,15 +211,16 @@ class AnalysisService:
             ),
         }
 
-        # 使用 Domain Service 启动 Workflow
+        # 使用 Domain Service 启动 Workflow。
+        #
+        # initial_data 原样传下去：组装只发生在这一处，
+        # 避免领域层再拼一份导致字段不一致。
         domain_service = self._get_domain_service(session)
 
         state = await domain_service.start_analysis(
             run_id=run_id,
             repository_id=repository.id,
-            repo_url=repo_url,
-            question=initial_data["question"],
-            enable_rag=initial_data["rag_enabled"],
+            initial_data=initial_data,
         )
 
         # 同步 Workflow 状态到数据库
@@ -423,6 +427,10 @@ class AnalysisService:
         state = await domain_service.approve_analysis(
             run_id=run_id,
             repository_id=run.repository_id,
+            identity=await self._load_identity(
+                session,
+                run,
+            ),
         )
 
         # 同步 Workflow 状态到数据库
@@ -516,6 +524,10 @@ class AnalysisService:
         state = await domain_service.resume_analysis(
             run_id=run_id,
             repository_id=run.repository_id,
+            identity=await self._load_identity(
+                session,
+                run,
+            ),
         )
 
         # 同步状态到数据库
@@ -562,6 +574,10 @@ class AnalysisService:
         state = await domain_service.retry_analysis(
             run_id=run_id,
             repository_id=run.repository_id,
+            identity=await self._load_identity(
+                session,
+                run,
+            ),
         )
 
         # 同步状态到数据库
@@ -812,6 +828,7 @@ class AnalysisService:
                         run.status,
                         run.current_node,
                     ),
+                    error_message=run.error_message,
                     created_at=run.created_at,
                 )
             )
@@ -964,7 +981,55 @@ class AnalysisService:
             ),
             research_plan=research_plan,
             rag_enabled=rag_enabled,
+            error_message=run.error_message,
             created_at=run.created_at,
+        )
+
+    @staticmethod
+    def _identity_data(
+        run,
+        repository,
+    ) -> dict:
+        """
+        组装一次 run 的身份字段。
+
+        用途：approve / resume / retry 时补齐早期版本留下的
+        缺字段 checkpoint。这些字段缺失会让
+        repository_analysis_skill 拿不到仓库坐标，
+        恢复后原地再失败一次。
+
+        权威来源是 repositories 表，
+        不从 repo_url 反解 —— 反解只是在猜，
+        而且解析失败时旧实现会静默 pass，
+        等于什么都没补。
+        """
+
+        return {
+            "run_id": run.id,
+            "repository_id": run.repository_id,
+            "repo_url": repository.url,
+            "owner": repository.owner,
+            "repo": repository.name,
+        }
+
+    async def _load_identity(
+        self,
+        session: AsyncSession,
+        run,
+    ) -> dict | None:
+        """按 run 读出仓库行并组装身份字段。"""
+
+        repository = await session.get(
+            Repository,
+            run.repository_id,
+        )
+
+        if repository is None:
+            return None
+
+        return self._identity_data(
+            run,
+            repository,
         )
 
     @staticmethod
@@ -996,8 +1061,34 @@ class AnalysisService:
             0,
         )
 
-    @staticmethod
+    # Workflow 状态 → AnalysisRun 状态。
+    #
+    # 多数是一对一，只有「正在跑」的几个内部态
+    # （CREATED / PLANNING / RETRYING）对前端没有区分意义，
+    # 统一收敛成 ANALYZING。
+    STATUS_MAPPING = {
+        WorkflowStatus.CREATED: "ANALYZING",
+        WorkflowStatus.PLANNING: "ANALYZING",
+        WorkflowStatus.ANALYZING: "ANALYZING",
+        WorkflowStatus.RETRYING: "ANALYZING",
+        WorkflowStatus.COMPLETED: "COMPLETED",
+        WorkflowStatus.FAILED: "FAILED",
+        WorkflowStatus.PAUSED: "PAUSED",
+        WorkflowStatus.CANCELED: "CANCELED",
+        WorkflowStatus.WAITING_DESIGN: "WAITING_DESIGN",
+        WorkflowStatus.WAITING_HUMAN: "WAITING_HUMAN",
+    }
+
+    # error_message 列的长度上限。
+    #
+    # 列类型是 TEXT，装得下更多，
+    # 但错误信息里常带整段 traceback 或上游返回的 HTML，
+    # 存全文对排查没有额外帮助，只会让 run 表变重。
+    MAX_ERROR_MESSAGE_CHARS = 2000
+
+    @classmethod
     async def _sync_state_to_run(
+        cls,
         session: AsyncSession,
         run,
         state,
@@ -1005,44 +1096,62 @@ class AnalysisService:
         """
         将 Workflow State 同步到 AnalysisRun 数据库记录。
 
-        从 WorkflowState 中提取：
-        - status（ANALYZING / COMPLETED / FAILED / WAITING_DESIGN 等）
-        - current_node（当前执行到哪个节点）
-        - error_message（失败时的错误信息）
+        同步：
+        - status
+        - current_node
+        - retry_count
+        - error_message（FAILED 时取 state.errors 最后一条）
 
-        然后更新 AnalysisRun 表。
+        修复记录：
+        原实现用 `workflow_status == "failed"` 判断，
+        而常量是大写的 "FAILED"，这个分支从未命中；
+        它读的 `data["error_message"]` 也没有任何写入方，
+        而 run 表当时根本没有这一列。
+        现在改为从 state.errors 取 —— 那才是引擎实际写入错误的地方。
         """
         if state is None:
             return
 
-        # 映射 Workflow 状态到 AnalysisRun 状态
-        status_mapping = {
-            "CREATED": "ANALYZING",
-            "PLANNING": "ANALYZING",
-            "ANALYZING": "ANALYZING",
-            "RETRYING": "ANALYZING",
-            "COMPLETED": "COMPLETED",
-            "FAILED": "FAILED",
-            "PAUSED": "PAUSED",
-            "CANCELED": "CANCELED",
-            "WAITING_DESIGN": "WAITING_DESIGN",
-            "WAITING_HUMAN": "WAITING_HUMAN",
-        }
+        workflow_status = getattr(
+            state,
+            "status",
+            WorkflowStatus.ANALYZING,
+        )
 
-        workflow_status = getattr(state, "status", "ANALYZING")
-        run.status = status_mapping.get(workflow_status, "ANALYZING")
+        errors = getattr(state, "errors", None) or []
 
-        # 同步当前节点
-        current_node = getattr(state, "current_node", None)
-        if current_node:
-            run.current_node = current_node
+        if workflow_status == WorkflowStatus.FAILED and errors:
 
-        # 同步错误信息
-        if workflow_status == "failed":
-            data = getattr(state, "data", {}) or {}
-            run.error_message = data.get("error_message")
+            error_message = str(
+                errors[-1]
+            )[: cls.MAX_ERROR_MESSAGE_CHARS]
 
-        await session.flush()
+        else:
+
+            # 非失败态要擦掉上一轮的失败原因，
+            # 否则重试成功后前端仍然显示旧错误。
+            error_message = AnalysisRunRepository.CLEAR
+
+        await AnalysisRunRepository(
+            session
+        ).update_runtime_state(
+            run,
+            status=cls.STATUS_MAPPING.get(
+                workflow_status,
+                "ANALYZING",
+            ),
+            current_node=getattr(
+                state,
+                "current_node",
+                None,
+            ),
+            retry_count=getattr(
+                state,
+                "retry_count",
+                None,
+            ),
+            error_message=error_message,
+        )
 
     @staticmethod
     def _parse_github_url(

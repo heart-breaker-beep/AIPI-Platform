@@ -1,10 +1,13 @@
 """Phase 10：HITL / Checkpoint / Pause / Resume / Retry 测试。"""
 
+import time
+
 import pytest
 
 from app.core.exceptions import (
     NonRetryableError,
     RetryableError,
+    RetryableToolError,
 )
 from app.infrastructure.workflow.checkpoint import (
     CheckpointManager,
@@ -122,6 +125,64 @@ class FailNode(BaseNode):
         raise NonRetryableError(
             "invalid input"
         )
+
+
+class ToolFlakeNode(BaseNode):
+    """
+    工具抖动：第一次抛 RetryableToolError，第二次成功。
+
+    记录每次进入时看到的 retry_count，
+    用来验证「重试成功后预算还回去」。
+    """
+
+    name = "tool_flake"
+
+    def __init__(self):
+
+        self.calls = 0
+        self.seen = []
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+
+        self.calls += 1
+
+        self.seen.append(
+            state.retry_count
+        )
+
+        if self.calls == 1:
+
+            raise RetryableToolError(
+                "GitHub 503"
+            )
+
+        return state
+
+
+class CountNode(BaseNode):
+    """记录进入本节点时的 retry_count。"""
+
+    def __init__(
+        self,
+        name,
+    ):
+
+        self.name = name
+        self.seen = None
+
+    async def execute(
+        self,
+        state,
+        context,
+    ):
+
+        self.seen = state.retry_count
+
+        return state
 
 
 @pytest.mark.asyncio
@@ -330,7 +391,170 @@ async def test_retryable_error_is_retried():
 
     assert retry_node.calls == 2
 
-    assert result.retry_count == 1
+    # 节点跑通之后预算还回去了，
+    # 计数不再跟着 run 一路累加。
+    assert result.retry_count == 0
+
+
+@pytest.mark.asyncio
+async def test_retry_budget_is_returned_to_next_node():
+    """
+    一个节点的重试用掉后，不影响下一个节点。
+
+    修复前 retry_count 是整个 run 共用的累加值：
+    前面节点抖一次，后面节点就少一次重试机会。
+    """
+
+    flake = ToolFlakeNode()
+    follower = CountNode("follower")
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            flake,
+            follower,
+            EndNode(),
+        ],
+        [
+            ("start", "tool_flake"),
+            ("tool_flake", "follower"),
+            ("follower", "end"),
+        ],
+    )
+
+    engine = WorkflowEngine(
+        retry_policy=RetryPolicy(
+            max_retry=3,
+            backoff_base=0,
+        )
+    )
+
+    result = await engine.run(
+        workflow,
+        WorkflowState(
+            run_id="phase10-retry-budget"
+        ),
+        build_context(),
+    )
+
+    assert result.status == WorkflowStatus.COMPLETED
+
+    # 第一次进入时是 0（还没重试过），
+    # 第二次进入时是 1（正在用第一次重试）。
+    assert flake.seen == [0, 1]
+
+    # 下一个节点从 0 开始。
+    assert follower.seen == 0
+
+
+@pytest.mark.asyncio
+async def test_retry_waits_with_backoff():
+    """重试之间要有退避，不能无间隔连打。"""
+
+    flake = ToolFlakeNode()
+
+    workflow = build_workflow(
+        [
+            StartNode(),
+            flake,
+            EndNode(),
+        ],
+        [
+            ("start", "tool_flake"),
+            ("tool_flake", "end"),
+        ],
+    )
+
+    engine = WorkflowEngine(
+        retry_policy=RetryPolicy(
+            max_retry=2,
+            backoff_base=0.5,
+        )
+    )
+
+    started = time.monotonic()
+
+    result = await engine.run(
+        workflow,
+        WorkflowState(
+            run_id="phase10-backoff"
+        ),
+        build_context(),
+    )
+
+    elapsed = time.monotonic() - started
+
+    assert result.status == WorkflowStatus.COMPLETED
+
+    # 第一次重试应等 backoff_base = 0.5 秒。
+    assert elapsed >= 0.45
+
+
+def test_backoff_delay_grows_and_caps():
+    """退避按指数增长，并在 max_backoff 处封顶。"""
+
+    policy = RetryPolicy(
+        max_retry=5,
+        backoff_base=2.0,
+        max_backoff=10.0,
+    )
+
+    assert policy.backoff_delay(1) == 2.0
+
+    assert policy.backoff_delay(2) == 4.0
+
+    assert policy.backoff_delay(3) == 8.0
+
+    # 2^4 = 16 超过上限，取上限。
+    assert policy.backoff_delay(4) == 10.0
+
+    # 基数为 0 时完全不等待（测试与本地调试用）。
+    assert (
+        RetryPolicy(
+            backoff_base=0
+        ).backoff_delay(3)
+        == 0.0
+    )
+
+
+@pytest.mark.asyncio
+async def test_manual_retry_resets_retry_count():
+    """人工 retry 相当于重新给预算。"""
+
+    checkpoint = CheckpointManager()
+
+    state = WorkflowState(
+        run_id="phase10-manual-retry"
+    )
+
+    state.status = WorkflowStatus.FAILED
+    state.current_node = "count"
+    state.retry_count = 2
+
+    await checkpoint.save(state)
+
+    counter = CountNode("count")
+
+    workflow = build_workflow(
+        [counter],
+        [],
+    )
+
+    engine = WorkflowEngine(
+        checkpoint=checkpoint,
+    )
+
+    result = await engine.retry(
+        workflow,
+        build_context(),
+        "phase10-manual-retry",
+    )
+
+    assert result.status == WorkflowStatus.COMPLETED
+
+    assert counter.seen == 0
+
+    assert result.retry_count == 0
 
 
 @pytest.mark.asyncio

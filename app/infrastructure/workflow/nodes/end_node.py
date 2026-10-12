@@ -4,6 +4,7 @@ Workflow结束节点。
 
 
 from app.infrastructure.workflow.node import BaseNode
+from app.infrastructure.workflow.state import WorkflowStatus
 
 
 
@@ -20,6 +21,6 @@ class EndNode(BaseNode):
         context
     ):
 
-        state.status = "COMPLETED"
+        state.status = WorkflowStatus.COMPLETED
 
         return state

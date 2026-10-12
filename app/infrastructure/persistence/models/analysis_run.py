@@ -45,6 +45,16 @@ class AnalysisRun(Base):
         nullable=False,
     )
 
+    # 失败原因。
+    #
+    # 之前只存在 checkpoint 的 errors 列里，
+    # 前端查 run 时看到 status=FAILED 却没有任何原因 ——
+    # 想知道为什么失败得去翻服务端日志。
+    error_message: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,

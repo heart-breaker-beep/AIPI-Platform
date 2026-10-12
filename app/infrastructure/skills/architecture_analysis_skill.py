@@ -38,6 +38,7 @@ import os
 import re
 
 from app.core.exceptions import ToolError
+from app.core.logging import get_logger
 from app.infrastructure.tools.project.analysis_focus import (
     AnalysisFocus,
 )
@@ -45,6 +46,9 @@ from app.infrastructure.tools.project.code_structure_extractor import (
     CodeStructureExtractor,
 )
 from app.infrastructure.skills.base import BaseSkill
+
+
+logger = get_logger(__name__)
 
 
 class ArchitectureAnalysisSkill(
@@ -523,6 +527,14 @@ class ArchitectureAnalysisSkill(
             input_data.get("research_plan")
         )
 
+        # 已存入的真实源码条目数。
+        #
+        # 为什么要单独计数：失败条目也会 append 进 modules，
+        # 如果拿 len(modules) 当名额判断，
+        # 前 8 个文件都读失败时，一份真实源码都存不下来 ——
+        # 报告第 11 章会只剩下一串「读取失败」。
+        stored_modules = 0
+
         for file_path in self._read_candidates(
             files,
             self._quotas_for(focus),
@@ -558,9 +570,7 @@ class ArchitectureAnalysisSkill(
             # 只存够报告展示的量。
             # 全文已经喂给 AST 了，
             # 多存的正文没有任何读取方。
-            if len(
-                architecture["modules"]
-            ) < self.MAX_STORED_MODULES:
+            if stored_modules < self.MAX_STORED_MODULES:
 
                 architecture[
                     "modules"
@@ -570,6 +580,8 @@ class ArchitectureAnalysisSkill(
                         content,
                     )
                 )
+
+                stored_modules += 1
 
             ast_sources.append(
                 {
@@ -696,7 +708,16 @@ class ArchitectureAnalysisSkill(
                 branch=branch,
             )
 
-        except ToolError:
+        except ToolError as error:
+
+            logger.warning(
+                "architecture analysis: tree unavailable | "
+                "%s/%s | %s: %s",
+                owner,
+                name,
+                type(error).__name__,
+                error,
+            )
 
             return []
 

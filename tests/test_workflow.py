@@ -221,7 +221,9 @@ async def test_retryable_error_is_retried():
 
     assert result.data["attempts"] == 2
 
-    assert result.retry_count == 1
+    # 节点跑通后重试预算归还给下一个节点，
+    # 计数不再跟着整个 run 累加。
+    assert result.retry_count == 0
 
 
 @pytest.mark.asyncio

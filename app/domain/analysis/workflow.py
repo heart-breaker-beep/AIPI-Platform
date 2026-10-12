@@ -85,6 +85,7 @@ class AnalysisWorkflowOrchestrator:
         self,
         run_id: str,
         repository_id: int,
+        identity: dict | None = None,
     ):
         """
         批准 Design Gate 或 Human Review。
@@ -92,6 +93,8 @@ class AnalysisWorkflowOrchestrator:
         Args:
             run_id: Analysis Run ID
             repository_id: Repository ID
+            identity: 身份字段（run_id / repo_url / owner / repo 等），
+                用于补齐早期版本留下的缺字段 checkpoint
 
         Returns:
             WorkflowState
@@ -102,20 +105,9 @@ class AnalysisWorkflowOrchestrator:
         if state is None:
             raise ValueError(f"Checkpoint not found: {run_id}")
 
-        # 补全 owner 和 repo（从 repo_url 解析）
-        if not state.data.get("owner") or not state.data.get("repo"):
-            from app.infrastructure.tools.github.parser import parse_github_url
+        self._apply_identity(state, identity)
 
-            repo_url = state.data.get("repo_url")
-            if repo_url:
-                try:
-                    owner, repo = parse_github_url(repo_url)
-                    state.data["owner"] = owner
-                    state.data["repo"] = repo
-                except Exception:
-                    pass
-
-        # 2. 标记批准并保存（包含补全的 owner/repo）
+        # 2. 标记批准并保存（包含补齐的身份字段）
         state.approve()
         await self.checkpoint_manager.save(state)
 
@@ -129,6 +121,42 @@ class AnalysisWorkflowOrchestrator:
         result = await self.engine.resume(workflow, context, run_id)
 
         return result
+
+    @staticmethod
+    def _apply_identity(state, identity: dict | None) -> bool:
+        """
+        把身份字段补回 state.data。
+
+        为什么需要：早期版本的 checkpoint 里缺 owner / repo / run_id，
+        这些字段一旦缺失，repository_analysis_skill 拿不到仓库坐标，
+        恢复或重试就会原地再失败一次。
+
+        身份字段由 Application 层从 Repository 行构造，
+        不在这里从 repo_url 反解 ——
+        数据库里的 owner / name 才是权威来源，
+        反解只是在猜。
+
+        Returns:
+            是否真的补写了字段（调用方据此决定要不要落盘）
+        """
+
+        if not identity:
+            return False
+
+        changed = False
+
+        for key, value in identity.items():
+
+            if value is None:
+                continue
+
+            if state.data.get(key) == value:
+                continue
+
+            state.data[key] = value
+            changed = True
+
+        return changed
 
     async def pause_workflow(self, run_id: str):
         """
@@ -153,6 +181,7 @@ class AnalysisWorkflowOrchestrator:
         self,
         run_id: str,
         repository_id: int,
+        identity: dict | None = None,
     ):
         """
         从 PAUSED Checkpoint 恢复。
@@ -160,6 +189,7 @@ class AnalysisWorkflowOrchestrator:
         Args:
             run_id: Analysis Run ID
             repository_id: Repository ID
+            identity: 身份字段，用于补齐缺字段的旧 checkpoint
 
         Returns:
             WorkflowState
@@ -170,21 +200,10 @@ class AnalysisWorkflowOrchestrator:
         if state is None:
             raise ValueError(f"Checkpoint not found: {run_id}")
 
-        # 补全 owner 和 repo（从 repo_url 解析）
-        if not state.data.get("owner") or not state.data.get("repo"):
-            from app.infrastructure.tools.github.parser import parse_github_url
-
-            repo_url = state.data.get("repo_url")
-            if repo_url:
-                try:
-                    owner, repo = parse_github_url(repo_url)
-                    state.data["owner"] = owner
-                    state.data["repo"] = repo
-
-                    # 保存补全后的 state，否则 engine.resume 会重新加载旧 checkpoint
-                    await self.checkpoint_manager.save(state)
-                except Exception:
-                    pass
+        if self._apply_identity(state, identity):
+            # 必须落盘：engine.resume 会重新从 checkpoint 加载 state，
+            # 只改内存里的这一份等于没改。
+            await self.checkpoint_manager.save(state)
 
         # 创建 Context
         context = self.context_factory.create(repository_id)
@@ -201,6 +220,7 @@ class AnalysisWorkflowOrchestrator:
         self,
         run_id: str,
         repository_id: int,
+        identity: dict | None = None,
     ):
         """
         重新执行失败的 Workflow。
@@ -208,6 +228,7 @@ class AnalysisWorkflowOrchestrator:
         Args:
             run_id: Analysis Run ID
             repository_id: Repository ID
+            identity: 身份字段，用于补齐缺字段的旧 checkpoint
 
         Returns:
             WorkflowState
@@ -218,22 +239,9 @@ class AnalysisWorkflowOrchestrator:
         if state is None:
             raise ValueError(f"Checkpoint not found: {run_id}")
 
-        # 补全 owner 和 repo（从 Repository 表查询）
-        # retry 时 state.data 可能缺失这些字段，导致 repository_analysis_skill 失败
-        if not state.data.get("owner") or not state.data.get("repo"):
-            from app.infrastructure.tools.github.parser import parse_github_url
-
-            repo_url = state.data.get("repo_url")
-            if repo_url:
-                try:
-                    owner, repo = parse_github_url(repo_url)
-                    state.data["owner"] = owner
-                    state.data["repo"] = repo
-
-                    # 保存补全后的 state，否则 engine.retry 会重新加载旧 checkpoint
-                    await self.checkpoint_manager.save(state)
-                except Exception:
-                    pass
+        if self._apply_identity(state, identity):
+            # 必须落盘：engine.retry 会重新从 checkpoint 加载 state。
+            await self.checkpoint_manager.save(state)
 
         # 创建 Context
         context = self.context_factory.create(repository_id)

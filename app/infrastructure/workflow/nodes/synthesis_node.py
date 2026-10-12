@@ -23,7 +23,7 @@ state.data["synthesis"]
   会被报告自动带上，无需额外接线。
 """
 
-from .base import BaseNode
+from .base import BaseNode, output_marker
 
 
 class SynthesisNode(BaseNode):
@@ -80,6 +80,11 @@ class SynthesisNode(BaseNode):
 
         state.data["synthesis"] = result
 
-        state.outputs.append(result)
+        state.outputs.append(
+            output_marker(
+                self.name,
+                result,
+            )
+        )
 
         return state

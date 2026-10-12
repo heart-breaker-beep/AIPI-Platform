@@ -47,31 +47,27 @@ class AnalysisService:
         self,
         run_id: str,
         repository_id: int,
-        repo_url: str,
-        question: str | None = None,
-        enable_rag: bool = False,
+        initial_data: dict,
     ):
         """
         启动分析任务。
 
+        initial_data 原样往下传，不在这里重新组装。
+
+        由来：之前本层自己拼了一份 initial_data，于是同一份数据
+        在 Application 层和这里各存在一份，字段很快就对不上了 ——
+        run_id / owner / repo 丢了，rag_enabled 还被写成 enable_rag，
+        导致 RAG 按次开关失效、首次 run 拿不到仓库坐标。
+        唯一一份由 Application 层组装。
+
         Args:
             run_id: Analysis Run ID
             repository_id: Repository ID
-            repo_url: GitHub Repository URL
-            question: 分析问题（可选）
-            enable_rag: 是否启用 RAG 检索
+            initial_data: 初始业务数据
 
         Returns:
             WorkflowState
         """
-        # 构建初始数据
-        initial_data = {
-            "repo_url": repo_url,
-            "repository_id": repository_id,
-            "question": question,
-            "enable_rag": enable_rag,
-        }
-
         # 委托 Workflow Orchestrator 执行
         state = await self.orchestrator.start_workflow(
             run_id=run_id,
@@ -87,6 +83,7 @@ class AnalysisService:
         self,
         run_id: str,
         repository_id: int,
+        identity: dict | None = None,
     ):
         """
         批准设计闸门或人工审核。
@@ -94,6 +91,7 @@ class AnalysisService:
         Args:
             run_id: Analysis Run ID
             repository_id: Repository ID
+            identity: 身份字段，用于补齐缺字段的旧 checkpoint
 
         Returns:
             WorkflowState
@@ -102,6 +100,7 @@ class AnalysisService:
         state = await self.orchestrator.approve_workflow(
             run_id=run_id,
             repository_id=repository_id,
+            identity=identity,
         )
 
         return state
@@ -124,6 +123,7 @@ class AnalysisService:
         self,
         run_id: str,
         repository_id: int,
+        identity: dict | None = None,
     ):
         """
         恢复分析任务。
@@ -131,6 +131,7 @@ class AnalysisService:
         Args:
             run_id: Analysis Run ID
             repository_id: Repository ID
+            identity: 身份字段，用于补齐缺字段的旧 checkpoint
 
         Returns:
             WorkflowState
@@ -138,6 +139,7 @@ class AnalysisService:
         state = await self.orchestrator.resume_workflow(
             run_id=run_id,
             repository_id=repository_id,
+            identity=identity,
         )
 
         return state
@@ -146,6 +148,7 @@ class AnalysisService:
         self,
         run_id: str,
         repository_id: int,
+        identity: dict | None = None,
     ):
         """
         重试失败的分析任务。
@@ -153,6 +156,7 @@ class AnalysisService:
         Args:
             run_id: Analysis Run ID
             repository_id: Repository ID
+            identity: 身份字段，用于补齐缺字段的旧 checkpoint
 
         Returns:
             WorkflowState
@@ -160,6 +164,7 @@ class AnalysisService:
         state = await self.orchestrator.retry_workflow(
             run_id=run_id,
             repository_id=repository_id,
+            identity=identity,
         )
 
         return state

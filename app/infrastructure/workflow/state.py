@@ -77,9 +77,6 @@ class WorkflowState:
     # 当前 Node 的重试次数
     retry_count: int = 0
 
-    # 当前 Node 最大重试次数
-    max_retry: int = 3
-
     # 暂停原因
     pause_reason: str | None = None
 
@@ -155,11 +152,6 @@ class WorkflowState:
         """重置当前 Node 的 retry count。"""
 
         self.retry_count = 0
-
-    def can_retry(self) -> bool:
-        """判断当前 Node 是否还能继续重试。"""
-
-        return self.retry_count < self.max_retry
 
     def increase_retry(self) -> None:
         """增加当前 Node 的 retry 次数。"""

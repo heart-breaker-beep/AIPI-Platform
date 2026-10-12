@@ -142,36 +142,45 @@ class EvidenceAnalysisSkill(
 
             for item in unique:
 
-                # 单条证据落库失败不应中断整个分析：
-                # 记录原因后继续处理其它证据。
+                # 单条证据落库失败不应中断整个分析，
+                # 而且失败必须被**限制在这一条**里。
+                #
+                # 为什么用 SAVEPOINT：一条写入失败会让整个 session
+                # 进入「需要回滚」状态，之后同一个 session 上的
+                # 任何写入（后面的证据、以及 checkpoint）都会连锁失败。
+                # 真实事故：一条 evidence 写失败，
+                # 结果是这个 run 的证据与 checkpoint 全都没落库。
+                # begin_nested() 只回滚这一条，session 继续可用。
                 try:
 
-                    record = (
-                        await service.create_evidence(
-                            repository_id=repository_id,
-                            source_type=item[
-                                "source_type"
-                            ],
-                            source_url=item.get(
-                                "source_url"
-                            ),
-                            file_path=item.get(
-                                "file_path"
-                            ),
-                            line_start=item.get(
-                                "line_start"
-                            ),
-                            line_end=item.get(
-                                "line_end"
-                            ),
-                            content=item[
-                                "content"
-                            ],
-                            verification_status=(
-                                "UNVERIFIED"
-                            ),
+                    async with session.begin_nested():
+
+                        record = (
+                            await service.create_evidence(
+                                repository_id=repository_id,
+                                source_type=item[
+                                    "source_type"
+                                ],
+                                source_url=item.get(
+                                    "source_url"
+                                ),
+                                file_path=item.get(
+                                    "file_path"
+                                ),
+                                line_start=item.get(
+                                    "line_start"
+                                ),
+                                line_end=item.get(
+                                    "line_end"
+                                ),
+                                content=item[
+                                    "content"
+                                ],
+                                verification_status=(
+                                    "UNVERIFIED"
+                                ),
+                            )
                         )
-                    )
 
                 except Exception as error:
 
@@ -413,16 +422,30 @@ class EvidenceAnalysisSkill(
             str,
         ) and readme.strip():
 
+            # README 也要按源码证据的规则截断。
+            #
+            # 一份 README 动辄上万字符，
+            # 不截断的话它会比整个源码证据集合还大，
+            # 证据表很快被它一个人撑满。
+            excerpt = readme[
+                : EvidenceAnalysisSkill.MAX_EVIDENCE_CHARS
+            ]
+
             evidence.append(
                 {
                     "source_type": "github",
                     "source_url": repo_url,
                     "file_path": "README.md",
                     "line_start": 1,
-                    "line_end": len(
-                        readme.splitlines()
+                    # 行号跟着截断后的正文走，
+                    # 否则会标成「README:1-800」却只有前 40 行。
+                    "line_end": (
+                        len(
+                            excerpt.splitlines()
+                        )
+                        or 1
                     ),
-                    "content": readme,
+                    "content": excerpt,
                     "metadata": {},
                 }
             )

@@ -47,12 +47,47 @@ class CheckpointManager:
             trimmed_data, trims = StateManager.prepare_for_persistence(snapshot.data)
             snapshot.data = StateManager.add_trim_metadata(trimmed_data, trims)
 
+        # 瘦身 state.outputs（兜底，正常路径下节点只写精简标记）
+        snapshot.outputs = StateManager.prepare_outputs(snapshot.outputs)
+
         if self.repository is not None:
             await self.repository.save(snapshot)
+            await self._commit()
         else:
             self._store[snapshot.run_id] = snapshot
 
         return snapshot.run_id
+
+    async def _commit(self) -> None:
+        """
+        把 checkpoint 真正落盘。
+
+        为什么在这里 commit 而不是等请求结束：
+        整条 workflow 在一个请求里同步跑完，
+        Repository 只 flush 的话，进程中途挂掉
+        （或者上游断开）会把**全部** checkpoint 一起丢掉 ——
+        明明已经跑完 4 个节点，重启后却得从头开始。
+        其它请求在此期间也读不到进行中的状态。
+
+        副作用是同一个 session 里已 flush 的 evidence
+        会被一起提交。这是期望行为：
+        evidence 与产出它的那个节点同生共死才合理，
+        节点成功了就该留下证据。
+
+        session 配了 expire_on_commit=False，
+        commit 后 ORM 对象仍可继续使用。
+        """
+
+        session = getattr(
+            self.repository,
+            "session",
+            None,
+        )
+
+        if session is None:
+            return
+
+        await session.commit()
 
     async def load(
         self,

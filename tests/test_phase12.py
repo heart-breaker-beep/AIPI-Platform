@@ -978,11 +978,11 @@ def test_plan_executor_does_not_duplicate_agent_results():
 def test_outputs_stores_marker_not_payload():
     """outputs 只留运行痕迹，不复制正文。"""
 
-    from app.infrastructure.workflow.nodes.plan_executor_node import (
-        PlanExecutorNode,
+    from app.infrastructure.workflow.nodes.base import (
+        output_marker,
     )
 
-    marker = PlanExecutorNode._output_marker(
+    marker = output_marker(
         "architecture_analysis_agent",
         {
             "modules": [{"content": "x" * 5000}],

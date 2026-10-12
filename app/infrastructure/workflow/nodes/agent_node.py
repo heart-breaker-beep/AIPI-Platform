@@ -7,7 +7,7 @@ Agent 类型 Workflow 节点。
     - 保留执行历史
 """
 
-from .base import BaseNode
+from .base import BaseNode, output_marker
 
 
 class AgentNode(BaseNode):
@@ -47,7 +47,14 @@ class AgentNode(BaseNode):
         # 保存当前 Agent 输出。
         state.data[self.name] = result
 
-        # 保留执行历史。
-        state.outputs.append(result)
+        # 执行历史只留痕迹，不复制正文 ——
+        # 正文已经在 state.data 里，
+        # 而 outputs 不经过体积瘦身。
+        state.outputs.append(
+            output_marker(
+                self.name,
+                result,
+            )
+        )
 
         return state

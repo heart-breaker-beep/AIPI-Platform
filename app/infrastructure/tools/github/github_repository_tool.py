@@ -5,7 +5,7 @@ GitHub Repository Tool。
 import httpx
 
 from app.core.config import get_settings
-from app.core.exceptions import ToolError
+from app.core.exceptions import RetryableToolError
 from app.infrastructure.tools.base import BaseTool
 
 class GitHubRepositoryTool(BaseTool):
@@ -22,6 +22,15 @@ class GitHubRepositoryTool(BaseTool):
     name = "github_repository"
 
     BASE_URL = "https://api.github.com"
+
+    # 这些状态码的意思是「过一会儿再来」，
+    # 不是请求本身有问题：
+    # 429 限流，502/503/504 上游不可用或超时。
+    # 归到可重试，让引擎退避后再试，
+    # 而不是当场把整个 run 判成失败。
+    RETRYABLE_STATUSES = frozenset(
+        {429, 502, 503, 504}
+    )
 
     def _headers(self) -> dict:
         """构造 GitHub 请求头。
@@ -66,14 +75,44 @@ class GitHubRepositoryTool(BaseTool):
             f"{self.BASE_URL}"
             f"/repos/{owner}/{name}"
         )
-        async with httpx.AsyncClient() as client:
 
-            response = await client.get(
-                url,
-                headers=self._headers(),
+        try:
+
+            async with httpx.AsyncClient() as client:
+
+                response = await client.get(
+                    url,
+                    headers=self._headers(),
+                )
+
+        except httpx.TimeoutException as error:
+
+            raise RetryableToolError(
+                f"Repository timeout: {url}"
+            ) from error
+
+        except httpx.HTTPError as error:
+
+            # 连接类错误（DNS 抖动、连接被重置）
+            # 同样属于瞬时故障。
+            raise RetryableToolError(
+                f"Repository request failed: "
+                f"{url}: {error}"
+            ) from error
+
+        if (
+            response.status_code
+            in self.RETRYABLE_STATUSES
+        ):
+
+            raise RetryableToolError(
+                f"Repository temporarily unavailable "
+                f"({response.status_code}): {url}"
             )
-            response.raise_for_status()
-            return response.json()
+
+        response.raise_for_status()
+
+        return response.json()
 
     async def get_tree(
         self,
@@ -119,15 +158,25 @@ class GitHubRepositoryTool(BaseTool):
 
             except httpx.TimeoutException as error:
 
-                raise ToolError(
+                raise RetryableToolError(
                     f"Tree timeout: {url}"
                 ) from error
 
             except httpx.HTTPError as error:
 
-                raise ToolError(
+                raise RetryableToolError(
                     f"Tree failed: {url}: {error}"
                 ) from error
+
+            if (
+                response.status_code
+                in self.RETRYABLE_STATUSES
+            ):
+
+                raise RetryableToolError(
+                    f"Tree temporarily unavailable "
+                    f"({response.status_code}): {url}"
+                )
 
             if response.status_code == 200:
 

@@ -12,7 +12,7 @@ ReportGenerationSkill
 Final Report
 """
 
-from .base import BaseNode
+from .base import BaseNode, output_marker
 
 
 class FinalizerNode(BaseNode):
@@ -68,6 +68,15 @@ class FinalizerNode(BaseNode):
 
         state.data["final_report"] = result
 
-        state.outputs.append(result)
+        # 报告正文动辄几十万字符。
+        # 存进 outputs 会绕过 StateManager 的瘦身
+        # （它只覆盖 state.data），
+        # 重新把 checkpoint 推过 asyncmy 的读取上限。
+        state.outputs.append(
+            output_marker(
+                self.name,
+                result,
+            )
+        )
 
         return state

@@ -601,3 +601,67 @@ def test_learning_path_renders_core_files():
         "`src/app/services/workflow_service.py`"
         in content
     )
+
+
+def test_learning_path_core_files_skip_failed_modules():
+    """
+    读取失败的模块不能进「核心源码」。
+
+    回归点：这些模块的 content 是空字符串，
+    推荐它们等于让用户去精读一个我们根本没读到的文件。
+    """
+
+    files = LearningPathSkill()._core_files(
+        {
+            "modules": [
+                {
+                    "file_path": "app/broken.py",
+                    "content": "",
+                    "error": "Read timeout",
+                },
+                {
+                    "file_path": "app/main.py",
+                    "content": "class Demo:\n    pass\n",
+                },
+            ]
+        }
+    )
+
+    assert files == ["app/main.py"]
+
+
+def test_learning_path_core_files_quota_ignores_failures():
+    """
+    失败条目也不占名额。
+
+    先切片再过滤的话，
+    前面的失败会把后面的真实源码挤出清单。
+    """
+
+    modules = [
+        {
+            "file_path": f"app/broken_{i}.py",
+            "content": "",
+            "error": "Read timeout",
+        }
+        for i in range(12)
+    ] + [
+        {
+            "file_path": f"app/real_{i}.py",
+            "content": "class Demo:\n    pass\n",
+        }
+        for i in range(12)
+    ]
+
+    files = LearningPathSkill()._core_files(
+        {"modules": modules}
+    )
+
+    assert len(files) == LearningPathSkill.MAX_CORE_FILES
+
+    assert files[0] == "app/real_0.py"
+
+    assert all(
+        "broken" not in path
+        for path in files
+    )

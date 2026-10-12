@@ -48,6 +48,8 @@ LLM 拿到的仍然是真实源码与真实事实，
 import json
 import re
 
+from app.core.exceptions import ToolError
+from app.core.logging import get_logger
 from app.infrastructure.enrichment.context.injection import (
     build_history_block,
     resolve_repository_id,
@@ -59,6 +61,9 @@ from app.infrastructure.skills.base import BaseSkill
 from app.infrastructure.skills.json_output import (
     parse_json_object,
 )
+
+
+logger = get_logger(__name__)
 
 
 class ModuleDeepDiveSkill(
@@ -288,7 +293,17 @@ class ModuleDeepDiveSkill(
         repo,
         branch,
     ):
-        """读取仓库文件树；拿不到时返回空列表。"""
+        """
+        读取仓库文件树；拿不到时返回空列表。
+
+        这里的容错是刻意的：目录结构属于取材的增强信息，
+        一次超时不该让整个深挖失败。
+
+        与 architecture_analysis_skill._load_tree 保持一致 ——
+        两处原本一份有 try/except、一份没有，
+        docstring 都写着「失败返回空列表」，
+        但没捕获的那个会在网络抖动时直接抛出去。
+        """
 
         tool = context.tools.get(
             "github_repository"
@@ -306,11 +321,26 @@ class ModuleDeepDiveSkill(
         if not callable(get_tree):
             return []
 
-        tree = await get_tree(
-            owner=owner,
-            name=repo,
-            branch=branch,
-        )
+        try:
+
+            tree = await get_tree(
+                owner=owner,
+                name=repo,
+                branch=branch,
+            )
+
+        except ToolError as error:
+
+            logger.warning(
+                "module deep dive: tree unavailable | "
+                "%s/%s | %s: %s",
+                owner,
+                repo,
+                type(error).__name__,
+                error,
+            )
+
+            return []
 
         if not isinstance(tree, list):
             return []

@@ -10,6 +10,7 @@ FastAPI 应用入口。
 5. API 路由注册
 """
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -59,6 +60,9 @@ from app.core.logging import (
     get_logger,
     setup_logging,
 )
+from app.infrastructure.tools.llm_chat_tool import (
+    aclose_llm_clients,
+)
 
 
 settings = get_settings()
@@ -76,6 +80,33 @@ logger = get_logger(
 )
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    应用生命周期钩子。
+
+    退出时关闭进程内的 LLM 客户端 ——
+    每个客户端自带连接池，
+    不关就只能等 GC 回收，
+    反复建应用（例如测试）会攒下若干条空闲连接。
+
+    关闭失败只记日志：退出路径上不该再抛异常。
+    """
+
+    yield
+
+    try:
+
+        await aclose_llm_clients()
+
+    except Exception as error:  # noqa: BLE001
+
+        logger.warning(
+            "关闭 LLM 客户端失败：%s",
+            error,
+        )
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     description=(
@@ -84,6 +115,7 @@ app = FastAPI(
     ),
     version="0.1.0",
     debug=settings.DEBUG,
+    lifespan=lifespan,
 )
 
 

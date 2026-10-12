@@ -1,9 +1,8 @@
 """
-WorkflowContext 工厂 - 负责创建和缓存 WorkflowContext。
+WorkflowContext 工厂 - 负责创建 WorkflowContext。
 
 职责：
 - 创建 Skill/Agent/Tool 实例
-- 缓存 Context（避免重复创建）
 - 依赖注入
 """
 
@@ -45,12 +44,22 @@ class WorkflowContextFactory:
         """
         self.session = session
 
-        # 缓存：repository_id -> WorkflowContext
-        self._context_cache = {}
-
     def create(self, repository_id: int) -> WorkflowContext:
         """
-        创建或获取缓存的 WorkflowContext。
+        创建 WorkflowContext。
+
+        刻意不做缓存。
+
+        原来这里有一个 self._context_cache，
+        但工厂本身是按请求创建的
+        （见 app/services/analysis_service.py 的 _get_domain_service），
+        所以这个缓存永远命中不了 ——
+        只留下「以为复用了、其实每次都重建」的错觉，
+        以及一个会把 Context（连带 request 级 session）
+        留到工厂实例生命结束的引用。
+
+        也不改成全局单例：Context 持有请求级 session，
+        跨请求复用会把不同请求的会话串在一起。
 
         Args:
             repository_id: Repository ID
@@ -58,18 +67,16 @@ class WorkflowContextFactory:
         Returns:
             WorkflowContext
         """
-        if repository_id not in self._context_cache:
-            self._context_cache[repository_id] = self._build_context(repository_id)
-        return self._context_cache[repository_id]
+        return self._build_context(repository_id)
 
     def _build_context(self, repository_id: int) -> WorkflowContext:
         """
         实际创建 WorkflowContext。
 
-        关键优化：
-        - 同一 repository_id 只创建一次
-        - Context 中的 Skill/Agent/Tool 都是无状态服务，可以安全复用
-        - 避免每次 approve/resume/retry 都重建所有依赖
+        Context 中的 Skill/Agent/Tool 都是无状态服务，
+        每次重建的代价只是一批对象构造；
+        真正贵的客户端（LLM、向量库）都是惰性连接，
+        不会因为重建而多开连接。
 
         Args:
             repository_id: Repository ID
@@ -106,6 +113,10 @@ class WorkflowContextFactory:
         # 构造开销可以忽略：OllamaEmbedding 与 QdrantVectorStore
         # 都是惰性客户端，只记地址、不建连接。
         # 真正的启用判断在 EvidenceAnalysisSkill._from_rag 里。
+        #
+        # 这两个对象也是「索引」与「检索」共用的那一份：
+        # EvidenceAnalysisSkill 建索引时直接取它们，
+        # 不再各建一套。
         tools["rag_retrieval"] = RagRetrievalTool(
             embedding=OllamaEmbedding(),
             vector_store=QdrantVectorStore(),

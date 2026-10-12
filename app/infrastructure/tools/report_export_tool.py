@@ -6,6 +6,7 @@ Report Export Tool。
     - 支持 Markdown / JSON 文件
 """
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -60,9 +61,12 @@ class ReportExportTool(BaseTool):
             f"{content}"
         )
 
-        file_path.write_text(
+        # 写盘是阻塞调用：报告可能有几百 KB，
+        # 在协程里直接写会卡住事件循环。丢到线程里。
+        await asyncio.to_thread(
+            file_path.write_text,
             markdown,
-            encoding="utf-8"
+            encoding="utf-8",
         )
 
         return {
@@ -99,6 +103,26 @@ class ReportExportTool(BaseTool):
             filename
         )
 
+        # 大文档的 json.dumps 同样是 CPU/IO 混合的阻塞操作，
+        # 一起放进线程里做。
+        await asyncio.to_thread(
+            self._write_json,
+            file_path,
+            document,
+        )
+
+        return {
+            "path": str(file_path),
+            "format": "json",
+        }
+
+    @staticmethod
+    def _write_json(
+        file_path: Path,
+        document: dict,
+    ) -> None:
+        """序列化并写盘（在线程里执行）。"""
+
         file_path.write_text(
             json.dumps(
                 document,
@@ -108,11 +132,6 @@ class ReportExportTool(BaseTool):
             ),
             encoding="utf-8",
         )
-
-        return {
-            "path": str(file_path),
-            "format": "json",
-        }
 
     async def export(
         self,

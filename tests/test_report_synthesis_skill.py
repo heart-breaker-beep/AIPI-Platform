@@ -13,6 +13,7 @@ LLM 通过 llm_chat 工具注入假实现。
 """
 
 import json
+import types
 
 import pytest
 
@@ -743,3 +744,163 @@ def test_synthesis_system_prompt_states_history_trust():
     assert "只能使用" in prompt
 
     assert "数据不足" in prompt
+
+
+@pytest.mark.asyncio
+async def test_llm_chat_tool_reuses_one_client(monkeypatch):
+    """
+    同一个工具实例只建一个 LLM 客户端。
+
+    回归点：每次 execute 都新建 AsyncOpenAI，
+    而它自带连接池 ——
+    每次 LLM 调用都会泄漏一个连接池。
+    """
+
+    import app.infrastructure.tools.llm_chat_tool as module
+
+    created = []
+
+    class FakeCompletions:
+
+        async def create(self, **kwargs):
+
+            return types.SimpleNamespace(
+                choices=[
+                    types.SimpleNamespace(
+                        message=types.SimpleNamespace(
+                            content="ok"
+                        )
+                    )
+                ]
+            )
+
+    class FakeClient:
+
+        def __init__(self, **kwargs):
+
+            created.append(kwargs)
+
+            self.chat = types.SimpleNamespace(
+                completions=FakeCompletions()
+            )
+
+            self.closed = 0
+
+        async def aclose(self):
+
+            self.closed += 1
+
+    class FakeSettings:
+
+        LLM_API_KEY = "key"
+        LLM_MODEL = "deepseek-chat"
+        LLM_BASE_URL = "https://api.deepseek.com"
+        LLM_TIMEOUT = 60.0
+        LLM_MAX_TOKENS = 100
+
+    monkeypatch.setattr(
+        module,
+        "get_settings",
+        lambda: FakeSettings(),
+    )
+
+    monkeypatch.setattr(
+        module,
+        "AsyncOpenAI",
+        FakeClient,
+    )
+
+    tool = module.LLMChatTool()
+
+    first = await tool.execute(
+        messages=[
+            {"role": "user", "content": "hi"}
+        ]
+    )
+
+    second = await tool.execute(
+        messages=[
+            {"role": "user", "content": "again"}
+        ]
+    )
+
+    assert first["available"] is True
+
+    assert second["available"] is True
+
+    # 两次调用共用一个客户端。
+    assert len(created) == 1
+
+    client = tool._client
+
+    assert client is not None
+
+
+@pytest.mark.asyncio
+async def test_llm_client_close_hook_releases_client(
+    monkeypatch,
+):
+    """
+    应用退出时要能关掉进程内的客户端。
+
+    客户端自带连接池，不关就等 GC。
+    """
+
+    import app.infrastructure.tools.llm_chat_tool as module
+
+    class FakeCompletions:
+
+        async def create(self, **kwargs):
+
+            return types.SimpleNamespace(
+                choices=[
+                    types.SimpleNamespace(
+                        message=types.SimpleNamespace(
+                            content="ok"
+                        )
+                    )
+                ]
+            )
+
+    class FakeClient:
+
+        def __init__(self, **kwargs):
+
+            self.chat = types.SimpleNamespace(
+                completions=FakeCompletions()
+            )
+
+            self.closed = 0
+
+        async def aclose(self):
+
+            self.closed += 1
+
+    class FakeSettings:
+
+        LLM_API_KEY = "key"
+        LLM_MODEL = "deepseek-chat"
+        LLM_BASE_URL = "https://api.deepseek.com"
+        LLM_TIMEOUT = 60.0
+        LLM_MAX_TOKENS = 100
+
+    monkeypatch.setattr(module, "get_settings", lambda: FakeSettings())
+
+    monkeypatch.setattr(module, "AsyncOpenAI", FakeClient)
+
+    tool = module.LLMChatTool()
+
+    await tool.execute(
+        messages=[
+            {"role": "user", "content": "hi"}
+        ]
+    )
+
+    client = tool._client
+
+    await module.aclose_llm_clients()
+
+    assert client.closed == 1
+
+    # 关掉之后回到「还没建过」的状态。
+    assert tool._client is None

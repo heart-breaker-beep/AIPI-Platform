@@ -30,6 +30,8 @@ RAG 检索工具。
 与 `_from_qdrant` 的产出保持同一形态。
 """
 
+import asyncio
+
 from app.infrastructure.tools.project.analysis_focus import AnalysisFocus
 from app.infrastructure.tools.base import BaseTool
 
@@ -99,9 +101,18 @@ class RagRetrievalTool(BaseTool):
             query = self._build_query(dimension, question)
 
             try:
-                vector = self.embedding.embed(query)
+                # embedding 与 Qdrant 客户端都是**同步**库：
+                # 直接在协程里调用会在整个请求期间占住事件循环，
+                # 6 个维度各一次嵌入 + 一次检索，
+                # 期间别的请求（包括同一个 run 的其它 await）全被卡住。
+                # 丢到线程里执行，不换库。
+                vector = await asyncio.to_thread(
+                    self.embedding.embed,
+                    query,
+                )
 
-                hits = self.vector_store.search(
+                hits = await asyncio.to_thread(
+                    self.vector_store.search,
                     query_vector=vector,
                     limit=limit_per_dimension,
                     repository_id=repository_id,

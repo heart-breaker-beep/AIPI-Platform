@@ -50,6 +50,8 @@
 要提速的话，在 `_read_extra` 里加并发 + 信号量即可。
 """
 
+import asyncio
+
 from app.core.logging import get_logger
 from app.infrastructure.tools.project.code_chunker import PythonCodeChunker
 
@@ -140,7 +142,13 @@ class RagIndexer:
         # 而调用方（_from_rag）把异常兜底成"没有检索结果"，
         # 于是 RAG 静默失效 —— 报告照常产出，
         # 只是永远没有检索证据，从外部完全看不出来。
-        self._ensure_collection()
+        # 兜底建集合、清旧向量、嵌入并写入：
+        # 这三个都是同步的 Qdrant / embedding 调用，
+        # 直接 await 会把事件循环卡住整个索引期间
+        # （几十次嵌入请求可能要几分钟）。丢到线程里执行。
+        await asyncio.to_thread(
+            self._ensure_collection
+        )
 
         # 先清库再写。
         #
@@ -148,8 +156,9 @@ class RagIndexer:
         # 检索可能返回已经不存在的代码 ——
         # 那种错误没有任何外部迹象，极难发现。
         try:
-            self.vector_store.delete_by_repository(
-                repository_id
+            await asyncio.to_thread(
+                self.vector_store.delete_by_repository,
+                repository_id,
             )
         except Exception as error:  # noqa: BLE001
             logger.warning(
@@ -177,7 +186,8 @@ class RagIndexer:
         if not chunks:
             return {"indexed": False, "reason": "no_chunks"}
 
-        written = self._embed_and_store(
+        written = await asyncio.to_thread(
+            self._embed_and_store,
             chunks,
             repository_id=repository_id,
             run_id=run_id,

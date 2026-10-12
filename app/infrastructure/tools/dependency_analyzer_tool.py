@@ -4,6 +4,7 @@ Dependency Analyzer Tool。
 分析项目依赖和部署配置。
 """
 
+import asyncio
 from pathlib import Path
 
 from app.infrastructure.tools.base import BaseTool
@@ -73,8 +74,9 @@ class DependencyAnalyzerTool(BaseTool):
         if not file.exists():
 
             return
-        content = file.read_text(
-            encoding="utf-8"
+        content = await asyncio.to_thread(
+            file.read_text,
+            encoding="utf-8",
         )
 
         dependencies = content.lower()

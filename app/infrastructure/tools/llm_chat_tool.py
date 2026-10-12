@@ -26,11 +26,34 @@ LLM 不可用（没有 API Key / 网络不通 /
 由调用方决定如何降级。
 """
 
+import weakref
+
 from openai import AsyncOpenAI
 
 from app.core.config import get_settings
 from app.llm.deepseek import DeepSeekLLM
 from app.infrastructure.tools.base import BaseTool
+
+
+# 进程内创建过的 Tool 实例。
+#
+# 用弱引用集合：实例本身随 Context 被回收，
+# 这里不需要任何注销逻辑，
+# 也不会因为这个登记表把内存留住。
+_LIVE_TOOLS: "weakref.WeakSet" = weakref.WeakSet()
+
+
+async def aclose_llm_clients() -> None:
+    """
+    关闭进程内所有 LLM 客户端。
+
+    由 FastAPI 的 lifespan 在应用退出时调用 ——
+    客户端自带连接池，不关就等 GC，
+    进程重启/测试多次建应用时会攒下若干条空闲连接。
+    """
+
+    for tool in list(_LIVE_TOOLS):
+        await tool.aclose()
 
 
 class LLMChatTool(BaseTool):
@@ -48,6 +71,12 @@ class LLMChatTool(BaseTool):
         """
 
         self._llm = llm
+
+        # 自己创建的 AsyncOpenAI 客户端。
+        # 注入 llm 时为 None（别人的东西不由我们关）。
+        self._client = None
+
+        _LIVE_TOOLS.add(self)
 
     def _build_llm(self):
         """按配置创建真实的 DeepSeek 客户端。"""
@@ -69,6 +98,8 @@ class LLMChatTool(BaseTool):
             base_url=settings.LLM_BASE_URL,
             timeout=settings.LLM_TIMEOUT,
         )
+
+        self._client = client
 
         return (
             DeepSeekLLM(
@@ -107,6 +138,15 @@ class LLMChatTool(BaseTool):
                     "available": False,
                     "reason": reason,
                 }
+
+            # 缓存到实例上。
+            #
+            # 为什么必须缓存：AsyncOpenAI 自带连接池，
+            # 每次 execute 都新建一个的话，
+            # 每次 LLM 调用都会泄漏一个连接池
+            # （要等 GC 才可能回收，期间连接一直挂着）。
+            # 同一个 Context 里的多次调用现在共用一个客户端。
+            self._llm = llm
 
         try:
 
@@ -159,3 +199,30 @@ class LLMChatTool(BaseTool):
             "available": True,
             "content": content,
         }
+
+    async def aclose(self) -> None:
+        """
+        关闭由本工具创建的 LLM 客户端。
+
+        注入的假实现没有可关的连接，直接跳过。
+        关闭后实例恢复成「还没建过」的状态，
+        下次 execute 会按配置重新建一个。
+        """
+
+        client = self._client
+
+        self._client = None
+        self._llm = None
+
+        if client is None:
+            return
+
+        close = getattr(
+            client,
+            "aclose",
+            None,
+        )
+
+        if callable(close):
+
+            await close()

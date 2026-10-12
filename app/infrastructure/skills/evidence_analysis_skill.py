@@ -10,14 +10,12 @@ Evidence Analysis Skill。
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.embeddings.ollama import OllamaEmbedding
 from app.infrastructure.tools.project.analysis_focus import AnalysisFocus
 from app.infrastructure.tools.project.rag_indexer import RagIndexer
 from app.services.evidence_service import (
     EvidenceService,
 )
 from app.infrastructure.skills.base import BaseSkill
-from app.vector_store.qdrant import QdrantVectorStore
 
 
 logger = get_logger(__name__)
@@ -308,14 +306,51 @@ class EvidenceAnalysisSkill(
         repository_id,
         settings,
     ) -> dict:
-        """把仓库源码写入向量库。"""
+        """
+        把仓库源码写入向量库。
+
+        embedding / vector_store 从已注册的 rag_retrieval 工具里取，
+        不再每次调用新建：
+        这两个客户端各自持有连接池，
+        每次分析都 new 一个的话，
+        每个 run 都会泄漏两个连接池，
+        而且新对象拿到的连接与检索工具用的那份互相独立。
+        """
+
+        retriever = context.tools.get(
+            "rag_retrieval"
+        )
+
+        embedding = getattr(
+            retriever,
+            "embedding",
+            None,
+        )
+
+        vector_store = getattr(
+            retriever,
+            "vector_store",
+            None,
+        )
+
+        if embedding is None or vector_store is None:
+
+            logger.warning(
+                "RAG 索引跳过：rag_retrieval 工具缺少 "
+                "embedding / vector_store。"
+            )
+
+            return {
+                "indexed": False,
+                "reason": "rag_unavailable",
+            }
 
         indexer = RagIndexer(
             file_reader=context.tools.get(
                 "file_reader"
             ),
-            embedding=OllamaEmbedding(),
-            vector_store=QdrantVectorStore(),
+            embedding=embedding,
+            vector_store=vector_store,
         )
 
         return await indexer.index_repository(

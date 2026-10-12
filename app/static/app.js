@@ -2198,6 +2198,17 @@
    * 启动
    * ============================================================ */
 
+  // 页面加载完成后隐藏加载动画
+  window.addEventListener('load', () => {
+    const loader = $('pageLoader');
+    if (loader) {
+      setTimeout(() => {
+        loader.classList.add('hide');
+        setTimeout(() => loader.remove(), 300);
+      }, 300);
+    }
+  });
+
   checkHealth();
   setInterval(checkHealth, 30000);
 

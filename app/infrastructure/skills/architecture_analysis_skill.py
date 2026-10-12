@@ -38,7 +38,9 @@ import os
 import re
 
 from app.core.exceptions import ToolError
-from app.core.logging import get_logger
+from app.infrastructure.skills._common import (
+    load_tree,
+)
 from app.infrastructure.tools.project.analysis_focus import (
     AnalysisFocus,
 )
@@ -46,9 +48,6 @@ from app.infrastructure.tools.project.code_structure_extractor import (
     CodeStructureExtractor,
 )
 from app.infrastructure.skills.base import BaseSkill
-
-
-logger = get_logger(__name__)
 
 
 class ArchitectureAnalysisSkill(
@@ -682,49 +681,19 @@ class ArchitectureAnalysisSkill(
         目录结构属于增强信息，
         拿不到时返回空列表，
         不应因此中断整个分析流程。
+
+        实现已合并到 _common.load_tree：
+        模块深挖技能原本抄了一份，且漏了容错。
         """
 
-        tool = context.tools.get(
-            "github_repository"
+        return await load_tree(
+            context.tools.get(
+                "github_repository"
+            ),
+            owner,
+            name,
+            branch,
         )
-
-        if tool is None:
-            return []
-
-        get_tree = getattr(
-            tool,
-            "get_tree",
-            None,
-        )
-
-        if not callable(get_tree):
-            return []
-
-        try:
-
-            tree = await get_tree(
-                owner=owner,
-                name=name,
-                branch=branch,
-            )
-
-        except ToolError as error:
-
-            logger.warning(
-                "architecture analysis: tree unavailable | "
-                "%s/%s | %s: %s",
-                owner,
-                name,
-                type(error).__name__,
-                error,
-            )
-
-            return []
-
-        if not isinstance(tree, list):
-            return []
-
-        return tree
 
     def _build_directory_structure(
         self,

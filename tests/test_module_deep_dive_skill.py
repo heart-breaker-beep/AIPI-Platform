@@ -19,6 +19,9 @@ import json
 
 import pytest
 
+from skill_snapshots import (
+    assert_snapshot,
+)
 from app.core.exceptions import ToolError
 from app.infrastructure.skills.module_deep_dive_skill import (
     ModuleDeepDiveSkill,
@@ -679,3 +682,22 @@ def test_prompt_forbids_speculation():
     assert "readme" in system
 
     assert "<facts>" in user
+
+
+def test_module_deep_dive_output_snapshot():
+    """
+    完整返回值快照（第 4 阶段技能去重的护栏）。
+
+    用固定 exporter，避免 report 里出现临时路径。
+    """
+
+    result = run_deep_dive(
+        module="workflow",
+        llm=FakeLLMTool(),
+        exporter=FakeExporter(),
+    )
+
+    assert_snapshot(
+        "module_deep_dive",
+        result,
+    )

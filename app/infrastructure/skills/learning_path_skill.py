@@ -40,8 +40,10 @@ Learning Path Skill（Phase 14.1）。
 不修改已有产物。
 """
 
-import json
-
+from app.infrastructure.skills._common import (
+    as_text_list,
+    dumps_prompt,
+)
 from app.infrastructure.enrichment.context.injection import (
     build_history_block,
     resolve_repository_id,
@@ -49,16 +51,26 @@ from app.infrastructure.enrichment.context.injection import (
 from app.infrastructure.tools.project.code_structure_extractor import (
     CodeStructureExtractor,
 )
-from app.infrastructure.skills.base import BaseSkill
-from app.infrastructure.skills.json_output import (
-    parse_json_object,
+from app.infrastructure.skills.llm_skill_base import (
+    LLMSkillBase,
 )
 
 
 class LearningPathSkill(
-    BaseSkill
+    LLMSkillBase
 ):
     """生成项目的学习路线。"""
+
+    # 文案沿用合并前的措辞（前端与测试都在读）。
+    LLM_TOOL_MISSING_REASON = (
+        "Tool not found: llm_chat，"
+        "无法生成学习路线。"
+    )
+
+    LLM_JSON_INVALID_REASON = (
+        "LLM 返回的内容不是合法 JSON，"
+        "无法解析为学习路线。"
+    )
 
     name = "learning_path"
 
@@ -90,13 +102,12 @@ class LearningPathSkill(
         context,
         input_data: dict,
     ):
-        tool = context.tools.get("llm_chat")
-
-        if tool is None:
+        # 先看工具在不在：原来这条判断在事实校验之前，
+        # 顺序变了会让「两个条件同时不满足」时给出不同的原因。
+        if context.tools.get("llm_chat") is None:
 
             return self._unavailable(
-                "Tool not found: llm_chat，"
-                "无法生成学习路线。"
+                self.LLM_TOOL_MISSING_REASON
             )
 
         facts = self._build_facts(input_data)
@@ -124,45 +135,30 @@ class LearningPathSkill(
             ),
         )
 
-        result = await tool.execute(
-            messages=[
-                {
-                    "role": "system",
-                    "content": self._system_prompt(),
-                },
-                {
-                    "role": "user",
-                    "content": self._build_prompt(
-                        facts,
-                        goal=input_data.get("goal")
-                        or input_data.get("question"),
-                        history=history,
-                    ),
-                },
-            ]
+        prompt = self._build_prompt(
+            facts,
+            goal=(
+                input_data.get("goal")
+                or input_data.get("question")
+            ),
+            history=history,
         )
 
-        if not result.get("available"):
-
-            return self._unavailable(
-                result.get("reason")
-                or "LLM 未返回内容。"
-            )
-
-        parsed = parse_json_object(
-            result.get("content") or ""
+        parsed, reason = await self._ask_llm(
+            context,
+            system=self._system_prompt(),
+            prompt=prompt,
         )
 
         if parsed is None:
 
-            return self._unavailable(
-                "LLM 返回的内容不是合法 JSON，"
-                "无法解析为学习路线。"
-            )
+            return self._unavailable(reason)
 
         sections = {
-            key: self._as_text_list(
-                parsed.get(key)
+            key: as_text_list(
+                parsed.get(key),
+                max_items=6,
+                max_chars=self.MAX_ITEM_CHARS,
             )
             for key, _ in self.SECTIONS
         }
@@ -486,12 +482,7 @@ class LearningPathSkill(
 
         parts.append(
             "<facts>\n"
-            + json.dumps(
-                facts,
-                ensure_ascii=False,
-                indent=2,
-                default=str,
-            )
+            + dumps_prompt(facts)
             + "\n</facts>\n"
         )
 
@@ -619,42 +610,3 @@ class LearningPathSkill(
             content=content,
             filename=filename,
         )
-
-    def _as_text_list(
-        self,
-        value,
-    ) -> list:
-        """规整成限长的字符串列表。"""
-
-        if value is None:
-            return []
-
-        if isinstance(value, str):
-
-            text = value.strip()
-
-            return [text] if text else []
-
-        if not isinstance(
-            value,
-            (list, tuple),
-        ):
-            return [str(value)]
-
-        items = []
-
-        for item in value:
-
-            text = str(item).strip()
-
-            if not text:
-                continue
-
-            items.append(
-                text[: self.MAX_ITEM_CHARS]
-            )
-
-            if len(items) >= 6:
-                break
-
-        return items

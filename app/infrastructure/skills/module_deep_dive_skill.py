@@ -45,11 +45,14 @@ LLM 拿到的仍然是真实源码与真实事实，
 不是模型复述。
 """
 
-import json
 import re
 
-from app.core.exceptions import ToolError
 from app.core.logging import get_logger
+from app.infrastructure.skills._common import (
+    as_text_list,
+    dumps_prompt,
+    load_tree,
+)
 from app.infrastructure.enrichment.context.injection import (
     build_history_block,
     resolve_repository_id,
@@ -57,9 +60,8 @@ from app.infrastructure.enrichment.context.injection import (
 from app.infrastructure.tools.project.code_structure_extractor import (
     CodeStructureExtractor,
 )
-from app.infrastructure.skills.base import BaseSkill
-from app.infrastructure.skills.json_output import (
-    parse_json_object,
+from app.infrastructure.skills.llm_skill_base import (
+    LLMSkillBase,
 )
 
 
@@ -67,11 +69,18 @@ logger = get_logger(__name__)
 
 
 class ModuleDeepDiveSkill(
-    BaseSkill
+    LLMSkillBase
 ):
     """单模块深度分析能力。"""
 
     name = "module_deep_dive"
+
+    # 文案沿用合并前的措辞（前端与测试都在读）。
+    LLM_TOOL_MISSING_REASON = "未注册 llm_chat 工具。"
+
+    LLM_JSON_INVALID_REASON = (
+        "LLM 返回的内容不是合法 JSON。"
+    )
 
     description = (
         "Deep dive into one module of an "
@@ -299,53 +308,19 @@ class ModuleDeepDiveSkill(
         这里的容错是刻意的：目录结构属于取材的增强信息，
         一次超时不该让整个深挖失败。
 
-        与 architecture_analysis_skill._load_tree 保持一致 ——
-        两处原本一份有 try/except、一份没有，
-        docstring 都写着「失败返回空列表」，
-        但没捕获的那个会在网络抖动时直接抛出去。
+        实现已合并到 _common.load_tree：
+        两个技能原本各抄一份，其中一份漏了 try/except，
+        docstring 都写着「失败返回空列表」。
         """
 
-        tool = context.tools.get(
-            "github_repository"
+        return await load_tree(
+            context.tools.get(
+                "github_repository"
+            ),
+            owner,
+            repo,
+            branch,
         )
-
-        if tool is None:
-            return []
-
-        get_tree = getattr(
-            tool,
-            "get_tree",
-            None,
-        )
-
-        if not callable(get_tree):
-            return []
-
-        try:
-
-            tree = await get_tree(
-                owner=owner,
-                name=repo,
-                branch=branch,
-            )
-
-        except ToolError as error:
-
-            logger.warning(
-                "module deep dive: tree unavailable | "
-                "%s/%s | %s: %s",
-                owner,
-                repo,
-                type(error).__name__,
-                error,
-            )
-
-            return []
-
-        if not isinstance(tree, list):
-            return []
-
-        return tree
 
     def _select_files(
         self,
@@ -582,15 +557,6 @@ class ModuleDeepDiveSkill(
         不抛异常。
         """
 
-        tool = context.tools.get("llm_chat")
-
-        if tool is None:
-
-            return {
-                "available": False,
-                "reason": "未注册 llm_chat 工具。",
-            }
-
         facts = self._build_facts(
             module=module,
             owner=owner,
@@ -601,64 +567,40 @@ class ModuleDeepDiveSkill(
             unparsed=unparsed,
         )
 
-        result = await tool.execute(
-            messages=[
-                {
-                    "role": "system",
-                    "content": self._system_prompt(
-                        module
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        # 历史放在 <facts> 之前：不可信内容在前、
-                        # 权威事实在后。为空时不占位。
-                        (
-                            history.strip() + "\n\n"
-                            if history
-                            else ""
-                        )
-                        + "<facts>\n"
-                        + json.dumps(
-                            facts,
-                            ensure_ascii=False,
-                            indent=2,
-                        )
-                        + "\n</facts>\n\n"
-                        + self._output_instruction()
-                    ),
-                },
-            ]
+        prompt = (
+            # 历史放在 <facts> 之前：不可信内容在前、
+            # 权威事实在后。为空时不占位。
+            (
+                history.strip() + "\n\n"
+                if history
+                else ""
+            )
+            + "<facts>\n"
+            + dumps_prompt(facts)
+            + "\n</facts>\n\n"
+            + self._output_instruction()
         )
 
-        if not result.get("available"):
-
-            return {
-                "available": False,
-                "reason": result.get("reason")
-                or "LLM 未返回内容。",
-            }
-
-        parsed = self._parse(
-            result.get("content") or ""
+        parsed, reason = await self._ask_llm(
+            context,
+            system=self._system_prompt(module),
+            prompt=prompt,
         )
 
         if parsed is None:
 
             return {
                 "available": False,
-                "reason": (
-                    "LLM 返回的内容不是合法 JSON。"
-                ),
+                "reason": reason,
             }
 
         return {
             "available": True,
             "reason": None,
             "sections": {
-                key: self._as_text_list(
-                    parsed.get(key)
+                key: as_text_list(
+                    parsed.get(key),
+                    max_items=6,
                 )
                 for key, _ in self.ANALYSIS_FIELDS
             },
@@ -1217,51 +1159,3 @@ class ModuleDeepDiveSkill(
             content=content,
             filename=filename,
         )
-
-    @staticmethod
-    def _parse(
-        content: str,
-    ):
-        """
-        解析 LLM 返回的 JSON。
-
-        与报告综合分析共用同一套容错逻辑
-        （代码块包裹 / 前后噪声 / 被截断）。
-        """
-
-        return parse_json_object(content)
-
-    @staticmethod
-    def _as_text_list(value) -> list:
-        """把任意值转成限长的字符串列表。"""
-
-        if value is None:
-            return []
-
-        if isinstance(value, str):
-
-            text = value.strip()
-
-            return [text] if text else []
-
-        if not isinstance(
-            value,
-            (list, tuple),
-        ):
-            return [str(value)]
-
-        items = []
-
-        for item in value:
-
-            text = str(item).strip()
-
-            if not text:
-                continue
-
-            items.append(text)
-
-            if len(items) >= 6:
-                break
-
-        return items

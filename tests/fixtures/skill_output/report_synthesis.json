@@ -1,0 +1,31 @@
+{
+  "available": true,
+  "dimensions": {
+    "agents": "单 Agent + 显式状态机。",
+    "memory": "SQLite checkpoint 持久化。",
+    "rag": "数据不足：README 未声明 rag。",
+    "skills": "数据不足：README 未声明 skills。",
+    "tools": "4 个校验工具。",
+    "workflow": "LangGraph StateGraph。"
+  },
+  "reason": null,
+  "summary": {
+    "core_design": [
+      "draft-only + human-in-the-loop",
+      "单 Agent 状态机"
+    ],
+    "highlights": [
+      "有审计轨迹"
+    ],
+    "one_line": "这是一个 LangGraph 发票审批 Agent。",
+    "risks": [
+      "RAG 维度数据不足"
+    ],
+    "technology_choices": [
+      "FastAPI + LangGraph"
+    ],
+    "use_cases": [
+      "参考其 human-in-the-loop 设计"
+    ]
+  }
+}

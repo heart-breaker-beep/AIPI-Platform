@@ -17,6 +17,9 @@ import types
 
 import pytest
 
+from skill_snapshots import (
+    assert_snapshot,
+)
 from app.infrastructure.skills.report_synthesis_skill import (
     ReportSynthesisSkill,
 )
@@ -904,3 +907,24 @@ async def test_llm_client_close_hook_releases_client(
 
     # 关掉之后回到「还没建过」的状态。
     assert tool._client is None
+
+
+@pytest.mark.asyncio
+async def test_report_synthesis_output_snapshot():
+    """
+    完整返回值快照。
+
+    第 4 阶段的技能层去重是纯重构，
+    只断言几个字段的话，
+    被悄悄改掉的其它字段不会有人发现。
+    """
+
+    result = await ReportSynthesisSkill().execute(
+        FakeContext(FakeLLMTool()),
+        build_data(),
+    )
+
+    assert_snapshot(
+        "report_synthesis",
+        result,
+    )

@@ -1,0 +1,26 @@
+{
+  "available": true,
+  "content": "# o/finance-agent · 学习路线\n\n> 基于已有分析结果生成，不重新采集。\n> 所有建议都指向这个项目的真实文件与模块。\n\n## 学习顺序\n\n- 先读 workflow_service.py 的状态图装配\n\n## 需要掌握的技术\n\n- LangGraph StateGraph：项目用它编排节点\n\n## 核心源码\n\n- `src/app/services/workflow_service.py` — 工作流主体\n\n## 推荐阅读路径\n\n- 从 main.py 入口进\n\n## 改造建议\n\n- 新增节点参考 _node_* 写法\n\n## 本次可用于精读的文件\n\n以下文件是分析时真实读取过的，上面的建议从其中挑选：\n\n- `src/app/services/workflow_service.py`\n- `src/app/main.py`",
+  "reason": null,
+  "report": {
+    "format": "markdown",
+    "path": "reports/run-1_learning_path.md"
+  },
+  "sections": {
+    "core_source": [
+      "`src/app/services/workflow_service.py` — 工作流主体"
+    ],
+    "improvements": [
+      "新增节点参考 _node_* 写法"
+    ],
+    "learning_order": [
+      "先读 workflow_service.py 的状态图装配"
+    ],
+    "prerequisites": [
+      "LangGraph StateGraph：项目用它编排节点"
+    ],
+    "reading_path": [
+      "从 main.py 入口进"
+    ]
+  }
+}

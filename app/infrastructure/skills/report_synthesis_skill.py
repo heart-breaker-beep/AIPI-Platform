@@ -35,24 +35,36 @@ Report Synthesis Skill。
 「不使用任何硬编码占位内容」的约束是同一条原则。
 """
 
-import json
-
+from app.infrastructure.skills._common import (
+    as_text_list,
+    dumps_prompt,
+)
 from app.infrastructure.enrichment.context.injection import (
     build_history_block,
     resolve_repository_id,
 )
-from app.infrastructure.skills.base import BaseSkill
-from app.infrastructure.skills.json_output import (
-    parse_json_object,
+from app.infrastructure.skills.llm_skill_base import (
+    LLMSkillBase,
 )
 
 
 class ReportSynthesisSkill(
-    BaseSkill
+    LLMSkillBase
 ):
     """基于已采集事实生成综合判断。"""
 
     name = "report_synthesis"
+
+    # 文案沿用合并前的措辞（前端与测试都在读）。
+    LLM_TOOL_MISSING_REASON = (
+        "Tool not found: llm_chat，"
+        "无法生成综合分析。"
+    )
+
+    LLM_JSON_INVALID_REASON = (
+        "LLM 返回的内容不是合法 JSON，"
+        "无法解析为综合分析。"
+    )
 
     description = (
         "Synthesize judgments from "
@@ -107,17 +119,6 @@ class ReportSynthesisSkill(
         context,
         input_data: dict,
     ):
-        llm_tool = context.tools.get(
-            "llm_chat"
-        )
-
-        if llm_tool is None:
-
-            return self._unavailable(
-                "Tool not found: llm_chat，"
-                "无法生成综合分析。"
-            )
-
         facts = self._build_facts(
             input_data
         )
@@ -146,38 +147,15 @@ class ReportSynthesisSkill(
             history=history,
         )
 
-        result = await llm_tool.execute(
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        self._system_prompt()
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": prompt,
-                },
-            ]
-        )
-
-        if not result.get("available"):
-
-            return self._unavailable(
-                result.get("reason")
-                or "LLM 未返回内容。"
-            )
-
-        parsed = self._parse(
-            result.get("content") or ""
+        parsed, reason = await self._ask_llm(
+            context,
+            system=self._system_prompt(),
+            prompt=prompt,
         )
 
         if parsed is None:
 
-            return self._unavailable(
-                "LLM 返回的内容不是合法 JSON，"
-                "无法解析为综合分析。"
-            )
+            return self._unavailable(reason)
 
         summary = parsed.get("summary")
 
@@ -297,11 +275,7 @@ class ReportSynthesisSkill(
 
         parts.append(
             "<facts>\n"
-            + json.dumps(
-                facts,
-                ensure_ascii=False,
-                indent=2,
-            )
+            + dumps_prompt(facts)
             + "\n</facts>\n"
         )
 
@@ -809,24 +783,6 @@ class ReportSynthesisSkill(
 
         return items
 
-    # ------------------------------------------------------------------
-    # 输出解析
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _parse(
-        content: str,
-    ):
-        """
-        解析 LLM 返回的 JSON。
-
-        兼容纯 JSON / ```json 包裹 /
-        前后有解释文字 / 被截断四种情况。
-        解析失败返回 None，由调用方降级。
-        """
-
-        return parse_json_object(content)
-
     def _normalize_summary(
         self,
         summary: dict,
@@ -853,8 +809,10 @@ class ReportSynthesisSkill(
         ):
 
             normalized[key] = (
-                self._as_text_list(
-                    summary.get(key)
+                as_text_list(
+                    summary.get(key),
+                    max_items=self.MAX_BULLETS,
+                    normalize=self._as_text,
                 )
             )
 
@@ -902,41 +860,3 @@ class ReportSynthesisSkill(
 
         return str(value).strip()
 
-    def _as_text_list(
-        self,
-        value,
-    ) -> list:
-        """把任意值转成限长的字符串列表。"""
-
-        if value is None:
-            return []
-
-        if isinstance(value, str):
-
-            text = value.strip()
-
-            return [text] if text else []
-
-        if not isinstance(
-            value,
-            (list, tuple),
-        ):
-            return [str(value)]
-
-        items = []
-
-        for item in value:
-
-            text = ReportSynthesisSkill._as_text(
-                item
-            )
-
-            if not text:
-                continue
-
-            items.append(text)
-
-            if len(items) >= self.MAX_BULLETS:
-                break
-
-        return items

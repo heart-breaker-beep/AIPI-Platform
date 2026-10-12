@@ -16,6 +16,9 @@ import json
 
 import pytest
 
+from skill_snapshots import (
+    assert_snapshot,
+)
 from app.services.report_service import (
     ReportService,
 )
@@ -664,4 +667,23 @@ def test_learning_path_core_files_quota_ignores_failures():
     assert all(
         "broken" not in path
         for path in files
+    )
+
+
+def test_learning_path_output_snapshot():
+    """
+    完整返回值快照（第 4 阶段技能去重的护栏）。
+
+    注意 report 里的路径与时间戳会随运行变化，
+    这里用固定 fake exporter，保证快照稳定。
+    """
+
+    result = run_path(
+        llm=FakeLLM(),
+        exporter=FakeExporter(),
+    )
+
+    assert_snapshot(
+        "learning_path",
+        result,
     )

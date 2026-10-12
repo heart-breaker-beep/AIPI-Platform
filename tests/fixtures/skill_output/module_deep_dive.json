@@ -1,0 +1,44 @@
+{
+  "analysis": {
+    "available": true,
+    "reason": null,
+    "sections": {
+      "boundaries": [
+        "数据不足：未见重试逻辑"
+      ],
+      "call_flow": [
+        "build() 注册节点后交给图执行"
+      ],
+      "data_structures": [
+        "state 字典承载 vendor"
+      ],
+      "key_implementations": [
+        "duplicate_check 节点用 0.85 阈值判定重复"
+      ],
+      "open_questions": [
+        "human_review 未在本次范围内"
+      ],
+      "responsibility": [
+        "负责把录入流程编排成状态图。"
+      ],
+      "risks": [
+        "0.85 是硬编码常量"
+      ]
+    }
+  },
+  "content": "# demo · Workflow 模块深挖报告\n\n> 分析对象：`demo/demo`\n> 模块：`workflow`\n> 读取文件：5 个（默认报告为 20 个）\n> 解析成功：5 个文件\n> 实现明细：1 项\n\n## 分析结论\n\n### 职责\n\n- 负责把录入流程编排成状态图。\n\n### 关键实现\n\n- duplicate_check 节点用 0.85 阈值判定重复\n\n### 涉及的数据结构\n\n- state 字典承载 vendor\n\n### 调用流程\n\n- build() 注册节点后交给图执行\n\n### 边界与限制\n\n- 数据不足：未见重试逻辑\n\n### 风险与可疑之处\n\n- 0.85 是硬编码常量\n\n### 需要人工确认\n\n- human_review 未在本次范围内\n\n## 实现明细\n\n### `duplicate_check` · `src/app/services/workflow_service.py:7`\n\n```python\ndef _node_duplicate_check(self, state) -> dict\n```\n\n- 调用：`find_similar`\n\n- 关键常量：`0.85`、`'suspected'`、`'vendor'`\n\n**源码片段**\n\n```python\ndef _node_duplicate_check(self, state) -> dict:\n        found = find_similar(state['vendor'])\n        if found.score >= 0.85:\n            state['status'] = 'suspected'\n        return state\n```\n\n## 结构化条目\n\n- import langgraph.graph\n- StateGraph(...)\n- builder.add_node('duplicate_check', self._node_duplicate_check)\n- 路径 src/app/services/\n- 路径 tests/\n\n## 证据锚点\n\n- `src/app/services/workflow_service.py:1` — import langgraph.graph\n- `src/app/services/workflow_service.py:6` — StateGraph(...)\n- `src/app/services/workflow_service.py:7` — builder.add_node('duplicate_check', self._node_duplicate_check)\n- `src/app/services/` — 路径 src/app/services/\n- `tests/` — 路径 tests/\n\n## 本次采集范围\n\n- 成功读取并解析：5 个文件\n- 读取失败：1 个\n  - `tests/test_workflow.py` — ToolError: HTTP 404: Not Found\n- 本次读取的文件：\n  - `src/app/services/workflow_service.py`\n  - `src/app/main.py`\n  - `src/app/models/agent_run.py`\n  - `src/app/rag/retriever.py`\n  - `src/app/services/other_service.py`",
+  "details": 1,
+  "files_read": [
+    "src/app/services/workflow_service.py",
+    "src/app/main.py",
+    "src/app/models/agent_run.py",
+    "src/app/rag/retriever.py",
+    "src/app/services/other_service.py"
+  ],
+  "module": "workflow",
+  "report": {
+    "format": "markdown",
+    "path": "reports/run-1_workflow_deep_dive.md"
+  },
+  "title": "demo · Workflow 模块深挖"
+}

@@ -210,12 +210,12 @@ psutil>=6.1,<8.0
 #
 # 6. Multi-Agent:
 #    No heavyweight Agent framework is required initially.
-#    Agent orchestration is implemented in app/agents/.
+#    Agent orchestration is implemented in app/analysis/agents/.
 #
 # 7. Skill:
 #    External Skills are integrated through an adapter layer.
 #    Core project-analysis Skills are implemented in
-#    app/skills/.
+#    app/analysis/skills/.
 #
 # 8. Frontend:
 #    No React / frontend dependency is included at this stage.

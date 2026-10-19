@@ -18,7 +18,7 @@ context_manager —— 这与 tests/test_workflow.py 手搭的 context 一致。
 
 import pytest
 
-from app.infrastructure.enrichment.context.injection import (
+from app.analysis.context.injection import (
     build_history_block,
     resolve_repository_id,
 )

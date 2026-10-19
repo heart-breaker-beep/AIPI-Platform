@@ -9,12 +9,12 @@ Agent 是否可以正常注册和获取。
 """
 
 
-from app.infrastructure.skills.registry import (
+from app.analysis.skills.registry import (
     create_skill_registry
 )
 
 
-from app.infrastructure.agents.agent_registry import (
+from app.analysis.agents.agent_registry import (
     create_agent_registry
 )
 

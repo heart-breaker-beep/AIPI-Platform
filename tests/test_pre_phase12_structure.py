@@ -12,16 +12,16 @@ Phase 12 前置结构修复回归测试。
 """
 
 from app.core.exceptions import WorkflowError
-from app.infrastructure.workflow.context import WorkflowContext
-from app.infrastructure.workflow.node import (
+from app.workflow.context import WorkflowContext
+from app.workflow.node import (
     BaseNode as BaseNodeFromWorkflow,
 )
-from app.infrastructure.workflow.nodes.base import (
+from app.analysis.nodes.base import (
     BaseNode as BaseNodeFromNodes,
 )
-from app.infrastructure.workflow.transition import Transition
-from app.infrastructure.workflow.workflow import Workflow
-from app.infrastructure.workflow.exceptions import (
+from app.workflow.transition import Transition
+from app.workflow.workflow import Workflow
+from app.workflow.exceptions import (
     WorkflowError as WorkflowErrorFromWorkflow,
 )
 

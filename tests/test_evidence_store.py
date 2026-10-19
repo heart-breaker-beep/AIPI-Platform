@@ -5,7 +5,7 @@ Evidence Store 单元测试。
 import pytest
 
 from app.core.exceptions import ValidationError
-from app.infrastructure.enrichment.evidence.store import EvidenceStore
+from app.analysis.evidence.store import EvidenceStore
 
 
 class FakeSession:

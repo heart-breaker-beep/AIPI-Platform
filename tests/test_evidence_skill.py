@@ -4,9 +4,10 @@ EvidenceAnalysisSkill 测试。
 
 import pytest
 
-from app.infrastructure.skills.evidence_analysis_skill import (
+from app.analysis.skills.evidence_analysis_skill import (
     EvidenceAnalysisSkill,
 )
+from app.analysis.evidence.store import EvidenceStore
 
 
 class FakeContext:
@@ -199,9 +200,9 @@ class FakePersistContext:
     ):
 
         self.tools = {}
+        self.evidence_store = EvidenceStore(session)
 
         self.config = {
-            "session": session,
             "repository_id": 7,
         }
 

@@ -28,7 +28,7 @@ import httpx
 import pytest
 
 from app.core.exceptions import ToolError
-from app.infrastructure.tools.file_reader_tool import (
+from app.integrations.github.file_reader_tool import (
     FileReaderTool,
 )
 

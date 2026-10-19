@@ -1,137 +1,133 @@
-"""
-检查依赖方向是否符合架构规则。
-
-架构规则：
-    API → Domain ← Infrastructure
-
-违规示例：
-    - Domain 不能导入 Infrastructure
-    - API 不能直接导入 Infrastructure（应该通过 Domain）
-
-用法：
-    python scripts/check_dependencies.py
-"""
+"""检查 API、业务组件、通用引擎、持久层和外部集成的依赖边界。"""
 
 import ast
-import sys
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+
+APP_DIR = Path(__file__).resolve().parent.parent / "app"
+LEGACY_PREFIXES = (
+    "app.db",
+    "app.domain",
+    "app.infrastructure",
+    "app.llm",
+    "app.embeddings",
+    "app.vector_store",
+)
+ALLOWED = {
+    "api": ("app.api", "app.services", "app.schemas", "app.core"),
+    "services": (
+        "app.services",
+        "app.analysis",
+        "app.workflow",
+        "app.persistence",
+        "app.integrations",
+        "app.schemas",
+        "app.core",
+    ),
+    "analysis": (
+        "app.analysis",
+        "app.workflow",
+        "app.persistence.repositories",
+        "app.integrations",
+        "app.core",
+    ),
+    "workflow": ("app.workflow", "app.core"),
+    "persistence": ("app.persistence", "app.core", "app.workflow.state"),
+    "integrations": ("app.integrations", "app.core"),
+    "schemas": ("app.schemas", "app.core"),
+    "core": ("app.core",),
+}
 
 
+def matches(module: str, prefix: str) -> bool:
+    return module == prefix or module.startswith(prefix + ".")
+
+
+def imported_modules(path: Path, app_dir: Path = APP_DIR) -> set[str]:
+    """包括延迟导入和相对导入，统一解析为完整模块名。"""
+    tree = ast.parse(path.read_text(encoding="utf-8-sig"))
+    package = list(path.resolve().relative_to(app_dir.resolve().parent).parts[:-1])
+    modules = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                base = package[: len(package) - node.level + 1]
+                if node.module:
+                    base.extend(node.module.split("."))
+                module = ".".join(base)
+                if not node.module:
+                    modules.update(f"{module}.{alias.name}" for alias in node.names)
+            else:
+                module = node.module or ""
+            modules.add(module)
+            # 同时检查 from app import services 这类包级导入。
+            if module == "app" or module.startswith("app."):
+                modules.update(f"{module}.{alias.name}" for alias in node.names)
+    return modules
+
+
+@dataclass
 class DependencyViolation:
-    """依赖违规"""
-
-    def __init__(self, file_path: Path, module: str, reason: str):
-        self.file_path = file_path
-        self.module = module
-        self.reason = reason
+    file_path: Path
+    module: str
+    reason: str
 
     def __str__(self):
-        return f"❌ {self.file_path}\n   imports {self.module}\n   {self.reason}"
+        return f"{self.file_path}: {self.module}: {self.reason}"
 
 
-def check_file_imports(file_path: Path) -> List[DependencyViolation]:
-    """
-    检查单个文件的导入是否违反规则。
-
-    Args:
-        file_path: 文件路径
-
-    Returns:
-        违规列表
-    """
-    try:
-        with open(file_path, encoding="utf-8") as f:
-            tree = ast.parse(f.read(), filename=str(file_path))
-    except SyntaxError:
-        # 跳过语法错误的文件
-        return []
-    except Exception:
-        return []
-
-    violations = []
-    file_str = str(file_path)
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-
-            # 规则 1: Domain 不能导入 Infrastructure
-            if "domain" in file_str and "infrastructure" in module:
-                violations.append(
-                    DependencyViolation(
-                        file_path,
-                        module,
-                        "Domain layer cannot depend on Infrastructure layer",
-                    )
-                )
-
-            # 规则 2: API 不能直接导入 Infrastructure（应该通过 Domain）
-            # 例外：API 可以导入 persistence.models（用于 ORM 查询）
-            if "api" in file_str and "infrastructure" in module:
-                # 允许导入 models（用于 ORM）
-                if not ("persistence.models" in module or "schemas" in module):
-                    violations.append(
-                        DependencyViolation(
-                            file_path,
-                            module,
-                            "API layer should depend on Domain, not Infrastructure directly",
-                        )
-                    )
-
-            # 规则 3: Infrastructure 不能导入 Domain 的具体实现
-            # （Infrastructure 只能导入 Domain 的接口）
-            if "infrastructure" in file_str and "domain" in module:
-                # 允许导入接口定义（如果有的话）
-                if ".service" in module or ".workflow" in module:
-                    violations.append(
-                        DependencyViolation(
-                            file_path,
-                            module,
-                            "Infrastructure should not depend on Domain services",
-                        )
-                    )
-
-    return violations
+def check_file_imports(
+    file_path: Path, app_dir: Path = APP_DIR
+) -> list[DependencyViolation]:
+    relative = file_path.resolve().relative_to(app_dir.resolve())
+    layer = relative.parts[0]
+    found = []
+    for module in sorted(imported_modules(file_path, app_dir)):
+        reason = None
+        if any(matches(module, prefix) for prefix in LEGACY_PREFIXES):
+            reason = "Removed package; use the current application layout"
+        elif layer in (
+            "analysis",
+            "workflow",
+            "integrations",
+            "core",
+            "schemas",
+        ) and matches(module, "sqlalchemy"):
+            reason = "Database implementation belongs in persistence"
+        elif (
+            layer == "services"
+            and matches(module, "sqlalchemy")
+            and module != "sqlalchemy.ext.asyncio"
+        ):
+            reason = "Services may coordinate Session transactions; SQL belongs in repositories"
+        elif module.startswith("app.") and layer in ALLOWED:
+            allowed = ALLOWED[layer]
+            if relative.as_posix() == "api/dependencies.py":
+                allowed = (*allowed, "app.persistence.session")
+            if not any(matches(module, prefix) for prefix in allowed):
+                reason = f"Dependency is outside the {layer} layer boundary"
+        if reason:
+            found.append(DependencyViolation(file_path, module, reason))
+    return found
 
 
-def main():
-    """主函数"""
-    app_dir = Path("app")
+def check_dependencies(app_dir: Path = APP_DIR) -> list[DependencyViolation]:
+    return [
+        violation
+        for path in sorted(app_dir.rglob("*.py"))
+        for violation in check_file_imports(path, app_dir)
+    ]
 
-    if not app_dir.exists():
-        print("❌ Error: app/ directory not found")
-        print("   Please run this script from the project root")
-        sys.exit(1)
 
-    print("🔍 Checking dependency violations...\n")
-
-    all_violations = []
-
-    # 扫描所有 Python 文件
-    for file_path in app_dir.rglob("*.py"):
-        # 跳过 __pycache__
-        if "__pycache__" in str(file_path):
-            continue
-
-        violations = check_file_imports(file_path)
-        all_violations.extend(violations)
-
-    # 输出结果
-    if all_violations:
-        print("❌ Found dependency violations:\n")
-        for violation in all_violations:
-            print(violation)
-            print()
-
-        print(f"📊 Total violations: {len(all_violations)}")
-        sys.exit(1)
-    else:
-        print("✅ No dependency violations found!")
-        print("   All dependencies follow the architecture rules:")
-        print("   API → Domain ← Infrastructure")
-        sys.exit(0)
+def main() -> int:
+    violations = check_dependencies()
+    for violation in violations:
+        print(violation)
+    print(f"Checked application dependencies: {len(violations)} violation(s).")
+    return bool(violations)
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.infrastructure.enrichment.context.manager import (
+from app.analysis.context.manager import (
     ContextManager,
 )
 

@@ -4,7 +4,7 @@ EvidenceAnalysisAgent 测试。
 
 import pytest
 
-from app.infrastructure.agents.generic_skill_agent import (
+from app.analysis.agents.generic_skill_agent import (
     GenericSkillAgent,
 )
 

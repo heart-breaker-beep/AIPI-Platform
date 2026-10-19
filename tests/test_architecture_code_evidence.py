@@ -17,13 +17,13 @@
 import pytest
 
 from app.core.exceptions import ToolError
-from app.infrastructure.tools.project.code_structure_extractor import (
+from app.analysis.tools.project.code_structure_extractor import (
     CodeStructureExtractor,
 )
-from app.infrastructure.skills.architecture_analysis_skill import (
+from app.analysis.skills.architecture_analysis_skill import (
     ArchitectureAnalysisSkill,
 )
-from app.infrastructure.skills.report_generation_skill import (
+from app.analysis.skills.report_generation_skill import (
     ReportGenerationSkill,
 )
 

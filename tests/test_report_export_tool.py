@@ -1,6 +1,6 @@
 import pytest
 
-from app.infrastructure.tools.report_export_tool import (
+from app.integrations.report_export_tool import (
     ReportExportTool
 )
 

@@ -1,6 +1,6 @@
 """Embedding Provider 测试。"""
 
-from app.embeddings.ollama import OllamaEmbedding
+from app.integrations.embeddings.ollama import OllamaEmbedding
 
 
 def test_ollama_embedding():

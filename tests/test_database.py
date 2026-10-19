@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy import text
 
-from app.db.session import AsyncSessionLocal
+from app.persistence.session import AsyncSessionLocal
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,6 @@
 """Qdrant 向量存储测试。"""
 
-from app.vector_store.qdrant import QdrantVectorStore
+from app.integrations.vector_store.qdrant import QdrantVectorStore
 
 
 def test_qdrant_vector_search():

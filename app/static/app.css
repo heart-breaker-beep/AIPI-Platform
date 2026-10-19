@@ -39,6 +39,10 @@
   --c-accent-soft:   #eff6ff;
   --c-accent-border: #bfdbfe;
 
+  --c-lede-start:    #eff6ff;
+  --c-lede-mid:      #dbeafe;
+  --c-lede-end:      #f5f3ff;
+
   --c-violet:        #7c3aed;
   --c-violet-soft:   #f5f3ff;
 
@@ -124,6 +128,10 @@
   --c-accent-hover:  #79c0ff;
   --c-accent-soft:   #0d1d30;
   --c-accent-border: #1f4275;
+
+  --c-lede-start:    #10243a;
+  --c-lede-mid:      #162b45;
+  --c-lede-end:      #211b35;
 
   --c-violet:        #a78bfa;
   --c-violet-soft:   #221b3a;
@@ -1123,9 +1131,9 @@ input[type="text"]:focus, textarea:focus, select:focus {
   color: var(--c-text);
   padding: var(--s-5) var(--s-6);
   background: linear-gradient(135deg,
-    #eff6ff 0%,
-    #dbeafe 50%,
-    #f5f3ff 100%);
+    var(--c-lede-start) 0%,
+    var(--c-lede-mid) 50%,
+    var(--c-lede-end) 100%);
   border: 1px solid var(--c-accent-border);
   border-radius: var(--r-lg);
   box-shadow: 0 4px 12px rgba(59, 130, 246, .08);

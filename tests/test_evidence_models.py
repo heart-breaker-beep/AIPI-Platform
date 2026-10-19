@@ -2,9 +2,9 @@
 Evidence / Claim / Citation 模型测试。
 """
 
-from app.infrastructure.persistence.models.claim import Claim
-from app.infrastructure.persistence.models.citation import Citation
-from app.infrastructure.persistence.models.evidence import Evidence
+from app.persistence.models.claim import Claim
+from app.persistence.models.citation import Citation
+from app.persistence.models.evidence import Evidence
 
 
 def test_evidence_model():

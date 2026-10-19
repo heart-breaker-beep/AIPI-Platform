@@ -1,7 +1,7 @@
 """Embedding 与 Qdrant 集成测试。"""
 
-from app.embeddings.ollama import OllamaEmbedding
-from app.vector_store.qdrant import QdrantVectorStore
+from app.integrations.embeddings.ollama import OllamaEmbedding
+from app.integrations.vector_store.qdrant import QdrantVectorStore
 
 
 def test_embedding_to_qdrant():

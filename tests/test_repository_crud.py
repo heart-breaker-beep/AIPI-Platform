@@ -3,9 +3,9 @@
 import pytest
 from sqlalchemy import delete
 
-from app.db.session import AsyncSessionLocal
-from app.infrastructure.persistence.models.repository import Repository
-from app.infrastructure.persistence.repositories.repository_basic import RepositoryRepository
+from app.persistence.session import AsyncSessionLocal
+from app.persistence.models.repository import Repository
+from app.persistence.repositories.repository_basic import RepositoryRepository
 
 
 @pytest.mark.asyncio

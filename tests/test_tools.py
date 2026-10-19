@@ -1,11 +1,11 @@
 import pytest
 
-from app.infrastructure.tools.github.github_repository_tool import (
+from app.integrations.github.github_repository_tool import (
     GitHubRepositoryTool
 )
 
 
-from app.infrastructure.tools.file_reader_tool import (
+from app.integrations.github.file_reader_tool import (
     FileReaderTool
 )
 

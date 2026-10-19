@@ -27,8 +27,8 @@ checkpoint 的 state_data 涨到 263,743 字节，
 import json
 from pathlib import Path
 
-from app.infrastructure.workflow.state_manager import StateManager
-from app.domain.analysis.workflow import AnalysisWorkflowOrchestrator
+from app.workflow.state_manager import StateManager
+from app.services.report_service import ReportService
 
 
 def build_oversized_state():
@@ -223,7 +223,7 @@ def test_report_falls_back_to_disk(tmp_path, monkeypatch):
         encoding="utf-8",
     )
 
-    result = AnalysisWorkflowOrchestrator.get_report_from_disk(
+    result = ReportService.get_report_from_disk(
         "run-1",
         None,
     )
@@ -256,7 +256,7 @@ def test_report_fills_missing_content_from_disk(
         encoding="utf-8",
     )
 
-    result = AnalysisWorkflowOrchestrator.get_report_from_disk(
+    result = ReportService.get_report_from_disk(
         "run-2",
         {
             "report": {
@@ -282,7 +282,7 @@ def test_report_keeps_inline_content_when_present():
         "content": "# 来自 state 的正文",
     }
 
-    result = AnalysisWorkflowOrchestrator.get_report_from_disk(
+    result = ReportService.get_report_from_disk(
         "run-3",
         report,
     )
@@ -299,7 +299,7 @@ def test_report_returns_none_when_nothing_available(
     monkeypatch.chdir(tmp_path)
 
     assert (
-        AnalysisWorkflowOrchestrator.get_report_from_disk(
+        ReportService.get_report_from_disk(
             "missing-run",
             None,
         )

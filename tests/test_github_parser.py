@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.infrastructure.tools.github.parser import parse_github_url
+from app.integrations.github.parser import parse_github_url
 
 
 def test_parse_github_url():

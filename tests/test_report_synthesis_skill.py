@@ -20,14 +20,14 @@ import pytest
 from skill_snapshots import (
     assert_snapshot,
 )
-from app.infrastructure.skills.report_synthesis_skill import (
+from app.analysis.skills.report_synthesis_skill import (
     ReportSynthesisSkill,
 )
-from app.infrastructure.tools.llm_chat_tool import LLMChatTool
-from app.infrastructure.workflow.nodes.synthesis_node import (
+from app.integrations.llm.chat_tool import LLMChatTool
+from app.analysis.nodes.synthesis_node import (
     SynthesisNode,
 )
-from app.infrastructure.workflow.state import WorkflowState
+from app.workflow.state import WorkflowState
 
 VALID_REPLY = json.dumps(
     {
@@ -427,7 +427,7 @@ async def test_llm_chat_tool_without_api_key(monkeypatch):
     而不是抛异常让整个 Workflow 失败。
     """
 
-    import app.infrastructure.tools.llm_chat_tool as module
+    import app.integrations.llm.chat_tool as module
 
     class FakeSettings:
         LLM_API_KEY = ""
@@ -759,7 +759,7 @@ async def test_llm_chat_tool_reuses_one_client(monkeypatch):
     每次 LLM 调用都会泄漏一个连接池。
     """
 
-    import app.infrastructure.tools.llm_chat_tool as module
+    import app.integrations.llm.chat_tool as module
 
     created = []
 
@@ -849,7 +849,7 @@ async def test_llm_client_close_hook_releases_client(
     客户端自带连接池，不关就等 GC。
     """
 
-    import app.infrastructure.tools.llm_chat_tool as module
+    import app.integrations.llm.chat_tool as module
 
     class FakeCompletions:
 

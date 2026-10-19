@@ -19,13 +19,13 @@ import pytest
 from skill_snapshots import (
     assert_snapshot,
 )
-from app.infrastructure.reporting.report_document import (
-    ReportService,
+from app.analysis.reporting.report_document import (
+    ReportDocumentBuilder,
 )
-from app.infrastructure.skills.learning_path_skill import (
+from app.analysis.skills.learning_path_skill import (
     LearningPathSkill,
 )
-from app.infrastructure.tools.report_export_tool import (
+from app.integrations.report_export_tool import (
     ReportExportTool,
 )
 
@@ -160,12 +160,12 @@ def build_state():
 def test_document_has_stable_top_level_fields():
     """文档结构是消费方的契约，字段必须稳定。"""
 
-    doc = ReportService.build_document(
+    doc = ReportDocumentBuilder.build_document(
         build_state()
     )
 
     assert doc["schema_version"] == (
-        ReportService.SCHEMA_VERSION
+        ReportDocumentBuilder.SCHEMA_VERSION
     )
 
     for key in (
@@ -190,7 +190,7 @@ def test_document_has_stable_top_level_fields():
 
 def test_document_carries_focus():
 
-    doc = ReportService.build_document(
+    doc = ReportDocumentBuilder.build_document(
         build_state()
     )
 
@@ -208,7 +208,7 @@ def test_document_omits_module_content():
     要正文按 file_path 自己去取。
     """
 
-    doc = ReportService.build_document(
+    doc = ReportDocumentBuilder.build_document(
         build_state()
     )
 
@@ -235,7 +235,7 @@ def test_document_omits_module_content():
 def test_document_omits_detail_source():
     """明细不带 source 源码片段。"""
 
-    doc = ReportService.build_document(
+    doc = ReportDocumentBuilder.build_document(
         build_state()
     )
 
@@ -258,7 +258,7 @@ def test_document_omits_detail_source():
 def test_document_handles_empty_state():
     """没有数据时不能崩，要如实标注。"""
 
-    doc = ReportService.build_document({})
+    doc = ReportDocumentBuilder.build_document({})
 
     assert doc["project"]["available"] is False
 
@@ -273,7 +273,7 @@ def test_document_handles_empty_state():
 
 def test_document_handles_broken_state():
 
-    doc = ReportService.build_document("x")
+    doc = ReportDocumentBuilder.build_document("x")
 
     assert doc["schema_version"] == 1
 
@@ -287,8 +287,8 @@ def test_json_output_keeps_chinese_readable():
     转义成 \\uXXXX 会让文件膨胀一倍且不可读。
     """
 
-    text = ReportService.to_json(
-        ReportService.build_document(
+    text = ReportDocumentBuilder.to_json(
+        ReportDocumentBuilder.build_document(
             build_state()
         )
     )
@@ -301,7 +301,7 @@ def test_json_output_keeps_chinese_readable():
 def test_markdown_delegates_to_report_skill():
     """markdown 仍由 ReportGenerationSkill 渲染。"""
 
-    content = ReportService.to_markdown(
+    content = ReportDocumentBuilder.to_markdown(
         build_state()
     )
 

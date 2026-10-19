@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
+from app.api.dependencies import get_analysis_service, get_db, get_report_service
 from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisDeepDiveResponse,
@@ -14,8 +14,9 @@ from app.schemas.analysis import (
     LearningPathResponse,
 )
 from app.services.analysis_service import (
-    analysis_service,
+    AnalysisService,
 )
+from app.services.report_service import ReportService
 
 router = APIRouter(
     prefix="/analysis",
@@ -30,10 +31,11 @@ router = APIRouter(
 async def create_analysis(
     request: AnalysisCreateRequest,
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisResponse:
     """创建并启动 GitHub 项目分析 Workflow。"""
 
-    return await analysis_service.create_analysis(
+    return await service.create_analysis(
         session,
         request,
     )
@@ -51,6 +53,7 @@ async def list_analyses(
         description="最多返回多少条",
     ),
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> list[AnalysisResponse]:
     """
     列出最近的分析任务。
@@ -60,7 +63,7 @@ async def list_analyses(
     之前跑过的分析了。
     """
 
-    return await analysis_service.list_analyses(
+    return await service.list_analyses(
         session,
         limit,
     )
@@ -73,10 +76,11 @@ async def list_analyses(
 async def get_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisResponse:
     """查询分析任务。"""
 
-    return await analysis_service.get_analysis(
+    return await service.get_analysis(
         session,
         run_id,
     )
@@ -89,10 +93,11 @@ async def get_analysis(
 async def approve_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisResponse:
     """批准 Design Gate 或 Human Review。"""
 
-    return await analysis_service.approve_analysis(
+    return await service.approve_analysis(
         session,
         run_id,
     )
@@ -105,10 +110,11 @@ async def approve_analysis(
 async def pause_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisResponse:
     """暂停 Workflow。"""
 
-    return await analysis_service.pause_analysis(
+    return await service.pause_analysis(
         session,
         run_id,
     )
@@ -121,10 +127,11 @@ async def pause_analysis(
 async def resume_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisResponse:
     """恢复 PAUSED Workflow。"""
 
-    return await analysis_service.resume_analysis(
+    return await service.resume_analysis(
         session,
         run_id,
     )
@@ -137,10 +144,11 @@ async def resume_analysis(
 async def retry_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisResponse:
     """重试失败 Workflow。"""
 
-    return await analysis_service.retry_analysis(
+    return await service.retry_analysis(
         session,
         run_id,
     )
@@ -153,6 +161,7 @@ async def retry_analysis(
 async def cancel_analysis(
     run_id: str,
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisResponse:
     """
     放弃本次分析。
@@ -162,7 +171,7 @@ async def cancel_analysis(
     状态置为 CANCELED，数据全部保留。
     """
 
-    return await analysis_service.cancel_analysis(
+    return await service.cancel_analysis(
         session,
         run_id,
     )
@@ -176,6 +185,7 @@ async def replan_analysis(
     run_id: str,
     request: AnalysisReplanRequest,
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisResponse:
     """
     在设计闸门修改问题并重新规划。
@@ -184,7 +194,7 @@ async def replan_analysis(
     只在 WAITING_DESIGN 时可用。
     """
 
-    return await analysis_service.replan_analysis(
+    return await service.replan_analysis(
         session,
         run_id,
         request,
@@ -198,10 +208,11 @@ async def replan_analysis(
 async def get_analysis_report(
     run_id: str,
     session: AsyncSession = Depends(get_db),
+    service: ReportService = Depends(get_report_service),
 ) -> AnalysisReportResponse:
     """获取最终项目智能分析报告。"""
 
-    return await analysis_service.get_report(
+    return await service.get_report(
         session,
         run_id,
     )
@@ -214,6 +225,7 @@ async def get_analysis_report(
 async def get_analysis_json_report(
     run_id: str,
     session: AsyncSession = Depends(get_db),
+    service: ReportService = Depends(get_report_service),
 ) -> AnalysisJsonReportResponse:
     """
     获取结构化报告（JSON）。
@@ -227,7 +239,7 @@ async def get_analysis_json_report(
     因此早期 run 也能拿到。
     """
 
-    return await analysis_service.get_report_json(
+    return await service.get_report_json(
         session,
         run_id,
     )
@@ -241,11 +253,10 @@ async def learning_path(
     run_id: str,
     goal: str | None = Query(
         None,
-        description=(
-            "学习目标，留空则用该 run 的分析问题"
-        ),
+        description=("学习目标，留空则用该 run 的分析问题"),
     ),
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> LearningPathResponse:
     """
     生成项目的学习路线（Phase 14.1）。
@@ -259,7 +270,7 @@ async def learning_path(
     该接口只读不写，不修改原报告。
     """
 
-    return await analysis_service.learning_path(
+    return await service.learning_path(
         session,
         run_id,
         goal,
@@ -274,12 +285,10 @@ async def deep_dive_module(
     run_id: str,
     module: str = Query(
         ...,
-        description=(
-            "要深挖的模块：agents / workflow / "
-            "skills / tools / rag / memory"
-        ),
+        description=("要深挖的模块：agents / workflow / skills / tools / rag / memory"),
     ),
     session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
 ) -> AnalysisDeepDiveResponse:
     """
     对已完成 run 的单个模块做深挖。
@@ -292,7 +301,7 @@ async def deep_dive_module(
     产物是单独一份 markdown 报告。
     """
 
-    return await analysis_service.deep_dive_module(
+    return await service.deep_dive_module(
         session,
         run_id,
         module,

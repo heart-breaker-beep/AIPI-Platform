@@ -6,7 +6,9 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.infrastructure.enrichment.memory.project_memory import (
+from app.persistence.repositories.project_memory import ProjectMemoryRepository
+
+from app.analysis.memory.project_memory import (
     ProjectMemory,
 )
 
@@ -77,7 +79,7 @@ async def test_project_memory_filters_current_run():
     ]
 
     memory = ProjectMemory(
-        session
+        ProjectMemoryRepository(session)
     )
 
     result = await memory.load(

@@ -51,7 +51,7 @@ from app.api.v1.analysis import (
     router as analysis_router,
 )
 from app.core.config import get_settings
-from app.core.error_handlers import (
+from app.api.error_handlers import (
     application_error_handler,
     unexpected_error_handler,
 )
@@ -60,7 +60,7 @@ from app.core.logging import (
     get_logger,
     setup_logging,
 )
-from app.infrastructure.tools.llm_chat_tool import (
+from app.integrations.llm.chat_tool import (
     aclose_llm_clients,
 )
 

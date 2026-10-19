@@ -1,4 +1,4 @@
-from app.infrastructure.skills.base import BaseSkill
+from app.analysis.skills.base import BaseSkill
 
 
 

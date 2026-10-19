@@ -22,7 +22,7 @@ import pytest
 from qdrant_client import QdrantClient
 
 from app.core.config import get_settings
-from app.vector_store.qdrant import QdrantVectorStore
+from app.integrations.vector_store.qdrant import QdrantVectorStore
 
 
 def _services_available() -> bool:
@@ -76,8 +76,8 @@ class PaymentGateway:
 
 
 def _fixtures():
-    from app.embeddings.ollama import OllamaEmbedding
-    from app.infrastructure.tools.project.code_chunker import (
+    from app.integrations.embeddings.ollama import OllamaEmbedding
+    from app.analysis.tools.project.code_chunker import (
         PythonCodeChunker,
     )
 
@@ -178,7 +178,7 @@ def test_retrieval_tool_refuses_without_repository_id(store):
 
     import asyncio
 
-    from app.infrastructure.tools.rag_retrieval_tool import (
+    from app.analysis.tools.rag_retrieval_tool import (
         RagRetrievalTool,
     )
 

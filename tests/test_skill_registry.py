@@ -1,4 +1,4 @@
-from app.infrastructure.skills.registry import (
+from app.analysis.skills.registry import (
     create_skill_registry
 )
 

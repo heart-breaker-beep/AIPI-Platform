@@ -6,7 +6,7 @@ AIPI Platform 是一个 **AI 驱动的 GitHub 项目智能分析平台**，基�
 
 **核心特性：**
 - 🤖 **Multi-Agent 协作**：Planner、Researcher、Critic 等多个 Agent 协同工作
-- 📊 **Workflow 编排**：基于六边形架构的 Workflow 引擎
+- 📊 **Workflow 编排**：支持检查点与人工审批的 Workflow 引擎
 - 🔍 **RAG 语义检索**：基于 Qdrant 向量数据库的语义搜索
 - 🧠 **跨 Run 记忆**：支持多次分析的上下文记忆
 - 📝 **自动生成报告**：生成 Markdown 和 JSON 格式的分析报告
@@ -16,7 +16,7 @@ AIPI Platform 是一个 **AI 驱动的 GitHub 项目智能分析平台**，基�
 - **后端**：FastAPI + SQLAlchemy + MySQL
 - **AI**：DeepSeek API + Ollama Embedding
 - **向量数据库**：Qdrant
-- **架构**：六边形架构（Hexagonal Architecture）
+- **架构**：API / Service / Persistence 分层 + 分析组件 + 通用 Workflow 引擎
 
 ---
 
@@ -244,68 +244,29 @@ open htmlcov/index.html
 
 ## 🏗️ 项目架构
 
-### 六边形架构（Hexagonal Architecture）
+### 分层结构
 
-```
-┌────────────────┐
-│   API Layer    │  ← HTTP 接口
-└────────┬───────┘
-         ↓
-┌─────────────────────┐
-│ Application Service │  ← API 适配层
-└────────┬────────────┘
-         ↓
-┌────────────────┐
-│  Domain Layer  │  ← 核心业务规则
-└────────┬───────┘
-         ↑
-┌────────┴───────────┐
-│ Infrastructure     │  ← 技术实现
-└────────────────────┘
-```
+以 **API → Service → Persistence** 为主干，分析业务组件和通用工作流机制分别组织。
 
-### 目录结构
-
-```
+```text
 app/
-├── api/                    # API 层（HTTP 接口）
-│   └── v1/
-│       └── analysis.py
-│
-├── services/               # Application Service（适配层）
-│   ├── analysis_service.py
-│   └── ...
-│
-├── domain/                 # 领域层（业务规则）
-│   └── analysis/
-│       ├── service.py      # 业务编排
-│       ├── workflow.py     # Workflow 编排
-│       └── factory.py      # 工厂函数
-│
-├── infrastructure/         # 基础设施层（技术实现）
-│   ├── workflow/          # Workflow 引擎
-│   ├── agents/            # Agent 实现
-│   ├── skills/            # Skill 实现
-│   ├── tools/             # Tool 实现
-│   ├── persistence/       # 数据持久化
-│   │   ├── models/        # ORM 模型
-│   │   └── repositories/  # Repository 模式
-│   └── enrichment/        # 数据增强
-│       ├── evidence/      # 证据采集
-│       ├── memory/        # 跨 run 记忆
-│       └── context/       # 上下文注入
-│
-├── core/                  # 共享核心
-│   ├── config.py
-│   ├── logging.py
-│   └── exceptions.py
-│
-├── db/                    # 数据库连接
-├── embeddings/            # Embedding 客户端
-├── llm/                   # LLM 客户端
-├── vector_store/          # 向量数据库
-└── schemas/               # API DTOs
+├── api/                 # HTTP 路由、依赖注入、异常响应
+├── services/            # 用例协调、报告查询、依赖组装
+├── analysis/            # 分析流程、节点、Agent、Skill、证据与报告
+├── workflow/            # 通用引擎、状态、重试与检查点
+├── persistence/         # 数据库连接、ORM 模型、Repository
+│   ├── session.py
+│   ├── base.py
+│   ├── models/
+│   └── repositories/
+├── integrations/        # GitHub、LLM、Embedding、Qdrant、文件导出
+├── schemas/             # 接口请求与响应模型
+├── core/                # 配置、日志与通用异常
+├── static/
+└── main.py
 ```
+
+详细职责和事务规则见 [ARCHITECTURE.md](ARCHITECTURE.md)。运行 `python scripts/check_dependencies.py` 检查模块依赖边界。
 
 ### Workflow 流程
 

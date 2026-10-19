@@ -1,85 +1,53 @@
-"""
-Analysis Application Service - API 适配层。
-
-职责：
-- HTTP 请求校验
-- 数据库 CRUD 操作
-- DTO 转换（AnalysisRun → AnalysisResponse）
-- 委托 Domain Service 执行核心业务
-- 事务管理
-
-重构说明：
-- 保持原有 API 接口不变
-- 委托 Domain Service 执行 Workflow 编排
-- 使用新架构的 Infrastructure 层
-"""
+"""分析任务用例：业务校验、执行协调、运行状态同步与响应组装。"""
 
 from uuid import uuid4
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.analysis.skills.module_deep_dive_skill import (
+    ModuleDeepDiveSkill,
+)
 from app.core.config import get_settings
 from app.core.exceptions import ValidationError
 from app.core.logging import (
     get_logger,
     log_with_run_id,
 )
-from app.services.analysis_factory import (
-    create_analysis_service,
-)
-from app.infrastructure.persistence.models.repository import Repository
-from app.infrastructure.persistence.repositories.analysis_run import (
-    AnalysisRunRepository,
-)
-from app.infrastructure.persistence.repositories.checkpoint import (
-    CheckpointRepository,
-)
-from app.infrastructure.persistence.repositories.repository_basic import (
-    RepositoryRepository,
-)
-from app.infrastructure.skills.module_deep_dive_skill import (
-    ModuleDeepDiveSkill,
-)
-from app.infrastructure.tools.github.parser import (
+from app.integrations.github.parser import (
     parse_github_url,
 )
-from app.infrastructure.workflow.state import (
-    WorkflowStatus,
+from app.persistence.repositories.analysis_run import (
+    AnalysisRunRepository,
+)
+from app.persistence.repositories.checkpoint import (
+    CheckpointRepository,
+)
+from app.persistence.repositories.repository_basic import (
+    RepositoryRepository,
 )
 from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisDeepDiveResponse,
-    AnalysisJsonReportResponse,
     AnalysisReplanRequest,
-    AnalysisReportResponse,
     AnalysisResponse,
     LearningPathResponse,
+)
+from app.services.analysis_factory import (
+    create_analysis_workflow,
+)
+from app.workflow.state import (
+    WorkflowStatus,
 )
 
 logger = get_logger(__name__)
 
 
 class AnalysisService:
-    """
-    Analysis Application Service - API 适配层。
+    """管理分析任务生命周期，协调分析组件和持久层。"""
 
-    职责：
-    - 业务校验（URL 格式、状态校验）
-    - 数据库操作（Repository、AnalysisRun CRUD）
-    - 委托 Domain Service 执行核心业务
-    - 同步 Workflow 状态到数据库
-    - DTO 转换
-
-    重构说明：
-    - 保留为 Application Service（不是 Domain Service）
-    - 委托 domain.analysis.AnalysisService 执行业务编排
-    - 负责数据库事务和 DTO 转换
-    """
-
-    def _get_domain_service(self, session: AsyncSession):
-        """获取 Domain Service 实例（工厂方法）"""
-        return create_analysis_service(session)
+    def _get_workflow(self, session: AsyncSession):
+        """组装当前 Session 对应的分析工作流执行组件。"""
+        return create_analysis_workflow(session)
 
     async def create_analysis(
         self,
@@ -91,9 +59,7 @@ class AnalysisService:
         repo_url = request.repo_url.strip()
 
         if not repo_url:
-            raise ValidationError(
-                "Repository URL cannot be empty."
-            )
+            raise ValidationError("Repository URL cannot be empty.")
 
         if not repo_url.startswith(
             (
@@ -101,45 +67,24 @@ class AnalysisService:
                 "http://github.com/",
             )
         ):
-            raise ValidationError(
-                "Only GitHub repository URLs are supported."
-            )
+            raise ValidationError("Only GitHub repository URLs are supported.")
 
-        owner, name = self._parse_github_url(
-            repo_url
-        )
+        owner, name = self._parse_github_url(repo_url)
 
-        repository_repo = (
-            RepositoryRepository(
-                session
-            )
-        )
+        repository_repo = RepositoryRepository(session)
 
-        analysis_run_repo = (
-            AnalysisRunRepository(
-                session
-            )
-        )
+        analysis_run_repo = AnalysisRunRepository(session)
 
-        repository = (
-            await repository_repo.get_by_url(
-                repo_url
-            )
-        )
+        repository = await repository_repo.get_by_url(repo_url)
 
         if repository is None:
-            repository = (
-                await repository_repo.create(
-                    url=repo_url,
-                    owner=owner,
-                    name=name,
-                )
+            repository = await repository_repo.create(
+                url=repo_url,
+                owner=owner,
+                name=name,
             )
 
-        elif (
-            repository.owner != owner
-            or repository.name != name
-        ):
+        elif repository.owner != owner or repository.name != name:
             # 自愈历史脏数据。
             #
             # 之前 _parse_github_url 不剥离 query string，
@@ -163,8 +108,7 @@ class AnalysisService:
             # 所以只修解析器救不了存量数据，
             # 这里顺手把 owner / name 修正回来。
             logger.warning(
-                "repairing repository row | "
-                "id=%s | name %r -> %r",
+                "repairing repository row | id=%s | name %r -> %r",
                 repository.id,
                 repository.name,
                 name,
@@ -213,13 +157,13 @@ class AnalysisService:
             ),
         }
 
-        # 使用 Domain Service 启动 Workflow。
+        # 启动分析工作流。
         #
         # initial_data 原样传下去：组装只发生在这一处，
-        # 避免领域层再拼一份导致字段不一致。
-        domain_service = self._get_domain_service(session)
+        # 避免执行组件再拼一份导致字段不一致。
+        workflow = self._get_workflow(session)
 
-        state = await domain_service.start_analysis(
+        state = await workflow.start_workflow(
             run_id=run_id,
             repository_id=repository.id,
             initial_data=initial_data,
@@ -229,14 +173,10 @@ class AnalysisService:
         await self._sync_state_to_run(session, run, state)
         await session.commit()
 
-        run = await analysis_run_repo.get_by_id(
-            run_id
-        )
+        run = await analysis_run_repo.get_by_id(run_id)
 
         if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
+            raise ValidationError(f"Analysis run not found: {run_id}")
 
         return await self._to_response(
             session,
@@ -250,18 +190,12 @@ class AnalysisService:
     ) -> AnalysisResponse:
         """查询 Analysis Run。"""
 
-        run_repo = AnalysisRunRepository(
-            session
-        )
+        run_repo = AnalysisRunRepository(session)
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
+            raise ValidationError(f"Analysis run not found: {run_id}")
 
         return await self._to_response(
             session,
@@ -284,18 +218,12 @@ class AnalysisService:
         用户会看到"点了放弃却还在跑"。
         """
 
-        run_repo = AnalysisRunRepository(
-            session
-        )
+        run_repo = AnalysisRunRepository(session)
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
+            raise ValidationError(f"Analysis run not found: {run_id}")
 
         if run.status not in {
             "WAITING_DESIGN",
@@ -303,21 +231,18 @@ class AnalysisService:
             "PAUSED",
         }:
             raise ValidationError(
-                f"Analysis run cannot be canceled "
-                f"from status: {run.status}"
+                f"Analysis run cannot be canceled from status: {run.status}"
             )
 
-        domain_service = self._get_domain_service(session)
+        workflow = self._get_workflow(session)
 
-        state = await domain_service.cancel_analysis(run_id)
+        state = await workflow.cancel_workflow(run_id)
 
         # 同步状态到数据库
         await self._sync_state_to_run(session, run, state)
         await session.commit()
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         return await self._to_response(
             session,
@@ -339,18 +264,12 @@ class AnalysisService:
         那些 Agent 的结果对应的是旧问题。
         """
 
-        run_repo = AnalysisRunRepository(
-            session
-        )
+        run_repo = AnalysisRunRepository(session)
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
+            raise ValidationError(f"Analysis run not found: {run_id}")
 
         if run.status != "WAITING_DESIGN":
             raise ValidationError(
@@ -362,17 +281,15 @@ class AnalysisService:
         question = request.question.strip()
 
         if not question:
-            raise ValidationError(
-                "Question cannot be empty."
-            )
+            raise ValidationError("Question cannot be empty.")
 
-        domain_service = self._get_domain_service(session)
+        workflow = self._get_workflow(session)
 
         # 更新 run 表里的 question
         run.question = question
         await session.commit()
 
-        state = await domain_service.replan_analysis(
+        state = await workflow.replan_workflow(
             run_id=run_id,
             repository_id=run.repository_id,
             question=question,
@@ -382,9 +299,7 @@ class AnalysisService:
         await self._sync_state_to_run(session, run, state)
         await session.commit()
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         # 重规划后停在同一个闸门，
         # 因此把新方案一并带回，前端可直接刷新显示。
@@ -401,32 +316,25 @@ class AnalysisService:
     ) -> AnalysisResponse:
         """批准 Design Gate 或 Human Review。"""
 
-        run_repo = AnalysisRunRepository(
-            session
-        )
+        run_repo = AnalysisRunRepository(session)
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
+            raise ValidationError(f"Analysis run not found: {run_id}")
 
         if run.status not in {
             "WAITING_DESIGN",
             "WAITING_HUMAN",
         }:
             raise ValidationError(
-                f"Analysis run cannot be approved "
-                f"from status: {run.status}"
+                f"Analysis run cannot be approved from status: {run.status}"
             )
 
-        # 使用 Domain Service 批准并恢复 Workflow
-        domain_service = self._get_domain_service(session)
+        # 批准并恢复分析工作流。
+        workflow = self._get_workflow(session)
 
-        state = await domain_service.approve_analysis(
+        state = await workflow.approve_workflow(
             run_id=run_id,
             repository_id=run.repository_id,
             identity=await self._load_identity(
@@ -439,9 +347,7 @@ class AnalysisService:
         await self._sync_state_to_run(session, run, state)
         await session.commit()
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         return await self._to_response(
             session,
@@ -455,18 +361,12 @@ class AnalysisService:
     ) -> AnalysisResponse:
         """暂停 Workflow。"""
 
-        run_repo = AnalysisRunRepository(
-            session
-        )
+        run_repo = AnalysisRunRepository(session)
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
+            raise ValidationError(f"Analysis run not found: {run_id}")
 
         if run.status not in {
             "ANALYZING",
@@ -474,21 +374,18 @@ class AnalysisService:
             "WAITING_HUMAN",
         }:
             raise ValidationError(
-                f"Analysis run cannot be paused "
-                f"from status: {run.status}"
+                f"Analysis run cannot be paused from status: {run.status}"
             )
 
-        domain_service = self._get_domain_service(session)
+        workflow = self._get_workflow(session)
 
-        state = await domain_service.pause_analysis(run_id)
+        state = await workflow.pause_workflow(run_id)
 
         # 同步状态到数据库
         await self._sync_state_to_run(session, run, state)
         await session.commit()
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         return await self._to_response(
             session,
@@ -502,28 +399,21 @@ class AnalysisService:
     ) -> AnalysisResponse:
         """从 PAUSED Checkpoint 恢复。"""
 
-        run_repo = AnalysisRunRepository(
-            session
-        )
+        run_repo = AnalysisRunRepository(session)
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
+            raise ValidationError(f"Analysis run not found: {run_id}")
 
         if run.status != "PAUSED":
             raise ValidationError(
-                f"Analysis run cannot be resumed "
-                f"from status: {run.status}"
+                f"Analysis run cannot be resumed from status: {run.status}"
             )
 
-        domain_service = self._get_domain_service(session)
+        workflow = self._get_workflow(session)
 
-        state = await domain_service.resume_analysis(
+        state = await workflow.resume_workflow(
             run_id=run_id,
             repository_id=run.repository_id,
             identity=await self._load_identity(
@@ -536,9 +426,7 @@ class AnalysisService:
         await self._sync_state_to_run(session, run, state)
         await session.commit()
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         return await self._to_response(
             session,
@@ -552,28 +440,21 @@ class AnalysisService:
     ) -> AnalysisResponse:
         """重新执行失败的 Workflow。"""
 
-        run_repo = AnalysisRunRepository(
-            session
-        )
+        run_repo = AnalysisRunRepository(session)
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
+            raise ValidationError(f"Analysis run not found: {run_id}")
 
         if run.status != "FAILED":
             raise ValidationError(
-                f"Analysis run cannot be retried "
-                f"from status: {run.status}"
+                f"Analysis run cannot be retried from status: {run.status}"
             )
 
-        domain_service = self._get_domain_service(session)
+        workflow = self._get_workflow(session)
 
-        state = await domain_service.retry_analysis(
+        state = await workflow.retry_workflow(
             run_id=run_id,
             repository_id=run.repository_id,
             identity=await self._load_identity(
@@ -586,9 +467,7 @@ class AnalysisService:
         await self._sync_state_to_run(session, run, state)
         await session.commit()
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         return await self._to_response(
             session,
@@ -608,21 +487,17 @@ class AnalysisService:
         产物是独立的一份 markdown。
         """
 
-        run_repo = AnalysisRunRepository(
-            session
-        )
+        run_repo = AnalysisRunRepository(session)
 
         run = await run_repo.get_by_id(run_id)
 
         if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
+            raise ValidationError(f"Analysis run not found: {run_id}")
 
-        domain_service = self._get_domain_service(session)
+        workflow = self._get_workflow(session)
 
         # 加载 checkpoint 获取数据
-        state = await domain_service.get_analysis_state(run_id)
+        state = await workflow.get_checkpoint(run_id)
 
         if state is None:
             raise ValidationError(f"Checkpoint not found: {run_id}")
@@ -630,7 +505,7 @@ class AnalysisService:
         data = state.data or {}
 
         # 执行 learning_path skill
-        result = await domain_service.execute_skill(
+        result = await workflow.execute_skill(
             run_id=run_id,
             repository_id=data.get("repository_id"),
             skill_name="learning_path",
@@ -643,128 +518,11 @@ class AnalysisService:
 
         return LearningPathResponse(
             run_id=run_id,
-            available=bool(
-                result.get("available")
-            ),
+            available=bool(result.get("available")),
             reason=result.get("reason"),
             sections=result.get("sections") or {},
             report=result.get("report"),
             content=result.get("content") or "",
-        )
-
-    async def get_report_json(
-        self,
-        session: AsyncSession,
-        run_id: str,
-    ) -> AnalysisJsonReportResponse:
-        """
-        获取结构化报告（Phase 14.2）。
-
-        两条路：
-
-        1. 读 Finalizer 落盘的 .json（正常路径）
-        2. 文件不在了就用 ReportService
-           从 checkpoint 现场重建
-
-        第 2 条不只是兜底：
-        早期 run 没产出过 JSON，
-        现场重建让它们也能拿到结构化报告。
-        """
-
-        run_repo = AnalysisRunRepository(
-            session
-        )
-
-        run = await run_repo.get_by_id(run_id)
-
-        if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
-
-        domain_service = self._get_domain_service(session)
-
-        # 加载 checkpoint
-        state = await domain_service.get_analysis_state(run_id)
-
-        data = state.data if state is not None else {}
-
-        # 1. 尝试从磁盘读取 JSON 报告
-        json_path = domain_service.get_json_report_path(run_id, data)
-
-        if json_path:
-            try:
-                import json
-                from pathlib import Path
-
-                document = json.loads(Path(json_path).read_text(encoding="utf-8"))
-
-                return AnalysisJsonReportResponse(
-                    run_id=run_id,
-                    status=run.status,
-                    document=document,
-                )
-            except (OSError, ValueError):
-                pass
-
-        # 2. 从 checkpoint 现场重建
-        if data:
-            from app.infrastructure.reporting.report_document import ReportService
-
-            document = ReportService.build_document(
-                data,
-                run_id=run_id,
-            )
-
-            return AnalysisJsonReportResponse(
-                run_id=run_id,
-                status=run.status,
-                document=document,
-            )
-
-        return AnalysisJsonReportResponse(
-            run_id=run_id,
-            status=run.status,
-            document=None,
-        )
-
-    async def get_report(
-        self,
-        session: AsyncSession,
-        run_id: str,
-    ) -> AnalysisReportResponse:
-        """获取最终分析报告。"""
-
-        run_repo = AnalysisRunRepository(
-            session
-        )
-
-        run = await run_repo.get_by_id(
-            run_id
-        )
-
-        if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
-
-        domain_service = self._get_domain_service(session)
-
-        # 加载 checkpoint
-        state = await domain_service.get_analysis_state(run_id)
-
-        report = None
-
-        if state is not None:
-            report = state.data.get("final_report")
-
-        # 从磁盘读取报告内容
-        report = domain_service.get_report_from_disk(run_id, report)
-
-        return AnalysisReportResponse(
-            run_id=run.id,
-            status=run.status,
-            report=report,
         )
 
     async def list_analyses(
@@ -780,9 +538,7 @@ class AnalysisService:
         关掉页面就找不回来了。
         """
 
-        run_repo = AnalysisRunRepository(
-            session
-        )
+        run_repo = AnalysisRunRepository(session)
 
         runs = await run_repo.list_recent(limit)
 
@@ -791,39 +547,25 @@ class AnalysisService:
 
         # 一次把所有关联仓库取回来，
         # 避免每个 run 查一次库。
-        repository_ids = {
-            run.repository_id
-            for run in runs
-        }
-
-        result = await session.execute(
-            select(Repository).where(
-                Repository.id.in_(repository_ids)
-            )
-        )
+        repository_ids = {run.repository_id for run in runs}
 
         repositories = {
             repository.id: repository
-            for repository in result.scalars().all()
+            for repository in await RepositoryRepository(session).get_by_ids(
+                repository_ids
+            )
         }
 
         responses = []
 
         for run in runs:
-
-            repository = repositories.get(
-                run.repository_id
-            )
+            repository = repositories.get(run.repository_id)
 
             responses.append(
                 AnalysisResponse(
                     run_id=run.id,
                     status=run.status,
-                    repo_url=(
-                        repository.url
-                        if repository is not None
-                        else ""
-                    ),
+                    repo_url=(repository.url if repository is not None else ""),
                     question=run.question,
                     current_node=run.current_node,
                     progress=self._progress(
@@ -850,36 +592,26 @@ class AnalysisService:
         用户想看某个模块的实现细节时走这里。
         """
 
-        run_repo = AnalysisRunRepository(
-            session
-        )
+        run_repo = AnalysisRunRepository(session)
 
-        run = await run_repo.get_by_id(
-            run_id
-        )
+        run = await run_repo.get_by_id(run_id)
 
         if run is None:
-            raise ValidationError(
-                f"Analysis run not found: {run_id}"
-            )
+            raise ValidationError(f"Analysis run not found: {run_id}")
 
-        normalized = (
-            module or ""
-        ).strip().lower()
+        normalized = (module or "").strip().lower()
 
-        if normalized not in (
-            ModuleDeepDiveSkill.MODULES
-        ):
+        if normalized not in (ModuleDeepDiveSkill.MODULES):
             raise ValidationError(
                 f"Unsupported module: {module!r}. "
                 "Expected one of "
                 f"{', '.join(ModuleDeepDiveSkill.MODULES)}."
             )
 
-        domain_service = self._get_domain_service(session)
+        workflow = self._get_workflow(session)
 
         # 加载 checkpoint 获取数据
-        state = await domain_service.get_analysis_state(run_id)
+        state = await workflow.get_checkpoint(run_id)
 
         if state is None:
             raise ValidationError(f"Checkpoint not found: {run_id}")
@@ -887,7 +619,7 @@ class AnalysisService:
         data = state.data or {}
 
         # 执行 deep_dive skill
-        result = await domain_service.execute_skill(
+        result = await workflow.execute_skill(
             run_id=run_id,
             repository_id=data.get("repository_id"),
             skill_name="module_deep_dive",
@@ -904,8 +636,7 @@ class AnalysisService:
             title=result.get("title"),
             report=result.get("report"),
             content=result.get("content"),
-            files_read=result.get("files_read")
-            or [],
+            files_read=result.get("files_read") or [],
             details=result.get("details", 0),
         )
 
@@ -928,20 +659,12 @@ class AnalysisService:
         """
 
         if run is None:
-            raise ValidationError(
-                "Analysis run not found."
-            )
+            raise ValidationError("Analysis run not found.")
 
-        repository = await session.get(
-            Repository,
-            run.repository_id,
-        )
+        repository = await RepositoryRepository(session).get_by_id(run.repository_id)
 
         if repository is None:
-            raise ValidationError(
-                f"Repository not found: "
-                f"{run.repository_id}"
-            )
+            raise ValidationError(f"Repository not found: {run.repository_id}")
 
         research_plan = None
         rag_enabled = None
@@ -949,11 +672,8 @@ class AnalysisService:
         # 只在设计闸门等待审批时去读 checkpoint：
         # 那时用户确实需要看到方案才能决定批不批。
         if include_plan and run.status == "WAITING_DESIGN":
-
             try:
-                state = await CheckpointRepository(
-                    session
-                ).get_latest(run.id)
+                state = await CheckpointRepository(session).get_latest(run.id)
 
             except Exception as error:  # noqa: BLE001
                 # 读不到方案不该让状态查询整体失败 ——
@@ -1021,10 +741,7 @@ class AnalysisService:
     ) -> dict | None:
         """按 run 读出仓库行并组装身份字段。"""
 
-        repository = await session.get(
-            Repository,
-            run.repository_id,
-        )
+        repository = await RepositoryRepository(session).get_by_id(run.repository_id)
 
         if repository is None:
             return None
@@ -1123,20 +840,14 @@ class AnalysisService:
         errors = getattr(state, "errors", None) or []
 
         if workflow_status == WorkflowStatus.FAILED and errors:
-
-            error_message = str(
-                errors[-1]
-            )[: cls.MAX_ERROR_MESSAGE_CHARS]
+            error_message = str(errors[-1])[: cls.MAX_ERROR_MESSAGE_CHARS]
 
         else:
-
             # 非失败态要擦掉上一轮的失败原因，
             # 否则重试成功后前端仍然显示旧错误。
             error_message = AnalysisRunRepository.CLEAR
 
-        await AnalysisRunRepository(
-            session
-        ).update_runtime_state(
+        await AnalysisRunRepository(session).update_runtime_state(
             run,
             status=cls.STATUS_MAPPING.get(
                 workflow_status,
@@ -1162,7 +873,7 @@ class AnalysisService:
         """
         解析 GitHub owner/repository。
 
-        复用 app.tools.github.parser.parse_github_url：
+        复用 app.integrations.github.parser.parse_github_url：
         它基于 urlparse，会正确剥离 query string 与 fragment。
 
         旧实现直接按 "/" 切分字符串，因此
@@ -1187,14 +898,10 @@ class AnalysisService:
         """
 
         try:
-
             return parse_github_url(repo_url)
 
         except ValueError as error:
-
-            raise ValidationError(
-                "Invalid GitHub repository URL."
-            ) from error
+            raise ValidationError("Invalid GitHub repository URL.") from error
 
 
 analysis_service = AnalysisService()

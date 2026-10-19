@@ -10,10 +10,10 @@ import asyncio
 
 import pytest
 
-from app.infrastructure.tools import (
+from app.analysis.tools import (
     rag_retrieval_tool as module,
 )
-from app.infrastructure.tools.rag_retrieval_tool import (
+from app.analysis.tools.rag_retrieval_tool import (
     RagRetrievalTool,
 )
 

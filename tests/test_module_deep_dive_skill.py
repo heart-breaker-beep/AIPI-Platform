@@ -23,7 +23,7 @@ from skill_snapshots import (
     assert_snapshot,
 )
 from app.core.exceptions import ToolError
-from app.infrastructure.skills.module_deep_dive_skill import (
+from app.analysis.skills.module_deep_dive_skill import (
     ModuleDeepDiveSkill,
 )
 

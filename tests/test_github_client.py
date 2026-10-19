@@ -7,7 +7,7 @@ from app.core.exceptions import (
     RetryableToolError,
     ToolError,
 )
-from app.infrastructure.tools.github.github_repository_tool import GitHubRepositoryTool
+from app.integrations.github.github_repository_tool import GitHubRepositoryTool
 
 
 @pytest.mark.asyncio

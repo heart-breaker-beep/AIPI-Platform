@@ -33,26 +33,26 @@ import copy
 
 import pytest
 
-from app.domain.analysis.workflow import (
+from app.analysis.workflow import (
     AnalysisWorkflowOrchestrator,
 )
-from app.infrastructure.workflow.checkpoint import (
+from app.workflow.checkpoint import (
     CheckpointManager,
 )
-from app.infrastructure.workflow.context import (
+from app.workflow.context import (
     WorkflowContext,
 )
-from app.infrastructure.workflow.engine import (
+from app.workflow.engine import (
     WorkflowEngine,
 )
-from app.infrastructure.workflow.node import BaseNode
-from app.infrastructure.workflow.nodes.end_node import EndNode
-from app.infrastructure.workflow.state import (
+from app.workflow.node import BaseNode
+from app.analysis.nodes.end_node import EndNode
+from app.workflow.state import (
     WorkflowState,
     WorkflowStatus,
 )
-from app.infrastructure.workflow.transition import Transition
-from app.infrastructure.workflow.workflow import Workflow
+from app.workflow.transition import Transition
+from app.workflow.workflow import Workflow
 
 
 RUN_ID = "retry-identity"
@@ -486,3 +486,52 @@ def test_identity_data_takes_owner_from_repository_row():
         "owner": "demo",
         "repo": "renamed-project",
     }
+
+
+@pytest.mark.asyncio
+async def test_replan_replaces_previous_plan_and_returns_to_design_gate():
+    """重新规划由分析组件重置旧产物，并通过真实引擎回到审批节点。"""
+    from app.analysis.nodes.design_gate_node import DesignGateNode
+
+    class PlannerNode(BaseNode):
+        name = "planner_agent"
+
+        async def execute(self, state, context):
+            assert "research_plan" not in state.data
+            assert "planner_agent" not in state.data
+            state.data["planner_agent"] = {
+                "research_plan": {"question": state.data["question"]}
+            }
+            return state
+
+    checkpoint = RecordingCheckpoint()
+    await seed_checkpoint(
+        checkpoint,
+        WorkflowStatus.WAITING_DESIGN,
+        "design_gate",
+        data={
+            **identity(),
+            "question": "旧问题",
+            "research_plan": {"question": "旧问题"},
+            "planner_agent": {"research_plan": {"question": "旧问题"}},
+            "executed_tasks": ["old-task"],
+            "count": 4,
+        },
+    )
+    workflow = Workflow()
+    workflow.add_node(PlannerNode())
+    workflow.add_node(DesignGateNode())
+    workflow.add_transition(Transition("planner_agent", "design_gate"))
+    orchestrator = AnalysisWorkflowOrchestrator(
+        engine=WorkflowEngine(checkpoint=checkpoint),
+        context_factory=ContextFactory(),
+        checkpoint_manager=checkpoint,
+        workflow_builder=lambda context: workflow,
+    )
+    result = await orchestrator.replan_workflow(RUN_ID, 7, "新问题")
+    assert result.status == WorkflowStatus.WAITING_DESIGN
+    assert result.current_node == "design_gate"
+    assert result.data["research_plan"] == {"question": "新问题"}
+    assert result.data["owner"] == "demo"
+    assert "executed_tasks" not in result.data
+    assert "count" not in result.data

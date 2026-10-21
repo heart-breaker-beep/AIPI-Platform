@@ -7,8 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.analysis.skills.module_deep_dive_skill import (
     ModuleDeepDiveSkill,
 )
-from app.core.config import get_settings
-from app.core.exceptions import ValidationError
+from app.core.exceptions import ConflictError, ValidationError
 from app.core.logging import (
     get_logger,
     log_with_run_id,
@@ -32,10 +31,13 @@ from app.schemas.analysis import (
     AnalysisResponse,
     LearningPathResponse,
 )
+from app.services.analysis_execution import record_created, traced_action
 from app.services.analysis_factory import (
     create_analysis_workflow,
 )
+from app.workflow.checkpoint import CheckpointManager
 from app.workflow.state import (
+    WorkflowState,
     WorkflowStatus,
 )
 
@@ -126,6 +128,7 @@ class AnalysisService:
             question=request.question,
         )
 
+        run.status = "CREATED"
         await session.commit()
 
         log_with_run_id(
@@ -142,11 +145,6 @@ class AnalysisService:
             "repo_url": repo_url,
             "owner": owner,
             "repo": name,
-            "rag_enabled": (
-                get_settings().RAG_ENABLED
-                if request.enable_rag is None
-                else bool(request.enable_rag)
-            ),
             "question": (
                 request.question
                 or (
@@ -157,6 +155,36 @@ class AnalysisService:
             ),
         }
 
+        if request.defer_start:
+            state = WorkflowState(run_id=run_id, data=initial_data)
+            await CheckpointManager(
+                CheckpointRepository(session), commit=session.commit,
+            ).save(state)
+            run.status = "CREATED"
+            await session.commit()
+            await record_created(session, run_id)
+            return await self._to_response(session, run)
+
+        return await self._execute_initial(session, run_id, repository.id, initial_data)
+
+    async def start_analysis(self, session: AsyncSession, run_id: str) -> AnalysisResponse:
+        """Start a previously created run; execution is serialized in _execute_initial."""
+        run = await AnalysisRunRepository(session).get_by_id(run_id)
+        if run is None:
+            raise ValidationError("Analysis run not found.")
+        state = await CheckpointRepository(session).get_latest(run_id)
+        if state is None or state.current_node is not None:
+            raise ConflictError("该任务已开始执行，不能重复启动。")
+        return await self._execute_initial(session, run_id, run.repository_id, state.data)
+
+    @traced_action("start")
+    async def _execute_initial(self, session, run_id, repository_id, initial_data):
+        analysis_run_repo = AnalysisRunRepository(session)
+        run = await analysis_run_repo.get_by_id(run_id)
+        if run is None:
+            raise ValidationError("Analysis run not found.")
+        if run.status not in {"CREATED", "pending"}:
+            raise ConflictError("该任务已开始执行，不能重复启动。")
         # 启动分析工作流。
         #
         # initial_data 原样传下去：组装只发生在这一处，
@@ -165,7 +193,7 @@ class AnalysisService:
 
         state = await workflow.start_workflow(
             run_id=run_id,
-            repository_id=repository.id,
+            repository_id=repository_id,
             initial_data=initial_data,
         )
 
@@ -203,6 +231,7 @@ class AnalysisService:
             include_plan=True,
         )
 
+    @traced_action("cancel")
     async def cancel_analysis(
         self,
         session: AsyncSession,
@@ -250,6 +279,7 @@ class AnalysisService:
             include_plan=True,
         )
 
+    @traced_action("replan")
     async def replan_analysis(
         self,
         session: AsyncSession,
@@ -309,6 +339,7 @@ class AnalysisService:
             include_plan=True,
         )
 
+    @traced_action("approve")
     async def approve_analysis(
         self,
         session: AsyncSession,
@@ -354,6 +385,7 @@ class AnalysisService:
             run,
         )
 
+    @traced_action("pause")
     async def pause_analysis(
         self,
         session: AsyncSession,
@@ -392,6 +424,7 @@ class AnalysisService:
             run,
         )
 
+    @traced_action("resume")
     async def resume_analysis(
         self,
         session: AsyncSession,
@@ -433,6 +466,7 @@ class AnalysisService:
             run,
         )
 
+    @traced_action("retry")
     async def retry_analysis(
         self,
         session: AsyncSession,
@@ -667,7 +701,6 @@ class AnalysisService:
             raise ValidationError(f"Repository not found: {run.repository_id}")
 
         research_plan = None
-        rag_enabled = None
 
         # 只在设计闸门等待审批时去读 checkpoint：
         # 那时用户确实需要看到方案才能决定批不批。
@@ -689,7 +722,6 @@ class AnalysisService:
                 data = getattr(state, "data", None) or {}
 
                 research_plan = data.get("research_plan")
-                rag_enabled = data.get("rag_enabled")
 
         return AnalysisResponse(
             run_id=run.id,
@@ -702,7 +734,6 @@ class AnalysisService:
                 run.current_node,
             ),
             research_plan=research_plan,
-            rag_enabled=rag_enabled,
             error_message=run.error_message,
             created_at=run.created_at,
         )

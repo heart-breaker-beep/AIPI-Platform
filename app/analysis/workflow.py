@@ -185,7 +185,13 @@ class AnalysisWorkflowOrchestrator:
         # 2. 创建初始状态
         #
         # 状态类型由引擎提供（engine.new_state），
-        state = self.engine.new_state(run_id)
+        # Deferred creation already persisted an initial checkpoint. Continue its
+        # version sequence instead of inserting a second checkpoint with version 1.
+        state = await self.checkpoint_manager.load(run_id)
+        if state is None:
+            state = self.engine.new_state(run_id)
+        elif state.current_node is not None:
+            raise ValueError("Workflow has already started.")
         state.data = initial_data
 
         # 3. 构建 Workflow 定义

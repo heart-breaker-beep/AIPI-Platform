@@ -4,7 +4,7 @@
 # 构建：docker build -t aipi:latest .
 # 启动：docker compose up -d   （见 docker-compose.yml）
 #
-# 镜像只跑应用本身；MySQL / Qdrant 由 compose 提供。
+# 镜像只跑应用本身；MySQL 使用宿主机实例或单独部署。
 # ============================================================
 
 FROM python:3.11-slim-bookworm

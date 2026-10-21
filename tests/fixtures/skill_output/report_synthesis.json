@@ -8,6 +8,101 @@
     "tools": "4 个校验工具。",
     "workflow": "LangGraph StateGraph。"
   },
+  "project_report": {
+    "notices": [
+      "01 项目速览：数据不足，需要补充材料以说明项目类型、解决的问题、目标用户、适用边界。",
+      "02 核心功能：数据不足，需要补充材料以按用户任务解释功能，说明输入、处理、产出与前置条件。",
+      "03 整体架构：数据不足，需要补充材料以解释系统边界、层次职责、依赖方向和外部系统；有依据时描述协作关系。",
+      "04 核心模块与源码入口：数据不足，需要补充材料以解释模块职责、真实源码入口、输入输出、调用方与依赖方。",
+      "05 核心运行流程：数据不足，需要补充材料以选择一条有依据的主链路，按执行顺序说明入口、处理、输出与异常分支。",
+      "06 技术栈与数据管理：数据不足，需要补充材料以解释语言、框架、依赖、外部服务、存储和部署条件各自的用途及依据。",
+      "07 安装、配置与使用：数据不足，需要补充材料以按环境要求、安装、配置、最小示例、预期结果组织，保留前置条件与工作目录。",
+      "08 源码阅读与二次开发：数据不足，需要补充材料以给出有文件依据的阅读顺序、扩展入口、构建与测试方式，建议明确标注为建议。",
+      "09 设计评价与待确认事项：数据不足，需要补充材料以解释有依据的设计特点与取舍、使用限制、已观察问题；不凭空打分或断言样本外能力缺失。"
+    ],
+    "relations": [],
+    "sections": {
+      "architecture": [],
+      "assessment": [],
+      "capabilities": [],
+      "development": [],
+      "modules": [],
+      "overview": [],
+      "runtime": [],
+      "technology": [],
+      "usage": []
+    },
+    "sources": [
+      {
+        "content": "{\"available\": true, \"name\": \"enterprise-finance-agent\", \"full_name\": \"demo/enterprise-finance-agent\", \"description\": \"Enterprise finance workflow agent.\", \"language\": \"Python\", \"topics\": [\"langgraph\"], \"stars\": 1, \"forks\": 1, \"open_issues\": 0, \"license\": \"MIT License\", \"size_kb\": 64, \"created_at\": \"2026-07-22T02:17:59Z\", \"pushed_at\": \"2026-07-22T02:31:46Z\"}",
+        "file": "",
+        "id": "E001",
+        "kind": "metadata",
+        "line_end": null,
+        "line_start": null,
+        "truncated": false
+      },
+      {
+        "content": "{\"llm\": [\"OpenAI\"], \"database\": [\"SQLAlchemy\"], \"frameworks\": [\"FastAPI\", \"LangGraph\"], \"embedding\": [], \"deployment\": []}",
+        "file": "",
+        "id": "E002",
+        "kind": "dependency",
+        "line_end": null,
+        "line_start": null,
+        "truncated": false
+      },
+      {
+        "content": "{\"available\": true, \"total_files\": 107, \"by_extension\": {\".py\": 88}}",
+        "file": "",
+        "id": "E003",
+        "kind": "path",
+        "line_end": null,
+        "line_start": null,
+        "truncated": false
+      },
+      {
+        "content": "# Demo\n- supplier lookup",
+        "file": "README.md",
+        "id": "E004",
+        "kind": "documentation",
+        "line_end": 2,
+        "line_start": 1,
+        "truncated": false
+      },
+      {
+        "content": "services:\n  api:\n",
+        "file": "docker-compose.yml",
+        "id": "E005",
+        "kind": "dependency",
+        "line_end": null,
+        "line_start": 1,
+        "truncated": false
+      },
+      {
+        "content": "- agent state model",
+        "file": "README.md",
+        "id": "E006",
+        "kind": "documentation",
+        "line_end": null,
+        "line_start": 10,
+        "truncated": false
+      },
+      {
+        "content": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "file": "README.md",
+        "id": "E007",
+        "kind": "documentation",
+        "line_end": 30,
+        "line_start": 1,
+        "truncated": false
+      }
+    ],
+    "validation": {
+      "citations_checked": true,
+      "semantic_verification": "not_performed"
+    },
+    "version": 2
+  },
   "reason": null,
   "summary": {
     "core_design": [

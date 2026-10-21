@@ -91,7 +91,7 @@ class ReportDocumentBuilder:
             data.get("research_plan")
         )
 
-        return {
+        document = {
             "schema_version": cls.SCHEMA_VERSION,
             "generated_at": datetime.now(
                 timezone.utc
@@ -114,6 +114,22 @@ class ReportDocumentBuilder:
             "synthesis": cls._synthesis(data),
             "report": cls._report_file(data),
         }
+        from app.analysis.reporting.project_report import (
+            build_chapters,
+            mapping,
+            prepare_report_data,
+        )
+
+        if data.get("report_format_version") == 2 or mapping(
+            mapping(data.get("synthesis")).get("project_report")
+        ).get("version") == 2:
+            prepared = prepare_report_data(data)
+            document["report_format_version"] = 2
+            document["chapters"] = build_chapters(prepared)
+            document["synthesis"] = cls._synthesis(prepared)
+        else:
+            document["report_format_version"] = 1
+        return document
 
     # ------------------------------------------------------------------
     # 各区块
@@ -412,6 +428,8 @@ class ReportDocumentBuilder:
                 "dimensions"
             )
             or {},
+            **({"project_report": synthesis["project_report"]}
+               if isinstance(synthesis.get("project_report"), dict) else {}),
         }
 
     @classmethod

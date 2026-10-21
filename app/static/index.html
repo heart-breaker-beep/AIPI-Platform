@@ -132,32 +132,6 @@
           </span>
         </label>
 
-        <label class="switch-field" for="ragToggle">
-          <span class="switch-text">
-            <span class="switch-title">
-              启用 RAG 语义检索
-              <span class="optional">实验性</span>
-            </span>
-            <span class="switch-hint" id="ragHint">
-              分析前先为仓库建向量索引，按六个维度做语义检索，
-              命中的代码片段会<strong>叠加</strong>进证据清单。
-            </span>
-          </span>
-          <span class="switch">
-            <input type="checkbox" id="ragToggle" role="switch">
-            <span class="switch-track"><span class="switch-thumb"></span></span>
-          </span>
-        </label>
-
-        <div class="rag-warning hidden" id="ragWarning">
-          <svg class="ico"><use href="#i-alert"/></svg>
-          <span>
-            开启后每次分析会额外读取几十个文件并调用本地 Ollama 嵌入，
-            <strong>实测约多等 1～2 分钟</strong>；
-            且未设置 <code>GITHUB_TOKEN</code> 时极易被限流。
-          </span>
-        </div>
-
         <button id="start" class="btn btn-primary btn-block" type="submit">
           <svg class="ico"><use href="#i-play"/></svg> 开始分析
         </button>
@@ -239,6 +213,23 @@
       <div id="error" class="alert alert-danger"></div>
     </section>
 
+    <!-- Analysis trace is independent of status refresh and long action requests. -->
+    <section id="tracePanel" class="panel trace-panel hidden" aria-label="分析过程">
+      <details id="traceBody" open>
+        <summary class="trace-heading">
+          <span class="trace-heading-main">分析过程<span id="traceSummary" class="trace-subtitle">记录实际执行步骤与耗时</span></span>
+          <span id="traceConnection" class="trace-connection" role="status">正在连接</span>
+        </summary>
+        <div class="trace-toolbar">
+          <p id="traceActivity">任务开始后将在这里显示进展</p>
+          <label>显示 <select id="traceFilter" aria-label="筛选分析过程"><option value="all">全部步骤</option><option value="warning">异常步骤</option></select></label>
+        </div>
+        <button id="traceEarlier" class="btn btn-ghost btn-sm" type="button" hidden>查看更早记录</button>
+        <div id="traceList" class="trace-list" tabindex="0" aria-label="执行时间线"></div>
+        <button id="traceLatest" class="btn btn-ghost btn-sm" type="button" hidden>有新进展 · 回到最新</button>
+      </details>
+    </section>
+
     <!-- 报告区 -->
     <section id="reportArea" class="hidden">
 
@@ -271,7 +262,7 @@
       <!-- 标签页 -->
       <nav class="tabs" id="tabs" role="tablist">
         <button class="tab is-active" data-view="dashboard" role="tab">
-          <svg class="ico"><use href="#i-layers"/></svg> 数据看板
+          <svg class="ico"><use href="#i-layers"/></svg> 项目报告
         </button>
         <button class="tab" data-view="markdown" role="tab">
           <svg class="ico"><use href="#i-book"/></svg> 报告原文
@@ -327,6 +318,7 @@
 
 <div id="toast" class="toast"></div>
 
+<script src="/static/trace.js"></script>
 <script src="/static/app.js"></script>
 
 </body>

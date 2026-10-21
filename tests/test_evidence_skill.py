@@ -2,23 +2,48 @@
 EvidenceAnalysisSkill 测试。
 """
 
+from typing import ClassVar
+
 import pytest
 
+from app.analysis.evidence.store import EvidenceStore
 from app.analysis.skills.evidence_analysis_skill import (
     EvidenceAnalysisSkill,
 )
-from app.analysis.evidence.store import EvidenceStore
 
 
 class FakeContext:
     """
     只需要 tools 的最小 Context。
 
-    RAG 通路（rag_retrieval 工具）在没开 RAG 时不参与，
-    这些用例只覆盖结构证据与落库行为。
+    覆盖直接结构证据与落库行为，无需外部检索服务。
     """
 
-    tools = {}
+    tools: ClassVar[dict] = {}
+
+
+@pytest.mark.parametrize("path", ["app/main.py", "src/main.ts"])
+@pytest.mark.asyncio
+async def test_old_rag_flag_keeps_direct_evidence_and_never_uses_tools(path):
+    class NoRetrievalContext:
+        @property
+        def tools(self):
+            raise AssertionError("Direct evidence must not access retrieval tools")
+
+    source = {"file_path": path, "content": "function_body\n", "start_line": 17}
+    result = await EvidenceAnalysisSkill().execute(
+        NoRetrievalContext(),
+        {
+            "rag_enabled": True,
+            "readme": "# Project\n",
+            "modules": [source, dict(source), {"file_path": "empty.py", "content": " \n"}],
+        },
+    )
+    assert result["count"] == 2
+    assert result["evidence"][0]["file_path"] == "README.md"
+    assert result["evidence"][1]["file_path"] == path
+    assert result["evidence"][1]["line_start"] == 17
+    assert result["evidence"][1]["line_end"] == 17
 
 @pytest.mark.asyncio
 async def test_evidence_from_architecture_agent_output():

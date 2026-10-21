@@ -13,6 +13,8 @@ DeepSeek 提供 OpenAI 兼容接口，
     DeepSeekLLM(client, model="deepseek-chat", timeout=60.0)
 """
 
+from app.core.trace import trace_event
+
 from .base import BaseLLM
 
 
@@ -86,4 +88,12 @@ class DeepSeekLLM(BaseLLM):
             )
         )
 
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            counts = {}
+            for source, target in (("prompt_tokens", "input_tokens"), ("completion_tokens", "output_tokens"), ("total_tokens", "total_tokens")):
+                value = getattr(usage, source, None)
+                if isinstance(value, int):
+                    counts[target] = value
+            await trace_event("llm.usage", "模型调用完成", model=create_kwargs["model"], **counts)
         return response.choices[0].message.content

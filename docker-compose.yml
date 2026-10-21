@@ -6,7 +6,6 @@
 #
 # 组成：
 #   app     —— 本仓库构建，绑在 8000
-#   qdrant  —— 向量库，绑在 6333
 #   MySQL   —— 不开容器，直接用宿主机上已有的实例
 #
 # 为什么 MySQL 不进容器：
@@ -29,22 +28,6 @@ name: aipi
 services:
 
   # ----------------------------------------------------------
-  # Qdrant —— 向量库
-  # ----------------------------------------------------------
-  qdrant:
-    image: qdrant/qdrant:latest
-    restart: unless-stopped
-
-    volumes:
-      - qdrant_data:/qdrant/storage
-
-    ports:
-      - "6333:6333"
-
-    networks: [aipi]
-
-
-  # ----------------------------------------------------------
   # 应用
   # ----------------------------------------------------------
   app:
@@ -54,10 +37,6 @@ services:
 
     image: aipi:latest
     restart: unless-stopped
-
-    depends_on:
-      qdrant:
-        condition: service_started
 
     # host.docker.internal 在 Docker Desktop（Windows/macOS）上开箱即用，
     # Linux 上需要下面这行显式映射到宿主网关。
@@ -77,10 +56,6 @@ services:
       MYSQL_USER: ${MYSQL_USER:-root}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD 未设置，请检查 .env}
 
-      # --- Qdrant：容器网络内的服务名 ---
-      QDRANT_HOST: qdrant
-      QDRANT_PORT: "6333"
-
       # --- LLM（DeepSeek，走外网 HTTPS）---
       LLM_PROVIDER: ${LLM_PROVIDER:-deepseek}
       LLM_API_KEY: ${LLM_API_KEY:-}
@@ -88,12 +63,6 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com}
       LLM_TIMEOUT: ${LLM_TIMEOUT:-120}
       LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-8192}
-
-      # --- Embedding ---
-      # 容器内不跑 Ollama。若宿主机有，走 host.docker.internal 指过去。
-      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-bge-m3}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
 
       # --- GitHub ---
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
@@ -135,9 +104,8 @@ services:
   #   networks: [aipi]
 
 
-volumes:
-  qdrant_data:
-  # mysql_data:          # 启用上面的 mysql 服务时一并打开
+# volumes:
+#   mysql_data:          # 启用上面的 mysql 服务时一并打开
 
 
 networks:

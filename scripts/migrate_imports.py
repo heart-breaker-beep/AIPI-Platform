@@ -26,8 +26,6 @@ MODULE_MOVES = {
     "app.core.error_handlers": "app.api.error_handlers",
     "app.db.session.get_db": "app.api.dependencies.get_db",
     "app.db": "app.persistence",
-    "app.embeddings": "app.integrations.embeddings",
-    "app.vector_store": "app.integrations.vector_store",
     "app.llm": "app.integrations.llm",
     "app.agents": "app.analysis.agents",
     "app.skills": "app.analysis.skills",

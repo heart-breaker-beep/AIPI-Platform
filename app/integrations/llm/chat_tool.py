@@ -31,9 +31,9 @@ import weakref
 from openai import AsyncOpenAI
 
 from app.core.config import get_settings
-from app.integrations.llm.deepseek import DeepSeekLLM
+from app.core.trace import traced
 from app.integrations.base import BaseTool
-
+from app.integrations.llm.deepseek import DeepSeekLLM
 
 # 进程内创建过的 Tool 实例。
 #
@@ -111,6 +111,7 @@ class LLMChatTool(BaseTool):
             None,
         )
 
+    @traced("llm")
     async def execute(
         self,
         messages,

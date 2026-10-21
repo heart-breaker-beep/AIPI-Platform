@@ -56,9 +56,42 @@ def test_create_uses_injected_analysis_service(api):
     )
     assert result.status_code == 200
     assert result.json()["run_id"] == "run-1"
+    assert result.json()["rag_enabled"] is False
     args = analysis.create_analysis.await_args.args
     assert args[0] is session
     assert args[1].enable_rag is True
+
+
+def test_deferred_create_and_explicit_start_routes(api):
+    client, session, analysis, _, response = api
+    analysis.create_analysis.return_value = response
+    analysis.start_analysis.return_value = response
+    result = client.post("/api/v1/analysis", json={"repo_url": response["repo_url"], "defer_start": True})
+    assert result.status_code == 200
+    assert analysis.create_analysis.await_args.args[1].defer_start is True
+    result = client.post("/api/v1/analysis/run-1/start")
+    assert result.status_code == 200
+    analysis.start_analysis.assert_awaited_once_with(session, "run-1")
+
+
+def test_trace_route_paginates_and_validates_cursor(api, monkeypatch):
+    from types import SimpleNamespace
+
+    from app.api.v1 import analysis as routes
+    from app.core.exceptions import NotFoundError
+    from app.schemas.trace import TraceResponse
+
+    client, session, *_ = api
+    read = AsyncMock(return_value=TraceResponse(run_id="run-1", next_cursor=7))
+    monkeypatch.setattr(routes, "TraceService", lambda: SimpleNamespace(read=read))
+    result = client.get("/api/v1/analysis/run-1/trace?after=7&limit=20")
+    assert result.status_code == 200
+    assert result.json()["next_cursor"] == 7
+    read.assert_awaited_once_with(session, "run-1", 7, 20)
+    assert client.get("/api/v1/analysis/run-1/trace?after=-1").status_code == 422
+    assert client.get("/api/v1/analysis/run-1/trace?limit=201").status_code == 422
+    read.side_effect = NotFoundError("Analysis run not found.")
+    assert client.get("/api/v1/analysis/missing/trace").status_code == 404
 
 
 @pytest.mark.parametrize(

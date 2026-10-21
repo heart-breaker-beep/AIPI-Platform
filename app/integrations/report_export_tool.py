@@ -10,6 +10,7 @@ import asyncio
 import json
 from pathlib import Path
 
+from app.core.trace import traced
 from app.integrations.base import BaseTool
 
 
@@ -30,6 +31,7 @@ class ReportExportTool(BaseTool):
             exist_ok=True
         )
 
+    @traced("tool")
     async def execute(
         self,
         title: str,

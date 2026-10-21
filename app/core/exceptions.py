@@ -18,6 +18,17 @@ class ValidationError(ApplicationError):
     error_code = "VALIDATION_ERROR"
 
 
+class ConflictError(ApplicationError):
+    """Another operation owns this analysis execution."""
+    status_code = 409
+    error_code = "EXECUTION_CONFLICT"
+
+
+class NotFoundError(ApplicationError):
+    status_code = 404
+    error_code = "NOT_FOUND"
+
+
 class WorkflowError(ApplicationError):
     """Workflow 执行失败。"""
     status_code = 500

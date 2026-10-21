@@ -43,12 +43,13 @@ Planner Agent。
 """
 
 from app.analysis.agents.base import BaseAgent
-from app.analysis.tools.project.analysis_focus import (
-    AnalysisFocus,
-)
 from app.analysis.skills.json_output import (
     parse_json_object,
 )
+from app.analysis.tools.project.analysis_focus import (
+    AnalysisFocus,
+)
+from app.core.trace import traced
 
 
 class PlannerAgent(
@@ -85,6 +86,7 @@ class PlannerAgent(
     # 因此历史 run 仍然可读。
     PLAN_VERSION = 2
 
+    @traced("agent")
     async def execute(
         self,
         context,

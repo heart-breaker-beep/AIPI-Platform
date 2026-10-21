@@ -13,12 +13,12 @@ Phase 12：
 
 from app.core.exceptions import RetryableError
 from app.core.logging import get_logger
+from app.core.trace import result_summary, trace_event, trace_span
 from app.workflow.retry import RetryPolicy
 from app.workflow.state import (
     WorkflowState,
     WorkflowStatus,
 )
-
 
 logger = get_logger(__name__)
 
@@ -221,10 +221,10 @@ class WorkflowEngine:
 
             try:
 
-                result = await node.execute(
-                    state,
-                    context,
-                )
+                async with trace_span("node", node.name, attempt=state.retry_count + 1) as outcome:
+                    result = await node.execute(state, context)
+                    if outcome is not None:
+                        outcome["status"], outcome["attributes"] = result_summary(result)
 
             except RetryableError as error:
 
@@ -238,6 +238,8 @@ class WorkflowEngine:
                 ):
                     raise
 
+                await trace_event("retry.scheduled", "步骤失败，正在等待重试", attempt=state.retry_count + 1,
+                                  error_type=type(error).__name__)
                 state.increase_retry()
                 state.start_retry()
 

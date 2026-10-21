@@ -37,17 +37,18 @@ Phase 12 → Phase 13 数据契约补充
 import os
 import re
 
-from app.core.exceptions import ToolError
 from app.analysis.skills._common import (
     load_tree,
 )
+from app.analysis.skills.base import BaseSkill
 from app.analysis.tools.project.analysis_focus import (
     AnalysisFocus,
 )
 from app.analysis.tools.project.code_structure_extractor import (
     CodeStructureExtractor,
 )
-from app.analysis.skills.base import BaseSkill
+from app.core.exceptions import ToolError
+from app.core.trace import trace_event, traced
 
 
 class ArchitectureAnalysisSkill(
@@ -422,6 +423,7 @@ class ArchitectureAnalysisSkill(
     # 同样会让 state_data 膨胀。
     MAX_MODULE_CHARS = 1200
 
+    @traced("skill")
     async def execute(
         self,
         context,
@@ -516,7 +518,7 @@ class ArchitectureAnalysisSkill(
             input_data.get("research_plan")
         )
 
-        selected_paths = self._read_candidates(
+        selected_paths = self._report_read_candidates(
             source_paths,
             self._quotas_for(focus),
         )
@@ -537,6 +539,8 @@ class ArchitectureAnalysisSkill(
             # 只保留有限路径样本；全量统计放入 source_inventory。
             "files": source_paths[: self.MAX_FILE_PATHS],
             "modules": [],
+            "report_materials": [],
+            "analysis_ref": branch,
             "directory_structure": (
                 self._build_directory_structure(
                     tree
@@ -579,6 +583,7 @@ class ArchitectureAnalysisSkill(
         # 报告第 11 章会只剩下一串「读取失败」。
         stored_modules = 0
 
+        await trace_event("source.selection", "已选取关键源码文件", total=len(selected_paths))
         for file_path in selected_paths:
 
             try:
@@ -659,7 +664,55 @@ class ArchitectureAnalysisSkill(
             code_structure,
         )
 
+        # Practical documentation supplies setup and development chapters without
+        # taking any of the source parsing budget. Read only paths in the tree.
+        for path in self._report_material_candidates(tree_files):
+            try:
+                content = await file_reader.execute(
+                    owner=owner, name=repo, file_path=path, branch=branch,
+                )
+            except ToolError as error:
+                architecture["report_materials"].append({"file_path": path, "error": str(error)})
+                continue
+            if isinstance(content, str) and content.strip():
+                architecture["report_materials"].append({
+                    "file_path": path, "kind": "documentation", "start_line": 1,
+                    "content": content[:2000], "truncated": len(content) > 2000,
+                })
+
         return architecture
+
+    def _report_read_candidates(self, files, quotas=None):
+        """Reserve source samples for entrypoints and fundamental components."""
+        preferred = {
+            "main", "app", "server", "index", "cli", "client", "_client",
+            "base_client", "_base_client", "router", "routes", "application",
+            "config", "settings", "service", "core", "lib", "mod", "program",
+        }
+        foundations = [path for path in files
+                       if os.path.splitext(os.path.basename(path))[0].lower() in preferred
+                       and not self._is_low_priority_path(path)
+                       and not CodeStructureExtractor.is_non_architecture_path(path)]
+        foundations.sort(key=lambda path: (path.count("/"), path))
+        # Rotate top-level packages so one directory cannot consume all slots.
+        balanced, packages = [], set()
+        for path in foundations:
+            package = path.rsplit("/", 1)[0] if "/" in path else ""
+            if package not in packages:
+                packages.add(package)
+                balanced.append(path)
+        balanced.extend(path for path in foundations if path not in balanced)
+        ordered = balanced[:6] + self._read_candidates(files, quotas)
+        return list(dict.fromkeys(ordered))[:self.MAX_MODULES]
+
+    @staticmethod
+    def _report_material_candidates(files):
+        practical = re.compile(r"contribut|getting[_-]?started|quickstart|install|usage|architect|develop|deploy", re.IGNORECASE)
+        candidates = [path for path in files if str(path).lower().endswith((".md", ".rst"))
+                      and practical.search(str(path))
+                      and not any(part in str(path).lower().split("/") for part in
+                                  ("node_modules", "vendor", ".git", "changelog", "changes"))]
+        return sorted(candidates, key=lambda path: (path.count("/"), path))[:5]
 
     def _module_entry(
         self,

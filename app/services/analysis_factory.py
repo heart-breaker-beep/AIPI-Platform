@@ -8,15 +8,12 @@ from app.analysis.evidence.store import EvidenceStore
 from app.analysis.memory.manager import MemoryManager
 from app.analysis.skills.registry import create_skill_registry
 from app.analysis.tools.dependency_analyzer_tool import DependencyAnalyzerTool
-from app.analysis.tools.rag_retrieval_tool import RagRetrievalTool
 from app.analysis.workflow import AnalysisWorkflowOrchestrator, build_analysis_workflow
-from app.integrations.embeddings.ollama import OllamaEmbedding
 from app.integrations.github.file_reader_tool import FileReaderTool
 from app.integrations.github.github_code_search_tool import GitHubCodeSearchTool
 from app.integrations.github.github_repository_tool import GitHubRepositoryTool
 from app.integrations.llm.chat_tool import LLMChatTool
 from app.integrations.report_export_tool import ReportExportTool
-from app.integrations.vector_store.qdrant import QdrantVectorStore
 from app.persistence.repositories.checkpoint import CheckpointRepository
 from app.persistence.repositories.project_memory import ProjectMemoryRepository
 from app.workflow.checkpoint import CheckpointManager
@@ -94,37 +91,10 @@ class WorkflowContextFactory:
             "llm_chat": LLMChatTool(),
         }
 
-        # RAG 检索工具常驻注册。
-        #
-        # 原因：RAG 现在可以**按次开启**（请求里的 enable_rag），
-        # 而 build_context 不知道这一次的开关状态 ——
-        # 若按全局 RAG_ENABLED 决定是否注册，
-        # 全局关、单次开的组合就会拿不到这个工具，
-        # 开关看起来"点了没反应"。
-        #
-        # 真正的启用判断在 EvidenceAnalysisSkill._from_rag 里。
-        #
-        # 这两个对象也是「索引」与「检索」共用的那一份：
-        # EvidenceAnalysisSkill 建索引时直接取它们，
-        # 不再各建一套。
-        tools["rag_retrieval"] = RagRetrievalTool(
-            embedding=OllamaEmbedding(),
-            vector_store=QdrantVectorStore(),
-        )
-
         # 创建 Memory 和 Context Manager
         memory_manager = MemoryManager(ProjectMemoryRepository(self.session))
 
-        # 刻意不传语义检索。
-        #
-        # 本项目的 RAG 通路是独立且已可用的：
-        # EvidenceAnalysisSkill → RagRetrievalTool → evidence
-        # （由 RAG_ENABLED / enable_rag 按次开关）。
-        # 若在这里再接语义检索，就会对同一份语料
-        # 做第二次检索 —— 重复且多付一次 Ollama 嵌入 + Qdrant 往返。
-        #
-        # ContextManager 的职责是「跨 run 历史记忆」，
-        # 不是「语义召回」。
+        # 通过数据库中的项目记录组装跨 run 历史记忆。
         context_manager = ContextManager(memory_manager)
 
         return WorkflowContext(

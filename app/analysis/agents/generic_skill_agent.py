@@ -11,6 +11,7 @@
 """
 
 from app.analysis.agents.base import BaseAgent
+from app.core.trace import traced
 
 
 class GenericSkillAgent(BaseAgent):
@@ -37,6 +38,7 @@ class GenericSkillAgent(BaseAgent):
         self.description = description or f"Execute {skill_name} skill"
         self._skill_name = skill_name
 
+    @traced("agent")
     async def execute(
         self,
         context,

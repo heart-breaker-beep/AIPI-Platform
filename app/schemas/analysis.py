@@ -20,11 +20,13 @@ class AnalysisCreateRequest(BaseModel):
         description="本次项目分析问题",
     )
 
+    defer_start: bool = Field(default=False, description="仅创建任务，随后通过 start 接口执行。")
+
     enable_rag: bool | None = Field(
         default=None,
+        deprecated=True,
         description=(
-            "本次分析是否启用 RAG 语义检索。"
-            "留空则跟随服务端 RAG_ENABLED 配置。"
+            "已弃用：平台 RAG 功能已移除，该参数不再生效。"
         ),
     )
 
@@ -62,9 +64,12 @@ class AnalysisResponse(BaseModel):
     # 等于让人盲签。
     research_plan: dict | None = None
 
-    # 本次 run 是否启用 RAG（跟随配置时为 None）。
-    # 前端据此回显开关状态。
-    rag_enabled: bool | None = None
+    # 兼容旧客户端；当前服务已移除平台 RAG。
+    rag_enabled: bool = Field(
+        default=False,
+        deprecated=True,
+        description="已弃用：平台 RAG 功能已移除，当前服务始终返回 false。",
+    )
 
     # 失败原因。只在 status=FAILED 时有值。
     #

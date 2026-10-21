@@ -33,6 +33,7 @@ class FinalizerNode(BaseNode):
     ):
         """生成最终项目分析报告。"""
 
+        state.data["report_format_version"] = 2
         report_input = {
             key: value
             for key, value in state.data.items()
@@ -60,6 +61,7 @@ class FinalizerNode(BaseNode):
             "format",
             "both",
         )
+        report_input["report_format_version"] = 2
 
         result = await self.skill.execute(
             context=context,

@@ -17,6 +17,8 @@ from app.services.analysis_service import (
     AnalysisService,
 )
 from app.services.report_service import ReportService
+from app.services.trace_service import TraceService
+from app.schemas.trace import TraceResponse
 
 router = APIRouter(
     prefix="/analysis",
@@ -306,3 +308,22 @@ async def deep_dive_module(
         run_id,
         module,
     )
+
+
+@router.post("/{run_id}/start", response_model=AnalysisResponse)
+async def start_analysis(
+    run_id: str,
+    session: AsyncSession = Depends(get_db),
+    service: AnalysisService = Depends(get_analysis_service),
+) -> AnalysisResponse:
+    return await service.start_analysis(session, run_id)
+
+
+@router.get("/{run_id}/trace", response_model=TraceResponse)
+async def get_analysis_trace(
+    run_id: str,
+    after: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
+    session: AsyncSession = Depends(get_db),
+) -> TraceResponse:
+    return await TraceService().read(session, run_id, after, limit)

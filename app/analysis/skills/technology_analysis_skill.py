@@ -7,8 +7,9 @@ Technology Analysis Skill。
 2. GitHub Repository 远程文件分析
 """
 
-from app.core.exceptions import ToolError
 from app.analysis.skills.base import BaseSkill
+from app.core.exceptions import ToolError
+from app.core.trace import traced
 
 
 class TechnologyAnalysisSkill(
@@ -22,6 +23,7 @@ class TechnologyAnalysisSkill(
         "Analyze GitHub project technology stack"
     )
 
+    @traced("skill")
     async def execute(
         self,
         context,
@@ -100,6 +102,11 @@ class TechnologyAnalysisSkill(
             "package.json",
             "Dockerfile",
             "docker-compose.yml",
+            "docker-compose.yaml",
+            "go.mod",
+            "Cargo.toml",
+            "pom.xml",
+            "Makefile",
         ]
 
         contents = {}
@@ -193,6 +200,13 @@ class TechnologyAnalysisSkill(
             "source_files": list(
                 contents.keys()
             ),
+            "configuration_evidence": [
+                {
+                    "file_path": path, "kind": "dependency", "start_line": 1,
+                    "content": content[:2000], "truncated": len(content) > 2000,
+                }
+                for path, content in contents.items()
+            ],
         }
 
         if failures:

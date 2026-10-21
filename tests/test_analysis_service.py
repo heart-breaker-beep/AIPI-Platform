@@ -84,6 +84,7 @@ async def test_create_passes_complete_initial_data_directly_to_workflow(
     )
     response = await service.create_analysis(session, request)
     assert response.status == "WAITING_DESIGN"
+    assert response.model_dump()["rag_enabled"] is False
     data = workflow.start_workflow.await_args.kwargs["initial_data"]
     assert data == {
         "run_id": "run-1",
@@ -91,7 +92,6 @@ async def test_create_passes_complete_initial_data_directly_to_workflow(
         "repo_url": repository.url,
         "owner": "demo",
         "repo": "project",
-        "rag_enabled": True,
         "question": run.question,
     }
     assert session.commit.await_count == 2
@@ -147,3 +147,21 @@ async def test_invalid_approval_does_not_execute_workflow(analysis):
         await service.approve_analysis(session, run.id)
     assert workflow.mock_calls == []
     session.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_old_checkpoint_rag_flag_does_not_reenable_service(analysis, monkeypatch):
+    service, session, run, _, _ = analysis
+    run.status = "WAITING_DESIGN"
+    plan = {"tasks": []}
+    checkpoint = WorkflowState(
+        run_id=run.id, data={"rag_enabled": True, "research_plan": plan}
+    )
+    monkeypatch.setattr(
+        module, "CheckpointRepository",
+        lambda session: SimpleNamespace(get_latest=AsyncMock(return_value=checkpoint)),
+    )
+    response = await service._to_response(session, run, include_plan=True)
+    assert response.model_dump()["rag_enabled"] is False
+    assert response.research_plan == plan
+    assert checkpoint.data["rag_enabled"] is True

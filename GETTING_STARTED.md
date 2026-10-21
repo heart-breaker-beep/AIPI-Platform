@@ -2,20 +2,18 @@
 
 ## 项目简介
 
-AIPI Platform 是一个 **AI 驱动的 GitHub 项目智能分析平台**，基于 **Multi-Agent + Workflow + RAG + Memory** 架构，能够自动分析 GitHub 项目的技术栈、架构、Agent 实现等。
+AIPI Platform 是一个 **AI 驱动的 GitHub 项目智能分析平台**，基于 **Multi-Agent + Workflow + Memory** 架构，能够自动分析 GitHub 项目的技术栈、架构、Agent 实现等。
 
 **核心特性：**
 - 🤖 **Multi-Agent 协作**：Planner、Researcher、Critic 等多个 Agent 协同工作
 - 📊 **Workflow 编排**：支持检查点与人工审批的 Workflow 引擎
-- 🔍 **RAG 语义检索**：基于 Qdrant 向量数据库的语义搜索
 - 🧠 **跨 Run 记忆**：支持多次分析的上下文记忆
 - 📝 **自动生成报告**：生成 Markdown 和 JSON 格式的分析报告
 - 🎯 **人工闸门**：Design Gate 和 Human Review 人工审核节点
 
 **技术栈：**
 - **后端**：FastAPI + SQLAlchemy + MySQL
-- **AI**：DeepSeek API + Ollama Embedding
-- **向量数据库**：Qdrant
+- **AI**：DeepSeek API
 - **架构**：API / Service / Persistence 分层 + 分析组件 + 通用 Workflow 引擎
 
 ---
@@ -24,7 +22,7 @@ AIPI Platform 是一个 **AI 驱动的 GitHub 项目智能分析平台**，基�
 
 ### 方式 1：Docker Compose（推荐 ⭐）
 
-**最简单的方式，一键启动所有服务（MySQL、Qdrant、应用）。**
+**使用 Docker Compose 启动应用，连接已配置的宿主机 MySQL。**
 
 #### 步骤 1：准备配置文件
 
@@ -74,7 +72,6 @@ docker compose down -v
 **服务地址：**
 - **API 服务**：http://localhost:8000
 - **API 文档**：http://localhost:8000/docs
-- **Qdrant 控制台**：http://localhost:6333/dashboard
 - **MySQL**：localhost:3306
 
 ---
@@ -101,18 +98,7 @@ pip install -r requirements.txt
 
 #### 步骤 2：启动依赖服务
 
-**方式 2.1：使用 Docker Compose（只启动 MySQL 和 Qdrant）**
-
-```bash
-# 只启动依赖服务，不启动应用
-docker compose up -d mysql qdrant
-```
-
-**方式 2.2：手动安装（不推荐）**
-
-- **MySQL 8.0+**：自行安装并创建数据库 `aipi`
-- **Qdrant**：自行安装或使用 Docker
-- **Ollama**（可选）：用于 Embedding，自行安装
+启动 MySQL 8.0+ 并创建数据库 `aipi`，随后配置 `.env` 中的连接参数。当前 Compose 默认复用宿主机 MySQL；如需容器化 MySQL，先按 `docker-compose.yml` 注释启用服务和数据卷。
 
 #### 步骤 3：配置环境变量
 
@@ -125,8 +111,6 @@ cp .env.example .env
 DEEPSEEK_API_KEY=your_api_key_here
 GITHUB_TOKEN=your_github_token
 DATABASE_URL=mysql+asyncmy://root:password@localhost:3306/aipi
-QDRANT_URL=http://localhost:6333
-OLLAMA_BASE_URL=http://localhost:11434
 ```
 
 #### 步骤 4：初始化数据库
@@ -163,8 +147,7 @@ curl -X POST "http://localhost:8000/api/v1/analysis" \
   -H "Content-Type: application/json" \
   -d '{
     "repo_url": "https://github.com/openai/openai-python",
-    "question": "分析这个项目的 Agent 和 Workflow 实现",
-    "enable_rag": false
+    "question": "分析这个项目的 Agent 和 Workflow 实现"
   }'
 ```
 
@@ -259,7 +242,7 @@ app/
 │   ├── base.py
 │   ├── models/
 │   └── repositories/
-├── integrations/        # GitHub、LLM、Embedding、Qdrant、文件导出
+├── integrations/        # GitHub、LLM、文件导出
 ├── schemas/             # 接口请求与响应模型
 ├── core/                # 配置、日志与通用异常
 ├── static/
@@ -304,12 +287,8 @@ End
 | `DEEPSEEK_API_KEY` | DeepSeek API 密钥 | ✅ | - |
 | `GITHUB_TOKEN` | GitHub Personal Access Token | ✅ | - |
 | `DATABASE_URL` | MySQL 连接字符串 | ✅ | `mysql+asyncmy://...` |
-| `QDRANT_URL` | Qdrant 服务地址 | ✅ | `http://localhost:6333` |
-| `OLLAMA_BASE_URL` | Ollama 服务地址（用于 Embedding）| ⚠️ | `http://localhost:11434` |
-| `RAG_ENABLED` | 是否启用 RAG 检索 | ❌ | `false` |
 | `LOG_LEVEL` | 日志级别 | ❌ | `INFO` |
 
-⚠️ `OLLAMA_BASE_URL`：如果启用 RAG（`enable_rag=true`），则必须配置。
 
 ### 获取 API Key
 
@@ -373,21 +352,9 @@ docker compose down mysql
 docker compose up -d mysql
 ```
 
-### Q3: Qdrant 连接失败
+### Q3: 旧客户端仍传入 RAG 参数
 
-**问题：** `Failed to connect to Qdrant`
-
-**解决：**
-```bash
-# 检查 Qdrant 是否启动
-docker compose ps qdrant
-
-# 访问 Qdrant 控制台
-open http://localhost:6333/dashboard
-
-# 重启 Qdrant
-docker compose restart qdrant
-```
+平台已移除向量检索。`enable_rag` 暂时作为已弃用参数接受，但不生效；响应中的 `rag_enabled` 始终为 `false`。直接证据采集、历史报告与目标项目的 RAG 能力识别继续可用。
 
 ### Q4: DeepSeek API 调用失败
 
@@ -536,3 +503,38 @@ MIT License
 ---
 
 **祝你使用愉快！** 🚀
+
+
+## 分析过程 Trace
+
+新建分析后，右侧运行状态下方会显示“分析过程”。可查看节点、Agent、文件读取、模型等待、异常和重试，切换“异常步骤”筛选，并复制文件路径。过程会在批准、重新规划等长请求执行期间独立刷新；刷新页面或重新打开历史任务可以恢复已记录的过程。
+
+升级已有环境先执行：
+
+```bash
+python -m alembic upgrade head
+```
+
+本次迁移新增 `analysis_trace_streams` 与 `analysis_trace_events`。随后启动或重启应用进程；Docker 部署需重建应用镜像并在对应环境执行迁移。旧任务没有记录时显示空状态，不生成虚构历史。
+
+新页面先提交 `defer_start=true` 取得任务 ID，再调用启动接口；旧创建请求仍沿用原行为：
+
+```http
+POST /api/v1/analysis
+{"repo_url":"https://github.com/example/project","defer_start":true}
+
+POST /api/v1/analysis/{run_id}/start
+GET /api/v1/analysis/{run_id}/trace?after=0&limit=100
+```
+
+`next_cursor` 用于下一次增量查询；`has_more=true` 时继续读取。重复执行被拒绝时返回 HTTP 409。同一任务在多个页面打开时，执行中的任务不会再次显示可批准入口。
+
+首版沿用长请求执行生命周期，刷新后会先查询记录，不会自动重跑任务。关闭页面后的持续执行和服务重启自动恢复不属于可靠后台调度能力。记录连接异常不等于任务失败，任务最终状态和报告以业务接口为准。
+
+定期清理已结束且超过保留期的 trace（不删除报告或历史记忆）：
+
+```bash
+python -m scripts.purge_analysis_trace --days 30
+```
+
+该命令可由已有运维调度定期调用，项目不会自动新增定时任务。服务端不记录完整源码、模型提示词和 API 密钥；用量仅在模型提供方返回时显示。

@@ -1,70 +1,18 @@
-"""
-Report Generation Skill。
+"""Export readable project reports as Markdown and structured JSON.
 
-负责生成 Project Intelligence Report。
-
-Phase 12 文档 15.3 要求报告至少包含：
-
-    项目概览 / 技术栈 / 目录结构 / Agent架构 / Workflow
-    / Skill / Tool / RAG / Memory / 数据库 / 关键源码 / Evidence
-
-实际产出调整为：
-
-    00 结论摘要 + 01-11 章
-
-改动与原因：
-
-  关键源码章已移除
-      它展示的是每个文件开头的固定字符数，
-      而 Python 文件开头必然是 import 块，
-      渲染出来只有一堆 import，对理解项目没有帮助。
-
-  04-09 章跟随「本次重点」展开或压缩
-      用户在问题里点名了某个模块时
-      （例如「分析项目的 agent」），
-      重点章展开实现明细，
-      其余章压成一行要点并注明未展开 ——
-      否则把每章都铺开写一遍，重点就被淹没了。
-
-各章末尾的「综合判断」来自 ReportSynthesisSkill
-（由 LLM 基于已采集事实归纳，只归纳不推测）。
-
-渲染方式
-========
-
-01-12 章由本 Skill 确定性地渲染成 markdown
-（表格 / 列表 / 带语言标注的代码块），
-不再把中间数据结构 dump 成 JSON。
-
-这样做的好处：
-
-- 数值仍是一字不改的真实数据，可逐条复核；
-- 不经过 LLM，
-  因此 LLM 不可用时报告依然完整可读，
-  也不存在幻觉面。
-
-每个字段的取值都来自各 Agent 的真实产出，
-渲染层只负责排版，不补充、不推断任何信息。
-
-本 Skill 的硬性约束：
-
-- 所有章节内容都来自被分析项目的真实分析结果
-- 取不到的章节必须明确写「真实数据不存在」并给出原因
-- 不使用任何硬编码占位内容
-  （旧版本曾把 AIPI 自己的 Tool 列表和
-   {"context_enabled": true} 写进报告，
-   那会让报告看起来完整但内容是假的）
-- 「综合判断」不可用时静默省略，
-  原始数据章节必须完整保留
+New exports use the nine reader chapters and evidence contract in
+reporting.project_report. The legacy renderer below remains available for old
+checkpoints and callers that do not carry the version 2 report marker.
 """
 
 import json
 import re
 
+from app.analysis.skills.base import BaseSkill
 from app.analysis.tools.project.analysis_focus import (
     AnalysisFocus,
 )
-from app.analysis.skills.base import BaseSkill
+from app.core.trace import traced
 
 
 class ReportGenerationSkill(
@@ -111,11 +59,15 @@ class ReportGenerationSkill(
     # 默认仍是 markdown，避免改变既有调用方的行为。
     SUPPORTED_FORMATS = ("markdown", "both")
 
+    @traced("skill")
     async def execute(
         self,
         context,
         input_data: dict,
     ):
+        from app.analysis.reporting.project_report import prepare_report_data
+
+        input_data = prepare_report_data(input_data)
         exporter = context.tools.get(
             "report_export"
         )
@@ -236,11 +188,21 @@ class ReportGenerationSkill(
         data: dict,
     ) -> str:
         """
-        按 Phase 12 文档 15.3 生成报告。
-
-        章节顺序与文档一致，内容全部来自真实数据。
+        按版本选择新版阅读章节或历史报告排版。
         """
 
+        from app.analysis.reporting.project_report import (
+            build_chapters,
+            mapping,
+            to_markdown,
+        )
+
+        if data.get("report_format_version") == 2 or mapping(
+            mapping(data.get("synthesis")).get("project_report")
+        ).get("version") == 2:
+            return to_markdown(build_chapters(data))
+
+        # Legacy checkpoints keep their original chapter contract.
         technology_stack = data.get(
             "technology_stack"
         )
@@ -2178,6 +2140,7 @@ class ReportGenerationSkill(
             "declared_by": entry.get(
                 "declared_by"
             ),
+            "code_scope": entry.get("code_scope"),
             # 实现明细：函数签名 / 调用链 / 关键字面量。
             #
             # 比 items 重，但正是它回答了

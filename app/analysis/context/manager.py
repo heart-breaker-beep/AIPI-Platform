@@ -3,10 +3,7 @@
 负责把「同一仓库的跨 run 历史分析记忆」
 组装成可拼进 LLM prompt 的受控文本块。
 
-本项目的 RAG 语义检索走独立通路
-（EvidenceAnalysisSkill → RagRetrievalTool），
-不在这里做；run 内数据各 Skill 已从
-Workflow state 拿到，也不重复注入。
+历史来自项目记忆存储；run 内数据由各 Skill 从 Workflow state 读取。
 """
 
 from app.core.logging import (

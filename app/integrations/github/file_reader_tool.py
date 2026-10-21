@@ -32,12 +32,13 @@ Contents API 对超过 1MB 的文件不返回内容）。
 
 
 import base64
+
 import httpx
 
 from app.core.config import get_settings
 from app.core.exceptions import ToolError
+from app.core.trace import traced
 from app.integrations.base import BaseTool
-
 
 
 class FileReaderTool(BaseTool):
@@ -108,6 +109,7 @@ class FileReaderTool(BaseTool):
         )
 
 
+    @traced("file", "read_file")
     async def read_file(
         self,
         owner: str,

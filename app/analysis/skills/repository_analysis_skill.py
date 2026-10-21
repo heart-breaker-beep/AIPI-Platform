@@ -7,8 +7,11 @@ Repository Analysis Skill。
 - 分析项目依赖
 """
 
-from app.core.exceptions import ToolError
+from datetime import datetime, timezone
+
 from app.analysis.skills.base import BaseSkill
+from app.core.exceptions import ToolError
+from app.core.trace import traced
 
 
 class RepositoryAnalysisSkill(
@@ -77,6 +80,7 @@ class RepositoryAnalysisSkill(
             if key in repository
         }
 
+    @traced("skill")
     async def execute(
         self,
         context,
@@ -156,6 +160,7 @@ class RepositoryAnalysisSkill(
                 )
             )
         )
+        result["repository_collected_at"] = datetime.now(timezone.utc).isoformat()
 
         # 获取 README
         #

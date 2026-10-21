@@ -6,7 +6,9 @@ import httpx
 
 from app.core.config import get_settings
 from app.core.exceptions import RetryableToolError
+from app.core.trace import traced
 from app.integrations.base import BaseTool
+
 
 class GitHubRepositoryTool(BaseTool):
 
@@ -65,6 +67,7 @@ class GitHubRepositoryTool(BaseTool):
             owner,
             name,
         )
+    @traced("tool", "github_repository")
     async def get_repository(
         self,
         owner: str,
@@ -114,6 +117,7 @@ class GitHubRepositoryTool(BaseTool):
 
         return response.json()
 
+    @traced("tool", "repository_tree")
     async def get_tree(
         self,
         owner: str,

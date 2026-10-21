@@ -24,6 +24,7 @@ Phase 12 校验要求
 
 
 from app.analysis.agents.base import BaseAgent
+from app.core.trace import traced
 
 
 class CriticAgent(
@@ -64,6 +65,7 @@ class CriticAgent(
         ),
     }
 
+    @traced("agent")
     async def execute(
         self,
         context,

@@ -115,6 +115,10 @@
 
   /** 行内元素。输入会被转义，所以这里处理的是已转义文本。 */
   function mdInline(text) {
+    // Decode only the entities emitted by the report writer, then escape all
+    // input. This preserves literal pipes in cells without allowing HTML.
+    text = String(text).replace(/&#124;/g, "|").replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">").replace(/&amp;/g, "&");
     let s = esc(text);
 
     // 行内代码先抠出来占位，免得里面的 * _ 被后面的规则误伤。
@@ -128,7 +132,9 @@
     s = s.replace(/\[([^\]]*)\]\(([^)\s]+)\)/g, (_, label, url) => {
       const href = esc(url);
       if (!/^(https?:|\/|#|mailto:)/i.test(url)) return label;
-      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+      return url.startsWith("#")
+        ? `<a href="${href}">${label}</a>`
+        : `<a href="${href}" target="_blank" rel="noopener noreferrer">${label}</a>`;
     });
 
     s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
@@ -220,11 +226,21 @@
 
       if (!line.trim()) { i++; continue; }
 
+      // The exporter emits explicit chapter anchors. No other raw HTML is allowed.
+      const anchor = line.match(/^<a id="([a-z][a-z0-9-]*)"><\/a>$/);
+      if (anchor) {
+        out.push(`<span id="${anchor[1]}" class="report-anchor"></span>`);
+        i++;
+        continue;
+      }
+
       // --- 标题 ---
       const heading = line.match(/^(#{1,6})\s+(.*)$/);
       if (heading) {
         const level = heading[1].length;
-        out.push(`<h${level}>${mdInline(heading[2].trim())}</h${level}>`);
+        const headingText = heading[2].trim();
+        const id = headingText.toLowerCase().replace(/[^\p{L}\p{N}_-]+/gu, "-").replace(/^-|-$/g, "");
+        out.push(`<h${level} id="${esc(id)}">${mdInline(headingText)}</h${level}>`);
         i++;
         continue;
       }
@@ -351,7 +367,8 @@
 
   /* 每个状态：文案、色调、需要人工做什么。 */
   const STATUS = {
-    CREATED:   { text: "已创建",     tone: "running" },
+    CREATED: { text: "已创建 · 待开始", tone: "waiting", head: "任务已创建，等待启动",
+      body: "点击开始执行以生成分析方案。刷新页面不会自动重新启动。", actionLabel: "开始执行", action: "start" },
     PLANNING:  { text: "规划中",     tone: "running" },
     ANALYZING: { text: "执行分析中", tone: "running" },
     RETRYING:  { text: "重试中",     tone: "running" },
@@ -362,7 +379,7 @@
       tone: "waiting",
       head: "需要你的确认：分析方案已生成",
       body: "工作流已暂停。批准后将串行执行 5 个 Agent 的分析" +
-            "（读取仓库文件、抽取架构与技术栈），大仓库约 1-2 分钟。",
+            "（读取仓库文件、抽取架构与技术栈），详细进展见下方分析过程。",
       actionLabel: "批准分析方案",
     },
 
@@ -483,6 +500,8 @@
    * ============================================================ */
 
   function renderStatus(run) {
+    window.AnalysisTrace?.attach(run.run_id, run.status);
+    if (window.AnalysisTrace?.isRunning(run.run_id)) run = { ...run, status: "ANALYZING", current_node: window.AnalysisTrace.currentLabel() };
     const meta = statusMeta(run.status);
 
     $("statusPanel").classList.remove("hidden");
@@ -765,6 +784,8 @@
   async function act(name) {
     if (state.inFlight) return;   // 防重复提交
     state.inFlight = true;
+    const actionRunId = state.runId;
+    window.AnalysisTrace?.action(actionRunId, true);
 
     showError("");
 
@@ -775,12 +796,14 @@
     $("status").className = "pill running";
     $("status").textContent = "执行中…";
     $("bar").className = "progress running";
-    $("progressText").textContent = "正在跑，大仓库约 1-2 分钟";
+    $("progressText").textContent = "正在执行，详细进展见下方";
+    $("node").textContent = "正在启动后续步骤";
     document.title = TITLE.running + " · " + BASE_TITLE;
     $("callout").scrollIntoView({ behavior: "smooth", block: "nearest" });
 
     try {
-      const run = await post(`/analysis/${state.runId}/${name}`);
+      const run = await post(`/analysis/${actionRunId}/${name}`);
+      if (state.runId !== actionRunId) { state.inFlight = false; return; }
       state.inFlight = false;
       state.run = run;
       renderStatus(run);
@@ -799,7 +822,9 @@
       }
     } catch (e) {
       state.inFlight = false;
-      await handleActionFailure(name, e);
+      if (state.runId === actionRunId) await handleActionFailure(name, e);
+    } finally {
+      window.AnalysisTrace?.action(actionRunId, false);
     }
   }
 
@@ -891,6 +916,8 @@
     }
 
     state.inFlight = true;
+    const actionRunId = state.runId;
+    window.AnalysisTrace?.action(actionRunId, true);
     stopPolling();
 
     // 重新规划要重跑 Planner（含一次 LLM 调用），会有几秒无响应，
@@ -914,6 +941,7 @@
     } catch (e) {
       showError("重新规划失败：" + e.message);
     } finally {
+      window.AnalysisTrace?.action(actionRunId, false);
       submit.disabled = false;
       submit.textContent = "用新问题重新规划";
       state.inFlight = false;
@@ -943,6 +971,7 @@
     }
 
     stopPolling();
+    window.AnalysisTrace?.clear();
     showError("");
     resetReport();
 
@@ -959,14 +988,13 @@
     state.scrolledFor = null;
 
     try {
-      const run = await api("/analysis", {
+      let run = await api("/analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           repo_url: repoUrl,
           question: question || null,
-          // 按次开关。true/false 都显式传，让服务端不必猜。
-          enable_rag: $("ragToggle").checked,
+          defer_start: true,
         }),
       });
 
@@ -976,6 +1004,18 @@
       setHash(run.run_id);
 
       renderStatus(run);
+      window.AnalysisTrace?.action(run.run_id, true);
+      const createdId = run.run_id;
+      state.inFlight = true;
+      try {
+        run = await post(`/analysis/${createdId}/start`);
+        if (state.runId !== createdId) return;
+        state.run = run;
+        renderStatus(run);
+      } finally {
+        state.inFlight = false;
+        window.AnalysisTrace?.action(createdId, false);
+      }
       poll();
       loadHistory();
     } catch (e) {
@@ -1147,6 +1187,11 @@
       return;
     }
 
+    if (doc.report_format_version === 2 && Array.isArray(doc.chapters)) {
+      renderProjectReader(doc, box);
+      return;
+    }
+
     const parts = [];
 
     parts.push(dashboardOverview(doc));
@@ -1157,6 +1202,61 @@
     parts.push(dashboardSynthesis(doc));
 
     box.innerHTML = parts.join("");
+  }
+
+  function renderProjectReader(doc, box) {
+    const chapters = doc.chapters.filter((chapter) => chapter &&
+      /^[a-z][a-z0-9-]*$/.test(chapter.id) && typeof chapter.body === "string");
+    const links = chapters.map((chapter) =>
+      `<a href="#reader-${chapter.id}">${esc(chapter.title)}</a>`).join("");
+    const prose = (body) => renderMarkdown(body)
+      .replace(/href="#/g, 'href="#reader-').replace(/ id="/g, ' id="reader-');
+    const content = chapters.map((chapter) => {
+      if (chapter.id === "appendix") {
+        return `<section id="reader-appendix" class="reader-chapter">
+          <details class="reader-evidence"><summary>${esc(chapter.title)}</summary>
+            <div class="md">${prose(chapter.body)}</div>
+          </details></section>`;
+      }
+      const graph = chapter.id === "architecture" ? renderReportRelations(chapter.relations) : "";
+      let body = prose(chapter.body);
+      if (graph) body = body.replace(/<h3[^>]*>已采集的组件关系<\/h3>\s*<table>[\s\S]*?<\/table>/, graph);
+      return `<section id="reader-${chapter.id}" class="reader-chapter" aria-labelledby="reader-title-${chapter.id}">
+        <h2 id="reader-title-${chapter.id}">${esc(chapter.title)}</h2>
+        <div class="md">${body}</div></section>`;
+    }).join("");
+    box.innerHTML = `<div class="project-reader">
+      <nav class="reader-nav" aria-label="报告章节"><h2>阅读目录</h2>${links}</nav>
+      <article class="reader-article" aria-label="项目分析报告">${content}</article>
+    </div>`;
+    // Jump inside the report without replacing the run's shareable URL hash.
+    box.querySelectorAll('a[href^="#reader-"]').forEach((link) => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        const appendix = box.querySelector(".reader-evidence");
+        const target = document.getElementById(link.getAttribute("href").slice(1));
+        if (!target) return;
+        if (appendix && (target.closest(".reader-evidence") || target.id === "reader-appendix")) appendix.open = true;
+        target.scrollIntoView({ block: "start" });
+        target.setAttribute("tabindex", "-1");
+        target.focus({ preventScroll: true });
+      });
+    });
+  }
+
+  function renderReportRelations(relations) {
+    if (!Array.isArray(relations) || !relations.length) return "";
+    const rows = relations.map((relation) => {
+      const evidence = Array.isArray(relation.evidence_ids) ? relation.evidence_ids
+        .filter((ref) => /^E\d{3}$/.test(ref)).map((ref) =>
+          `<a href="#reader-${ref.toLowerCase()}">${esc(ref)}</a>`).join(" ") : "";
+      return `<li><span class="relation-node">${esc(relation.source)}</span>
+        <span class="relation-edge">${esc(relation.label)} ${icon("chevron")}</span>
+        <span class="relation-node">${esc(relation.target)}</span>
+        <span class="relation-evidence">${relation.basis === "code" ? "源码观察" : "文档声明"} · ${evidence}</span></li>`;
+    }).join("");
+    return `<figure class="reader-relations"><figcaption>已采集的组件关系</figcaption>
+      <ul aria-label="组件依赖与调用关系">${rows}</ul></figure>`;
   }
 
   /* ---------- 概览 ---------- */
@@ -2105,6 +2205,7 @@
     stopPolling();
 
     state.runId = runId;
+    window.AnalysisTrace?.attach(runId, null);
     state.mainReport = null;
     state.scrolledFor = null;
     setHash(runId);
@@ -2140,33 +2241,28 @@
 
   $("refreshHistory").onclick = loadHistory;
 
-  /* ---------- RAG 开关 ---------- */
-
-  /*
-   * 选择存 localStorage：RAG 是一个「我这次想不想等」的决定，
-   * 每次进来都要重设一遍会很烦。
-   * 默认值由服务端配置决定，首次访问时不给前端预设。
-   */
-  try {
-    const saved = localStorage.getItem("aipi-rag");
-
-    if (saved !== null) {
-      $("ragToggle").checked = saved === "1";
+  window.addEventListener("analysisexecution", async ({ detail }) => {
+    if (detail.runId !== state.runId) return;
+    if (detail.status === "running") {
+      $("callout").classList.add("hidden");
+      $("statusControls").replaceChildren();
+      $("status").className = "pill running";
+      $("status").textContent = "执行中…";
+      return;
     }
-  } catch (e) { /* 隐私模式忽略 */ }
-
-  function syncRagWarning() {
-    $("ragWarning").classList.toggle("hidden", !$("ragToggle").checked);
-  }
-
-  $("ragToggle").onchange = () => {
+    if (!detail.execution_id || state.inFlight) return;
     try {
-      localStorage.setItem("aipi-rag", $("ragToggle").checked ? "1" : "0");
-    } catch (e) { /* 忽略 */ }
-    syncRagWarning();
-  };
+      const run = await api(`/analysis/${detail.runId}`);
+      if (detail.runId !== state.runId) return;
+      state.run = run;
+      renderStatus(run);
+      if (run.status === "COMPLETED") await loadReport(run.run_id);
+      loadHistory();
+    } catch (e) { showError("同步执行结果失败：" + e.message); }
+  });
 
-  syncRagWarning();
+  // 清理旧版本的检索偏好。隐私模式可能禁止访问本地存储。
+  try { localStorage.removeItem("aipi-rag"); } catch (e) { /* 忽略 */ }
 
   /* ============================================================
    * 深链 #/run/<id>
